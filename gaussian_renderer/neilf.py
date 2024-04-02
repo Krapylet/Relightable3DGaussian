@@ -113,7 +113,7 @@ def render_view(viewpoint_camera: Camera, pc: GaussianModel, pipe, bg_color: tor
 
     # Rasterize visible Gaussians to image, obtain their radii (on screen).
     (num_rendered, num_contrib, rendered_image, rendered_opacity, rendered_depth,
-     rendered_feature, rendered_pseudo_normal, rendered_surface_xyz, radii) = rasterizer(
+     rendered_feature, rendered_shader, rendered_pseudo_normal, rendered_surface_xyz, radii) = rasterizer(
         means3D=means3D,
         means2D=means2D,
         shs=shs,
@@ -160,6 +160,7 @@ def render_view(viewpoint_camera: Camera, pc: GaussianModel, pipe, bg_color: tor
     # They will be excluded from value updates used in the splitting criteria.
     results = {"render": rendered_image,
                "pbr": rendered_pbr,
+               "shader": rendered_shader,
                "normal": rendered_normal,
                "pseudo_normal": rendered_pseudo_normal,
                "surface_xyz": rendered_surface_xyz,

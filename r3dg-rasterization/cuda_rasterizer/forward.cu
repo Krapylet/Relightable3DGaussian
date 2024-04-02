@@ -269,6 +269,7 @@ renderCUDA(
 	const float2* __restrict__ points_xy_image,
 	const float* __restrict__ depths,
 	const float* __restrict__ features,
+	const float* __restrict__ shader_colors,
 	const float* __restrict__ colors,
 	const float4* __restrict__ conic_opacity,
 	float* __restrict__ final_T,
@@ -277,7 +278,8 @@ renderCUDA(
 	float* __restrict__ out_color,
 	float* __restrict__ out_opacity,
 	float* __restrict__ out_depth,
-	float* __restrict__ out_feature)
+	float* __restrict__ out_feature,
+	float* __restrict__ out_shader_color)
 {
 	// Identify current tile and associated min/max pixel range.
 	auto block = cg::this_thread_block();
@@ -307,7 +309,7 @@ renderCUDA(
 	float T = 1.0f;
 	uint32_t contributor = 0;
 	uint32_t last_contributor = 0;
-	float C[CHANNELS] = { 0 }, F[33] = { 0 }, Depth = 0, Opacity = 0;
+	float C[CHANNELS] = { 0 }, C_shader[CHANNELS] = { 0 }, F[33] = { 0 }, Depth = 0, Opacity = 0;
 
 	// Iterate over batches until all done or range is complete
 	for (int i = 0; i < rounds; i++, toDo -= BLOCK_SIZE)
@@ -363,6 +365,9 @@ renderCUDA(
 			for (int ch = 0; ch < CHANNELS; ch++)
 				C[ch] += colors[collected_id[j] * CHANNELS + ch] * weight;
 
+			for (int ch = 0; ch < CHANNELS; ch++)
+				C_shader[ch] += shader_colors[collected_id[j] * CHANNELS + ch] * weight;
+
 			for (int ch = 0; ch < S; ch++)
 				F[ch] += features[collected_id[j] * S + ch] * weight;
 
@@ -385,6 +390,8 @@ renderCUDA(
 		n_contrib[pix_id] = last_contributor;
 		for (int ch = 0; ch < CHANNELS; ch++)
 			out_color[ch * H * W + pix_id] = C[ch] + T * bg_color[ch];
+		for (int ch = 0; ch < CHANNELS; ch++)
+			out_shader_color[ch * H * W + pix_id] = C_shader[ch] + T * bg_color[ch];
 		for (int ch = 0; ch < S; ch++)
 			out_feature[ch * H * W + pix_id] = F[ch];
 		out_depth[pix_id] = Depth;
@@ -496,6 +503,7 @@ void FORWARD::render(
 	const float2* means2D,
 	const float* depths,
 	const float* features,
+	const float* shader_colors,
 	const float* colors,
 	const float4* conic_opacity,
 	float* final_T,
@@ -504,7 +512,8 @@ void FORWARD::render(
 	float* out_color,
 	float* out_opacity,
 	float* out_depth,
-	float* out_feature
+	float* out_feature,
+	float* out_shader_color
 	)
 {
 	renderCUDA<NUM_CHANNELS> << <grid, block >> > (
@@ -514,6 +523,7 @@ void FORWARD::render(
 		means2D,
 		depths,
 		features,
+		shader_colors,
 		colors,
 		conic_opacity,
 		final_T,
@@ -522,7 +532,8 @@ void FORWARD::render(
 		out_color,
 		out_opacity,
 		out_depth,
-		out_feature);
+		out_feature,
+		out_shader_color);
 }
 
 void FORWARD::preprocess(int P, int D, int M,
@@ -684,9 +695,11 @@ __device__ void ShadeTest(
 	}
 }
 
+
 // Runs after preprocess but before renderer. Allows changing values for individual gaussians.
-	void FORWARD::shade(
-		int W, int H,					// CUAD threads (grid, block)
+template<int C>
+	__global__ void shadeCUDA(
+		int W, int H,					// Sceen width and height
 		// TODO:  void *shader			// Function pointer to specific shader to call.
 		// Gaussian information:
 		int P,							// Total number of gaussians.
@@ -718,16 +731,56 @@ __device__ void ShadeTest(
 		// output
 		float* out_color				// Sequential RGB color output
 	){
-		/*
-		for (size_t pointID = 0; pointID < P; pointID++)
-		{
-			float3 splatWorldMedian = {orig_points[pointID], orig_points[pointID + 1], orig_points[pointID + 2]};
-			float2 splatScreenMedian = points_xy_image[pointID];
-			
-			// Set debug shader output to red.
-			out_color[pointID * NUM_CHANNELS] = 1;
-			out_color[pointID * NUM_CHANNELS + 1] = 0;
-			out_color[pointID * NUM_CHANNELS + 2] = 0;
-		}
-		*/
+		auto idx = cg::this_grid().thread_rank();
+		if (idx >= P)
+			return;
+		
+		float3 pointWorldMedian = {orig_points[idx], orig_points[idx + 1], orig_points[idx + 2]};
+		float2 pointScreenMedian = points_xy_image[idx];
+		
+		float3 normals = {features[idx + 3], features[idx + 4], features[idx + 5]};
+
+		// Set debug shader output to red.
+		out_color[idx * C + 0] = normals.x;
+		out_color[idx * C + 1] = normals.y;
+		out_color[idx * C + 2] = normals.z;
+	}
+
+	
+void FORWARD::shade(
+		int W, int H,			
+		int P,					
+		const float* orig_points,
+		float2* points_xy_image,
+		const float* viewmatrix,
+		const float* viewmatrix_inv,
+		const float* projmatrix,
+		const float* projmatrix_inv,
+		const float focal_x, float focal_y,
+		const float tan_fovx, float tan_fovy,
+		float* depths,			
+		float* colors,			
+		float4* conic_opacity, 
+		int S,					
+		const float* features,
+		float* out_color)
+	{
+		shadeCUDA<NUM_CHANNELS> <<<(P + 255) / 256, 256 >> >(
+			W, H,	
+			P,							
+			orig_points,  		
+			points_xy_image,		
+			viewmatrix,
+			viewmatrix_inv,
+			projmatrix,
+			projmatrix_inv,
+			focal_x, focal_y,
+			tan_fovx, tan_fovy,
+			depths,					
+			colors,					
+			conic_opacity,          
+			S,							
+			features,
+			out_color
+		);
 	}

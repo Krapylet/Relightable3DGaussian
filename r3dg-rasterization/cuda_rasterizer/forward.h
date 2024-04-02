@@ -50,7 +50,7 @@ namespace FORWARD
 
 	// Runs after preprocess but before renderer. Allows changing values for individual gaussians.
 	void shade(
-		int W, int H,					// CUAD threads (grid, block)
+		int W, int H,	
 		// TODO:  void *shader			// Function pointer to specific shader to call.
 		// Gaussian information:
 		int P,							// Total number of gaussians.
@@ -83,6 +83,7 @@ namespace FORWARD
 		const float2* points_xy_image,
 		const float* depths,
 		const float* features,
+		const float* shader_colors,
 		const float* colors,
 		const float4* conic_opacity,
 		float* final_T,
@@ -91,7 +92,8 @@ namespace FORWARD
 		float* out_color,
 		float* out_opacity,
 		float* out_depth,
-		float* out_feature);
+		float* out_feature,
+		float* out_shader_color);
 
 	void render_xyz(
         const dim3 grid, dim3 block,

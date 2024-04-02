@@ -163,6 +163,7 @@ CudaRasterizer::GeometryState CudaRasterizer::GeometryState::fromChunk(char*& ch
 	obtain(chunk, geom.cov3DInverse, P * 6, 128);
 	obtain(chunk, geom.conic_opacity, P, 128);
 	obtain(chunk, geom.rgb, P * 3, 128);
+	obtain(chunk, geom.shader_rgb, P * 3, 128);
 	obtain(chunk, geom.tiles_touched, P, 128);
 	cub::DeviceScan::InclusiveSum(nullptr, geom.scan_size, geom.tiles_touched, geom.tiles_touched, P);
 	obtain(chunk, geom.scanning_space, geom.scan_size, 128);
@@ -225,6 +226,7 @@ int CudaRasterizer::Rasterizer::forward(
 	float* out_opacity,
 	float* out_depth,
 	float* out_feature,
+	float* out_shader_color,
 	float* out_normal,
 	float* out_surface_xyz,
     int* radii,
@@ -283,11 +285,12 @@ int CudaRasterizer::Rasterizer::forward(
 		prefiltered
 	), debug)
 
-/*
+
 	// gaussian shader: works on every single gaussian in order.
 	// takes in 2d position, 3d position, camera information, transformation matriexes and features.
 	// Outputs by modifying features.
-	FORWARD::shade(
+
+	CHECK_CUDA(FORWARD::shade(
 		width, height,
 		P,							
 		means3D,  		
@@ -304,8 +307,8 @@ int CudaRasterizer::Rasterizer::forward(
 		S,							
 		features,
 		geomState.shader_rgb
-	);
-*/	
+	), debug);
+	
 
 
 	// Compute prefix sum over full list of touched tile counts by Gaussians
@@ -363,6 +366,7 @@ int CudaRasterizer::Rasterizer::forward(
 		geomState.means2D,
 		geomState.depths,
         features,
+		geomState.shader_rgb,
 		colors_ptr,
 		geomState.conic_opacity,
 		imgState.accum_alpha,
@@ -371,7 +375,8 @@ int CudaRasterizer::Rasterizer::forward(
 		out_color,
         out_opacity,
 		out_depth,
-		out_feature
+		out_feature,
+		out_shader_color
 		), debug)
 
     if (computer_pseudo_normal){
