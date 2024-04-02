@@ -308,6 +308,9 @@ renderCUDA(
 	uint32_t contributor = 0;
 	uint32_t last_contributor = 0;
 	float C[CHANNELS] = { 0 }, F[33] = { 0 }, Depth = 0, Opacity = 0;
+	
+	// allocate varibes in which we accumulate the gaussian vales as the shader output.
+	float out_color_shader[CHANNELS] = { 0 }, out_feature_shader[33] = { 0 }, out_alpha_shader = 0, out_depth_shader = 0;
 
 	// Iterate over batches until all done or range is complete
 	for (int i = 0; i < rounds; i++, toDo -= BLOCK_SIZE)
@@ -358,6 +361,24 @@ renderCUDA(
 			}
 
             float weight = alpha * T;
+
+			// TODO: sort these alpha, weight and T terms. Figure out how alpha changed in the shader should influence the weight calculations.
+			// TODO: Does it make sense to allow the shader to access any part of the arrys? they're sortred, so maybe there's something intersting to be done with that. 
+
+			ShadeTest(
+				S, W, H,
+				&colors[collected_id[j] * CHANNELS],
+				alpha,
+				depths[collected_id[j]],
+				&features[collected_id[j] * S],
+				bg_color,
+				weight,
+				out_color_shader,
+				&out_alpha_shader,
+				&out_depth_shader,
+				out_feature_shader
+			);
+
 			// Eq. (3) from 3D Gaussian splatting paper.
 			for (int ch = 0; ch < CHANNELS; ch++)
 				C[ch] += colors[collected_id[j] * CHANNELS + ch] * weight;
@@ -383,7 +404,7 @@ renderCUDA(
 		final_T[pix_id] = T;
 		n_contrib[pix_id] = last_contributor;
 		for (int ch = 0; ch < CHANNELS; ch++)
-			out_color[ch * H * W + pix_id] = C[ch] + T * bg_color[ch];
+			out_color[ch * H * W + pix_id] = out_color_shader[ch] + T * bg_color[ch];
 		for (int ch = 0; ch < S; ch++)
 			out_feature[ch * H * W + pix_id] = F[ch];
 		out_depth[pix_id] = Depth;
@@ -624,4 +645,61 @@ void FORWARD::render_pseudo_normal(
         depths,
         normals,
         surface_xyz);
+}
+
+
+__device__ void ShadeTest(
+    const int S, const int W, const int H,
+	// The following only currently exist in the second normal calculation step.
+	// TODO: inclue later
+    //const float* viewmatrix,
+    //const float focal_x, const float focal_y,
+    //const float cx, const float cy,
+    //const float tan_fovx, const float tan_fovy,
+	//const float2 point_xy_image,
+	//const float surface_xyz,	
+	// float3 screen x/y pos * depth, depth.
+	const float *color,   			// float3 rgb
+	const float alpha,			
+	const float depth,
+	const float *features, 		// float3 brdf_color,
+												// float3 normal,
+												// float3 base_color,
+												// float  roughness,
+												// float  metallic
+												// float  incident_light
+												// float  local_incident_light
+												// float  global_incident_light
+												// float  incident_visibility
+	const float* bg_color, 		// float3 rgb
+	const float weight,
+	float* out_color,
+	float* out_alpha,
+	float* out_depth,
+	float* out_feature)
+{
+
+
+
+	float calculatedColor[3];
+	for (size_t i = 0; i < NUM_CHANNELS; i++)
+	{
+		calculatedColor[i] = color[i] * (1 - depth);
+	}
+
+	// Write output:
+	out_alpha[0] = alpha;
+	out_depth[0] = depth;
+
+	// write to all 3 RGB color channels.
+	for (size_t i = 0; i < NUM_CHANNELS; i++)
+	{
+		out_color[i] += calculatedColor[i] * weight;
+	}
+
+	// write to all S feature channels at once.
+	for (size_t i = 0; i < S; i++)
+	{
+		out_feature[i] += features[i] * weight;
+	}
 }
