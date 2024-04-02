@@ -60,17 +60,24 @@ class Camera(nn.Module):
         self.trans = trans
         self.scale = scale
 
-        self.world_view_transform = torch.tensor(getWorld2View2(R, T, trans, scale)).transpose(0, 1).cuda()
+        worldViewMatrixCPU = torch.tensor(getWorld2View2(R, T, trans, scale)).transpose(0, 1)
+        self.world_view_transform = worldViewMatrixCPU.cuda()
+        self.world_view_transform_inverse = torch.linalg.inv(worldViewMatrixCPU).cuda()
 
+        projectionMatrixCPU = 0
         if self.fx is None:
-            self.projection_matrix = getProjectionMatrix(znear=self.znear, zfar=self.zfar, fovX=self.FoVx,
-                                                         fovY=self.FoVy).transpose(0, 1).cuda()
+            projectionMatrixCPU = getProjectionMatrix(znear=self.znear, zfar=self.zfar, fovX=self.FoVx,
+                                                         fovY=self.FoVy).transpose(0, 1)
         else:
-            self.projection_matrix = getProjectionMatrixCenterShift(
-                self.znear, self.zfar, cx, cy, fx, fy, self.image_width, self.image_height).transpose(0, 1).cuda()
+             projectionMatrixCPU = getProjectionMatrixCenterShift(
+                self.znear, self.zfar, cx, cy, fx, fy, self.image_width, self.image_height).transpose(0, 1)
+        self.projection_matrix = projectionMatrixCPU.cuda()
 
         self.full_proj_transform = (
             self.world_view_transform.unsqueeze(0).bmm(self.projection_matrix.unsqueeze(0))).squeeze(0)
+        
+        self.full_proj_transform_inverse = torch.linalg.inv(self.full_proj_transform).cuda()
+        
         self.camera_center = self.world_view_transform.inverse()[3, :3]
         self.c2w = self.world_view_transform.transpose(0, 1).inverse()
         self.intrinsics = self.get_intrinsics()

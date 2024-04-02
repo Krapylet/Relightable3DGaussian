@@ -47,6 +47,33 @@ namespace FORWARD
 		uint32_t* tiles_touched,
 		bool prefiltered);
 
+
+	// Runs after preprocess but before renderer. Allows changing values for individual gaussians.
+	void shade(
+		int W, int H,					// CUAD threads (grid, block)
+		// TODO:  void *shader			// Function pointer to specific shader to call.
+		// Gaussian information:
+		int P,							// Total number of gaussians.
+		const float* orig_points,  		// mean 3d position of gaussian in world space.
+		float2* points_xy_image,		// mean 2d position of gaussian in screen space.
+		// Projection information
+		const float* viewmatrix,
+		const float* viewmatrix_inv,
+		const float* projmatrix,
+		const float* projmatrix_inv,
+		const float focal_x, float focal_y,
+		const float tan_fovx, float tan_fovy,
+		// pr. frame texture information
+		float* depths,					// Gaussian depth in view space.
+		float* colors,					// Raw Gaussian SH color.
+		float4* conic_opacity,          // ???? Read up on original splatting paper.
+		// Precomputed 'texture' information
+		int S,							// Feature channel count.
+		const float* features,			// Interleaved array of precomputed 'textures', such as color, normal, AOO ect for each gaussian.
+		// output
+		float* out_color				// Sequential RGB color output
+	);
+
 	// Main rasterization method.
 	void render(
 		const dim3 grid, dim3 block,

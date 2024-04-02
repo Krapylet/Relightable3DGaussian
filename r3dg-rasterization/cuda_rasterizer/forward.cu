@@ -308,9 +308,6 @@ renderCUDA(
 	uint32_t contributor = 0;
 	uint32_t last_contributor = 0;
 	float C[CHANNELS] = { 0 }, F[33] = { 0 }, Depth = 0, Opacity = 0;
-	
-	// allocate varibes in which we accumulate the gaussian vales as the shader output.
-	float out_color_shader[CHANNELS] = { 0 }, out_feature_shader[33] = { 0 }, out_alpha_shader = 0, out_depth_shader = 0;
 
 	// Iterate over batches until all done or range is complete
 	for (int i = 0; i < rounds; i++, toDo -= BLOCK_SIZE)
@@ -362,23 +359,6 @@ renderCUDA(
 
             float weight = alpha * T;
 
-			// TODO: sort these alpha, weight and T terms. Figure out how alpha changed in the shader should influence the weight calculations.
-			// TODO: Does it make sense to allow the shader to access any part of the arrys? they're sortred, so maybe there's something intersting to be done with that. 
-
-			ShadeTest(
-				S, W, H,
-				&colors[collected_id[j] * CHANNELS],
-				alpha,
-				depths[collected_id[j]],
-				&features[collected_id[j] * S],
-				bg_color,
-				weight,
-				out_color_shader,
-				&out_alpha_shader,
-				&out_depth_shader,
-				out_feature_shader
-			);
-
 			// Eq. (3) from 3D Gaussian splatting paper.
 			for (int ch = 0; ch < CHANNELS; ch++)
 				C[ch] += colors[collected_id[j] * CHANNELS + ch] * weight;
@@ -404,7 +384,7 @@ renderCUDA(
 		final_T[pix_id] = T;
 		n_contrib[pix_id] = last_contributor;
 		for (int ch = 0; ch < CHANNELS; ch++)
-			out_color[ch * H * W + pix_id] = out_color_shader[ch] + T * bg_color[ch];
+			out_color[ch * H * W + pix_id] = C[ch] + T * bg_color[ch];
 		for (int ch = 0; ch < S; ch++)
 			out_feature[ch * H * W + pix_id] = F[ch];
 		out_depth[pix_id] = Depth;
@@ -703,3 +683,51 @@ __device__ void ShadeTest(
 		out_feature[i] += features[i] * weight;
 	}
 }
+
+// Runs after preprocess but before renderer. Allows changing values for individual gaussians.
+	void FORWARD::shade(
+		int W, int H,					// CUAD threads (grid, block)
+		// TODO:  void *shader			// Function pointer to specific shader to call.
+		// Gaussian information:
+		int P,							// Total number of gaussians.
+		const float* orig_points,  		// mean 3d position of gaussian in world space.
+		float2* points_xy_image,		// mean 2d position of gaussian in screen space.
+		// Projection information
+		const float* viewmatrix,
+		const float* viewmatrix_inv,
+		const float* projmatrix,
+		const float* projmatrix_inv,
+		const float focal_x, float focal_y,
+		const float tan_fovx, float tan_fovy,
+		// pr. frame texture information
+		float* depths,					// Gaussian depth in view space.
+		float* colors,					// Raw Gaussian SH color.
+		float4* conic_opacity,          // ???? Read up on original splatting paper.
+		// Precomputed 'texture' information
+		int S,							// Feature channel count.
+		const float* features,			// Interleaved array of precomputed 'textures' for each individual gaussian. Stored in the following order:
+										// float3 brdf_color,
+										// float3 normal,
+										// float3 base_color,
+										// float  roughness,
+										// float  metallic
+										// float  incident_light
+										// float  local_incident_light
+										// float  global_incident_light
+										// float  incident_visibility
+		// output
+		float* out_color				// Sequential RGB color output
+	){
+		/*
+		for (size_t pointID = 0; pointID < P; pointID++)
+		{
+			float3 splatWorldMedian = {orig_points[pointID], orig_points[pointID + 1], orig_points[pointID + 2]};
+			float2 splatScreenMedian = points_xy_image[pointID];
+			
+			// Set debug shader output to red.
+			out_color[pointID * NUM_CHANNELS] = 1;
+			out_color[pointID * NUM_CHANNELS + 1] = 0;
+			out_color[pointID * NUM_CHANNELS + 2] = 0;
+		}
+		*/
+	}

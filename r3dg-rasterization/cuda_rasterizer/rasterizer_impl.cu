@@ -213,7 +213,9 @@ int CudaRasterizer::Rasterizer::forward(
 	const float* rotations,
 	const float* cov3D_precomp,
 	const float* viewmatrix,
+	const float* viewmatrix_inv,
 	const float* projmatrix,
+	const float* projmatrix_inv,
 	const float* cam_pos,
 	const float tan_fovx, float tan_fovy,
 	const float cx, const float cy,
@@ -280,6 +282,31 @@ int CudaRasterizer::Rasterizer::forward(
 		geomState.tiles_touched,
 		prefiltered
 	), debug)
+
+/*
+	// gaussian shader: works on every single gaussian in order.
+	// takes in 2d position, 3d position, camera information, transformation matriexes and features.
+	// Outputs by modifying features.
+	FORWARD::shade(
+		width, height,
+		P,							
+		means3D,  		
+		geomState.means2D,		
+		viewmatrix,
+		viewmatrix_inv,
+		projmatrix,
+		projmatrix_inv,
+		focal_x, focal_y,
+		tan_fovx, tan_fovy,
+		geomState.depths,					
+		geomState.rgb,					
+		geomState.conic_opacity,          
+		S,							
+		features,
+		geomState.shader_rgb
+	);
+*/	
+
 
 	// Compute prefix sum over full list of touched tile counts by Gaussians
 	// E.g., [2, 3, 0, 2, 1] -> [2, 5, 5, 7, 8]
