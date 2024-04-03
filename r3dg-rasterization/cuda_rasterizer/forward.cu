@@ -696,6 +696,8 @@ __device__ void ShadeTest(
 }
 
 
+
+
 // Runs after preprocess but before renderer. Allows changing values for individual gaussians.
 template<int C>
 	__global__ void shadeCUDA(
@@ -707,7 +709,15 @@ template<int C>
 		float2* points_xy_image,		// mean 2d position of gaussian in screen space.
 		// Projection information
 		const float* viewmatrix,
+			// RightX  RightY  RightZ  0
+			// UpX     UpY     UpZ     0
+			// LookX   LookY   LookZ   0
+			// PosX    PosY    PosZ    1
 		const float* viewmatrix_inv,
+			// RightX  UpX     LookX      0
+			// RightY  UpY     LookY      0
+			// RightZ  UpZ     LookZ      0
+			// -(Pos*Right)  -(Pos*Up)  -(Pos*Look)  1      // * = dot product
 		const float* projmatrix,
 		const float* projmatrix_inv,
 		const float focal_x, float focal_y,
@@ -715,12 +725,12 @@ template<int C>
 		// pr. frame texture information
 		float* depths,					// Gaussian depth in view space.
 		float* colors,					// Raw Gaussian SH color.
-		float4* conic_opacity,          // ???? Read up on original splatting paper.
+		float4* conic_opacity,          // ???? Float4 that contains conic something in the first 3 indexes, and opacity in the last. Read up on original splatting paper.
 		// Precomputed 'texture' information
 		int S,							// Feature channel count.
 		const float* features,			// Interleaved array of precomputed 'textures' for each individual gaussian. Stored in the following order:
 										// float3 brdf_color,
-										// float3 normal,
+										// float3 normal,	       Object space
 										// float3 base_color,
 										// float  roughness,
 										// float  metallic
@@ -731,19 +741,38 @@ template<int C>
 		// output
 		float* out_color				// Sequential RGB color output
 	){
+		// calculate indexes for the gaussian
 		auto idx = cg::this_grid().thread_rank();
 		if (idx >= P)
 			return;
 		
-		float3 pointWorldMedian = {orig_points[idx], orig_points[idx + 1], orig_points[idx + 2]};
-		float2 pointScreenMedian = points_xy_image[idx];
-		
-		float3 normals = {features[idx + 3], features[idx + 4], features[idx + 5]};
+		int featureIdx = idx * S;
+		int colorIdx = idx * C;
+		int posIdx = idx * 3; // times 3 because x, y and z
 
-		// Set debug shader output to red.
-		out_color[idx * C + 0] = normals.x;
-		out_color[idx * C + 1] = normals.y;
-		out_color[idx * C + 2] = normals.z;
+		// TODO: make everything either glm::vec3 or float3 for consistency.
+		glm::vec3 pointWorldMedian = {orig_points[posIdx], orig_points[posIdx + 1], orig_points[posIdx + 2]};
+		glm::vec2 pointScreenMedian = {points_xy_image[idx].x, points_xy_image[idx].y};
+		glm::vec3 normal = {features[featureIdx + 3], features[featureIdx + 4], features[featureIdx + 5]};
+		glm::vec3 cameraPos = {viewmatrix_inv[12], viewmatrix_inv[13], viewmatrix_inv[14]};
+
+		// Get angle between splat and camera:
+		glm::vec3 directionToCamera = cameraPos - pointWorldMedian;
+		float angle = 1 - abs(glm::dot(glm::normalize(directionToCamera), glm::normalize(normal)));
+		// easing from https://easings.net/#easeInOutQuint
+		float opacity = angle < 0.5
+			? 1 - 16 * pow(angle, 5)
+			: pow(-2 * angle + 2, 5) / 2;
+		if(idx == 1){
+			printf("Camera pos: %f, %f, %f\n", cameraPos.x, cameraPos.y, cameraPos.z);
+			printf("Point pos: %f, %f, %f\n", pointWorldMedian.x, pointWorldMedian.y, pointWorldMedian.z);
+			printf("Direction to camera: %f, %f, %f\n", directionToCamera.x, directionToCamera.y, directionToCamera.z);
+		}
+
+		// Set output color
+		out_color[colorIdx + 0] = colors[colorIdx + 0 ] * opacity;
+		out_color[colorIdx + 1] = colors[colorIdx + 1 ] * opacity;
+		out_color[colorIdx + 2] = colors[colorIdx + 2 ] * opacity;
 	}
 
 	

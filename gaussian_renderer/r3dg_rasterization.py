@@ -100,6 +100,7 @@ class _RasterizeGaussians(torch.autograd.Function):
             raster_settings.computer_pseudo_normal,
             raster_settings.debug
         )
+        
 
         # Invoke C++/CUDA rasterizer
         if raster_settings.debug:
