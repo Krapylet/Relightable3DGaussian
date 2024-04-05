@@ -8,6 +8,8 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 import torchvision
+import relighting
+import sys
 from gaussian_renderer import render_fn_dict
 from scene import GaussianModel
 from utils.general_utils import safe_state
@@ -18,6 +20,7 @@ from utils.system_utils import searchForMaxIteration
 from scene.derect_light_sh import DirectLightEnv
 from utils.graphics_utils import focal2fov, hdr2ldr
 from scene.gamma_trans import LearningGammaTransform
+from scene.envmap import EnvLight
 
 
 def safe_normalize(x, eps=1e-20):
@@ -117,6 +120,8 @@ class GUI:
         self.start = torch.cuda.Event(enable_timing=True)
         self.end = torch.cuda.Event(enable_timing=True)
 
+        
+
         self.menu = None
         self.mode = None
         self.step()
@@ -211,6 +216,8 @@ class GUI:
             dpg.add_image("_texture")
 
         dpg.set_primary_window("_primary_window", True)
+
+        
 
         # control window
         with dpg.window(label="Control", tag="_control_window", width=300, height=200):
@@ -339,52 +346,83 @@ if __name__ == '__main__':
     parser.add_argument("--scale", type=int, default=1)
     parser.add_argument('--hdr2ldr', action="store_true")
 
+    #Multi object view paramters
+    
+    parser.add_argument('-co', '--config', default=None, required=False, help="the config root")
+    parser.add_argument('-e', '--envmap_path', default=None, help="Env map path")
+    parser.add_argument('--bake', action='store_true', default=False, help="Bake the visibility and refine.")
+    
+    
     args = parser.parse_args()
-    print("Rendering " + args.model_path)
 
     # Initialize system state (RNG)
     safe_state(args.quiet)
     dataset = model.extract(args)
     pipe = pipeline.extract(args)
 
-    gaussians = GaussianModel(dataset.sh_degree, render_type=args.type)
-    
     pbr_kwargs = dict()
     pbr_kwargs['sample_num'] = pipe.sample_num
-    checkpoints = glob.glob(os.path.join(args.model_path, "chkpnt*.pth"))
-    if args.checkpoint is not None or len(checkpoints) > 0:
-        if args.checkpoint is not None:
-            checkpoint = args.checkpoint
-        else:
-            checkpoint = sorted(checkpoints, key=lambda x: int(x.split("chkpnt")[-1].split(".")[0]))[-1]
-        (model_params, first_iter) = torch.load(checkpoint)
-        gaussians.create_from_ckpt(checkpoint, restore_optimizer=False)
+    
+    # Set up multi model view
+    if(args.config != None):
+        print("Rendering " + args.config)
+        # load configs
+        scene_config_file = f"{args.config}/transform.json"
+        traject_config_file = f"{args.config}/trajectory.json"
+        light_config_file = f"{args.config}/light_transform.json"
 
-        env_checkpoint = checkpoint.split("chkpnt")[0] + "env_light_chkpnt" + checkpoint.split("chkpnt")[-1]
-        if os.path.exists(env_checkpoint):
-            env_light = DirectLightEnv(dataset.global_shs_degree)
-            env_light.create_from_ckpt(env_checkpoint, restore_optimizer=False)
+        scene_dict = relighting.load_json_config(scene_config_file)
+        traject_dict = relighting.load_json_config(traject_config_file)
+        light_dict = relighting.load_json_config(light_config_file)
 
-            pbr_kwargs["env_light"] = env_light
-        else:
-            print("cannot find env_light_checkpoint at {}, and env light will be ignore.".format(env_checkpoint))
-            
-        gamma_checkpoint = checkpoint.split("chkpnt")[0] + "gamma_chkpnt" + checkpoint.split("chkpnt")[-1]
-        if os.path.exists(gamma_checkpoint):
-            gamma_transform = LearningGammaTransform(True)
-            gamma_transform.create_from_ckpt(gamma_checkpoint, restore_optimizer=False)
+        # load gaussians
+        pbr_kwargs["env_light"] = EnvLight(path=args.envmap_path, scale=1)
+        gaussians = relighting.scene_composition(scene_dict, dataset)
 
-            pbr_kwargs['gamma'] = gamma_transform
-        else:
-            print("cannot find gamma_checkpoint at {}, and gamma transform will be ignore.".format(gamma_checkpoint))
-        
+        # update visibility
+        #gaussians = relighting.update_visibility(gaussians, args.bake)
+
+        args.type = "neilf_composite"
+    
+    # Set up single model view
     else:
-        if args.iteration == -1:
-            loaded_iter = searchForMaxIteration(os.path.join(args.model_path, "point_cloud"))
+        print("Rendering " + args.model_path)
+        gaussians = GaussianModel(dataset.sh_degree, render_type=args.type)
+
+        checkpoints = glob.glob(os.path.join(args.model_path, "chkpnt*.pth"))
+        if args.checkpoint is not None or len(checkpoints) > 0:
+            if args.checkpoint is not None:
+                checkpoint = args.checkpoint
+            else:
+                checkpoint = sorted(checkpoints, key=lambda x: int(x.split("chkpnt")[-1].split(".")[0]))[-1]
+            (model_params, first_iter) = torch.load(checkpoint)
+            gaussians.create_from_ckpt(checkpoint, restore_optimizer=False)
+
+            env_checkpoint = checkpoint.split("chkpnt")[0] + "env_light_chkpnt" + checkpoint.split("chkpnt")[-1]
+            if os.path.exists(env_checkpoint):
+                env_light = DirectLightEnv(dataset.global_shs_degree)
+                env_light.create_from_ckpt(env_checkpoint, restore_optimizer=False)
+
+                pbr_kwargs["env_light"] = env_light
+            else:
+                print("cannot find env_light_checkpoint at {}, and env light will be ignore.".format(env_checkpoint))
+                
+            gamma_checkpoint = checkpoint.split("chkpnt")[0] + "gamma_chkpnt" + checkpoint.split("chkpnt")[-1]
+            if os.path.exists(gamma_checkpoint):
+                gamma_transform = LearningGammaTransform(True)
+                gamma_transform.create_from_ckpt(gamma_checkpoint, restore_optimizer=False)
+
+                pbr_kwargs['gamma'] = gamma_transform
+            else:
+                print("cannot find gamma_checkpoint at {}, and gamma transform will be ignore.".format(gamma_checkpoint))
+        
         else:
-            loaded_iter = args.loaded_iter
-        gaussians.load_ply(
-            os.path.join(args.model_path, "point_cloud", "iteration_" + str(loaded_iter), "point_cloud.ply"))
+            if args.iteration == -1:
+                loaded_iter = searchForMaxIteration(os.path.join(args.model_path, "point_cloud"))
+            else:
+                loaded_iter = args.loaded_iter
+            gaussians.load_ply(
+                os.path.join(args.model_path, "point_cloud", "iteration_" + str(loaded_iter), "point_cloud.ply"))
 
     render_fn = render_fn_dict[args.type]
     bg_color = [1, 1, 1] if dataset.white_background else [0, 0, 0]
@@ -415,8 +453,10 @@ if __name__ == '__main__':
         "pipe": pipe,
         "bg_color": background,
         "is_training": False,
-        "dict_params": pbr_kwargs
+        "dict_params": pbr_kwargs,
+        "bake": args.bake
     }
+
 
     windows = GUI(H, W, fovy,
                   c2w=c2w, center=center,
@@ -425,3 +465,4 @@ if __name__ == '__main__':
 
     while True:
         windows.render()
+

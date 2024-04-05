@@ -763,11 +763,11 @@ template<int C>
 		float opacity = angle < 0.5
 			? 1 - 16 * pow(angle, 5)
 			: pow(-2 * angle + 2, 5) / 2;
-		if(idx == 1){
-			printf("Camera pos: %f, %f, %f\n", cameraPos.x, cameraPos.y, cameraPos.z);
-			printf("Point pos: %f, %f, %f\n", pointWorldMedian.x, pointWorldMedian.y, pointWorldMedian.z);
-			printf("Direction to camera: %f, %f, %f\n", directionToCamera.x, directionToCamera.y, directionToCamera.z);
-		}
+		//if(idx == 1){
+		//	printf("Camera pos: %f, %f, %f\n", cameraPos.x, cameraPos.y, cameraPos.z);
+		//	printf("Point pos: %f, %f, %f\n", pointWorldMedian.x, pointWorldMedian.y, pointWorldMedian.z);
+		//	printf("Direction to camera: %f, %f, %f\n", directionToCamera.x, directionToCamera.y, directionToCamera.z);
+		//}
 
 		// Set output color
 		out_color[colorIdx + 0] = colors[colorIdx + 0 ] * opacity;

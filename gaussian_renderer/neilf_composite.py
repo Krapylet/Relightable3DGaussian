@@ -41,7 +41,9 @@ def render_view(viewpoint_camera: Camera, pc: GaussianModel, pipe, bg_color: tor
         bg=bg_color,
         scale_modifier=scaling_modifier,
         viewmatrix=viewpoint_camera.world_view_transform,
+        viewmatrix_inv=viewpoint_camera.world_view_transform_inverse,
         projmatrix=viewpoint_camera.full_proj_transform,
+        projmatrix_inv=viewpoint_camera.full_proj_transform_inverse,
         sh_degree=pc.active_sh_degree,
         campos=viewpoint_camera.camera_center,
         prefiltered=False,
@@ -121,7 +123,7 @@ def render_view(viewpoint_camera: Camera, pc: GaussianModel, pipe, bg_color: tor
                           extra_results["incident_visibility"]], dim=-1)
     
     (num_rendered, num_contrib, rendered_image, rendered_opacity, rendered_depth,
-     rendered_feature, rendered_pseudo_normal, rendered_surface_xyz, radii) = rasterizer(
+     rendered_feature, rendered_shader, rendered_pseudo_normal, rendered_surface_xyz, radii) = rasterizer(
         means3D=means3D,
         means2D=means2D,
         shs=shs,
@@ -157,6 +159,7 @@ def render_view(viewpoint_camera: Camera, pc: GaussianModel, pipe, bg_color: tor
 
     results = {"render": rendered_image,
                "pbr": rendered_pbr,
+               "shader": rendered_shader,
                "normal": rendered_normal,
                "pseudo_normal": rendered_pseudo_normal,
                "surface_xyz": rendered_surface_xyz,
