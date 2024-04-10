@@ -364,7 +364,8 @@ if __name__ == '__main__':
     pbr_kwargs['sample_num'] = pipe.sample_num
     
     # Set up multi model view
-    if(args.config != None):
+    renderMultipleModels = args.config != None
+    if(renderMultipleModels):
         print("Rendering " + args.config)
         # load configs
         scene_config_file = f"{args.config}/transform.json"
@@ -454,9 +455,10 @@ if __name__ == '__main__':
         "bg_color": background,
         "is_training": False,
         "dict_params": pbr_kwargs,
-        "bake": args.bake
     }
 
+    if(renderMultipleModels):
+        render_kwargs["bake"] = args.bake
 
     windows = GUI(H, W, fovy,
                   c2w=c2w, center=center,
