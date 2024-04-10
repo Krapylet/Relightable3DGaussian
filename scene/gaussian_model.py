@@ -14,6 +14,7 @@ from simple_knn._C import distCUDA2
 from arguments import OptimizationParams
 from tqdm import tqdm
 from bvh import RayTracer
+from collections import defaultdict
 
 
 class GaussianModel:
@@ -72,6 +73,64 @@ class GaussianModel:
             self._visibility_dc = torch.empty(0)
             self._visibility_rest = torch.empty(0)
 
+    #Sorts the data so splats that use the same shader is contigious.
+    #Returns a map of shader IDs in sorted order and the count of splats using them.
+    def sort_by_shaders(self):
+        splatCount = self._opacity.shape[0]
+
+        #TODO: Make count of shaders dynamic instead of hard-coded
+        #Used to keep track of how many splats has been assigned to each shader so far. 
+        shaderIDIndexes = {
+            0 : 0,
+            1 : 0
+        }
+        
+        nested_dict = lambda: defaultdict(nested_dict)
+        shaderMapping = nested_dict()
+
+        for i in range(splatCount):
+            # first get id of the shader. Currently this is based off of position. 
+            # but ideally this should be stored in the file, and use direct function pointers intead of IDs.
+            splat_x_pos = self._xyz.data[i][0]
+            if splat_x_pos < 0:
+                shaderID = 0
+            else:
+                shaderID = 1
+
+            shaderIdx = shaderIDIndexes[shaderID]
+            #Assign data with only 1 value
+            shaderMapping[shaderID]["opacity"][shaderIdx] = self._opacity[i]
+            if self.use_pbr:
+                shaderMapping[shaderID]["roughness"][shaderIdx] = self._opacity[i]
+                shaderMapping[shaderID]["metallic"][shaderIdx] = self._opacity[i]
+                shaderMapping[shaderID]["visibility_dc"][shaderIdx] = self._visibility_dc[i][0][0]
+
+            #Assign data with 3-tuple values
+            for offset in range(3):
+                shaderMapping[shaderID]["xyz"][shaderIdx][offset] = self._xyz.data[i][offset]
+                shaderMapping[shaderID]["normal"][shaderIdx][offset] = self._normal.data[i][offset]
+                shaderMapping[shaderID]["scaling"][shaderIdx][offset] = self._scaling.data[i][offset]
+                shaderMapping[shaderID]["incidents_dc"][shaderIdx][offset] = self._incidents_dc[i][0][offset]
+                
+                if self.use_pbr:
+                    shaderMapping[shaderID]["base_color"][shaderIdx][offset] = self._base_color.data[i][offset]
+            
+            #Assign data with 4-tuple values
+            for offset in range(3):
+                shaderMapping[shaderID]["rotation"][shaderIdx][offset] = self._rotation.data[i][offset]
+
+            #Assign data with 15+ values
+            for offset in range(15):
+                shaderMapping[shaderID]["visibility_rest"][shaderIdx][offset] = self._visibility_rest[i][offset][0]
+
+                for offset2 in range(3):
+                    shaderMapping[shaderID]["incidents_rest"][shaderIdx][offset] = self._incidents_rest[i][offset][offset2]
+            
+             
+            shaderIDIndexes[shaderID] += 1
+
+            return shaderIDIndexes.keys, shaderIDIndexes.values
+            
     @torch.no_grad()
     def set_transform(self, rotation=None, center=None, scale=None, offset=None, transform=None):
         if transform is not None:
