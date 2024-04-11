@@ -72,7 +72,7 @@ class GaussianModel:
             self._incidents_rest = torch.empty(0)
             self._visibility_dc = torch.empty(0)
             self._visibility_rest = torch.empty(0)
-
+        
     #Sorts the data so splats that use the same shader is contigious.
     #Returns a map of shader IDs in sorted order and the count of splats using them.
     def sort_by_shaders(self):
@@ -85,10 +85,14 @@ class GaussianModel:
             1 : 0
         }
         
-        nested_dict = lambda: defaultdict(nested_dict)
-        shaderMapping = nested_dict()
+        # Define a dict of dicts of lists. It is a very strange syntax...
+        paramMapping = lambda: defaultdict(list)
+        shaderMapping = defaultdict(paramMapping)
+
+        #TODO: Sorting could be sped up by sorting in place, so we don't need to assign new memory all the time.
 
         print("Starting sorting " + str(splatCount) + " splat sorting")
+        print("type of indexed elements:" + str(type(self._opacity[0])))
         #First sort all the spats by shader
         for i in range(splatCount):
             # first get id of the shader. Currently this is based off of position. 
@@ -96,83 +100,56 @@ class GaussianModel:
 
             if i % 10000 == 0:
                 print(str(i) + " splats sorted so far")
-            splat_x_pos = self._xyz.data[i][0]
+            splat_x_pos = self._xyz[i][0]
             if splat_x_pos < 0:
                 shaderID = 0
             else:
                 shaderID = 1
 
             shaderIdx = shaderIDIndexes[shaderID]
-            #Assign data with only 1 value
-            shaderMapping[shaderID]["opacity"][shaderIdx] = self._opacity.data[i]
-            if self.use_pbr:
-                shaderMapping[shaderID]["roughness"][shaderIdx] = self._roughness.data[i]
-                shaderMapping[shaderID]["metallic"][shaderIdx] = self._metallic.data[i]
-                shaderMapping[shaderID]["visibility_dc"][shaderIdx] = self._visibility_dc.data[i][0][0]
 
-            #Assign data with 3-tuple values
-            shaderMapping[shaderID]["xyz"][shaderIdx] = self._xyz.data[i][:3]
-            shaderMapping[shaderID]["normal"][shaderIdx] = self._normal.data[i][:3]
-            shaderMapping[shaderID]["scaling"][shaderIdx] = self._scaling.data[i][:3]
-            shaderMapping[shaderID]["incidents_dc"][shaderIdx] = self._incidents_dc.data[i][0][:3]
+            #Copy tensor views in order (points to unsorted memory)
+            shaderMapping[shaderID]["opacity"].append(self._opacity[i])
+            shaderMapping[shaderID]["xyz"].append(self._xyz[i])
+            shaderMapping[shaderID]["normal"].append(self._normal[i])
+            shaderMapping[shaderID]["scaling"].append(self._scaling[i])
+            shaderMapping[shaderID]["rotation"].append(self._rotation[i])
             if self.use_pbr:
-                shaderMapping[shaderID]["base_color"][shaderIdx] = self._base_color.data[i][:3]
-            
-            #Assign data with 4-tuple values
-            shaderMapping[shaderID]["rotation"][shaderIdx] = self._rotation.data[i][:4]
-
-            #Assign data with 15+ values
-            shaderMapping[shaderID]["visibility_rest"][shaderIdx] = self._visibility_rest.data[i][:15][0]
-            shaderMapping[shaderID]["incidents_rest"][shaderIdx] = self._incidents_rest.data[i][:15][:3]
+                shaderMapping[shaderID]["roughness"].append(self._roughness[i])
+                shaderMapping[shaderID]["metallic"].append(self._metallic[i])
+                shaderMapping[shaderID]["visibility_dc"].append(self._visibility_dc[i])
+                shaderMapping[shaderID]["incidents_dc"].append(self._incidents_dc[i])
+                shaderMapping[shaderID]["base_color"].append(self._base_color[i])
+                shaderMapping[shaderID]["visibility_rest"].append(self._visibility_rest[i])
+                shaderMapping[shaderID]["incidents_rest"].append(self._incidents_rest[i])
 
             shaderIDIndexes[shaderID] += 1
 
-        print("Reassigning sorted splats")
-
-        #Then write the sorted arrays back to the original tensors.
-        total_i = 0
-        for shaderID, splatCount in shaderIDIndexes.items():
-            print("Assiging " + str(splatCount) + " splats from shader " + str(shaderID))
-
-            for i in range(splatCount):
-                
-                if total_i % 10000 == 0:
-                    print(str(total_i) + " splats assigned from " + str(shaderID) + " so far")
-
-                if i == 0:
-                    print("First xyz value of shader:\n"+
-                          "total i   = " + str(total_i) +"\n" +
-                          "shader ID = " + str(shaderID) + "\n" + 
-                          "i         = " + str(i) + "\n" +
-                          "value     = " + str(shaderMapping[shaderID]["xyz"][i]))
-
-                #Assign data with only 1 value
-                self._opacity.data[total_i] = shaderMapping[shaderID]["opacity"][i]
-                if self.use_pbr:
-                    self._roughness.data[total_i] = shaderMapping[shaderID]["roughness"][i]
-                    self._metallic.data[total_i] = shaderMapping[shaderID]["metallic"][i]
-                    self._visibility_dc.data[total_i][0][0] = shaderMapping[shaderID]["visibility_dc"][i]
-
-                #Assign data with 3-tuple values
-                self._xyz.data[total_i][:3] = shaderMapping[shaderID]["xyz"][i]
-                self._normal.data[total_i][:3] = shaderMapping[shaderID]["normal"][i]
-                self._scaling.data[total_i][:3] = shaderMapping[shaderID]["scaling"][i]
-                self._incidents_dc.data[total_i][0][:3] = shaderMapping[shaderID]["incidents_dc"][i]
-                if self.use_pbr:
-                    self._base_color.data[total_i][:3] = shaderMapping[shaderID]["base_color"][i]
-
-                #Assign data with 4-tuple values
-                self._rotation.data[total_i][:4] = shaderMapping[shaderID]["rotation"][i]
-
-                #Assign data with 15+ values
-                self._visibility_rest.data[total_i][:15][0] = shaderMapping[shaderID]["visibility_rest"][i]
-                #incidents_rest has 15x3 values pr. entry
-                self._incidents_rest.data[total_i][:15][:3] = shaderMapping[shaderID]["incidents_rest"][i]
-
-                total_i += 1
+        #Copy tensor views in order (points to unsorted memory)
+        shaderIDs = shaderIDIndexes.keys()
+        self._opacity = self.concatenate_sorted_param_tensors(shaderMapping, shaderIDs, "opacity")
+        self._xyz = self.concatenate_sorted_param_tensors(shaderMapping, shaderIDs, "xyz")
+        self._normal = self.concatenate_sorted_param_tensors(shaderMapping, shaderIDs, "normal")
+        self._scaling = self.concatenate_sorted_param_tensors(shaderMapping, shaderIDs, "scaling")
+        self._rotation = self.concatenate_sorted_param_tensors(shaderMapping, shaderIDs, "rotation")
+        if self.use_pbr:
+            self._roughness = self.concatenate_sorted_param_tensors(shaderMapping, shaderIDs, "roughness")
+            self._metallic = self.concatenate_sorted_param_tensors(shaderMapping, shaderIDs, "metallic")
+            self._visibility_dc = self.concatenate_sorted_param_tensors(shaderMapping, shaderIDs, "visibility_dc")
+            self._incidents_dc = self.concatenate_sorted_param_tensors(shaderMapping, shaderIDs, "incidents_dc")
+            self._base_color = self.concatenate_sorted_param_tensors(shaderMapping, shaderIDs, "base_color")
+            self._visibility_rest = self.concatenate_sorted_param_tensors(shaderMapping, shaderIDs, "visibility_rest")
+            self._incidents_rest = self.concatenate_sorted_param_tensors(shaderMapping, shaderIDs, "incidents_rest")
 
         return shaderIDIndexes.keys, shaderIDIndexes.values
-            
+    
+    @torch.no_grad()     
+    def concatenate_sorted_param_tensors(self, shaderMapping, shaderIDs, paramName):
+        tensorList = []
+        for shaderID in shaderIDs:
+            tensorList += shaderMapping[shaderID][paramName]
+        return torch.stack(tensorList)
+
     @torch.no_grad()
     def set_transform(self, rotation=None, center=None, scale=None, offset=None, transform=None):
         if transform is not None:
