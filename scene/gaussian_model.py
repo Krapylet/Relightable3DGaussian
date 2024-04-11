@@ -92,7 +92,6 @@ class GaussianModel:
         #TODO: Sorting could be sped up by sorting in place, so we don't need to assign new memory all the time.
 
         print("Starting sorting " + str(splatCount) + " splat sorting")
-        print("type of indexed elements:" + str(type(self._opacity[0])))
         #First sort all the spats by shader
         for i in range(splatCount):
             # first get id of the shader. Currently this is based off of position. 
@@ -141,7 +140,8 @@ class GaussianModel:
             self._visibility_rest = self.concatenate_sorted_param_tensors(shaderMapping, shaderIDs, "visibility_rest")
             self._incidents_rest = self.concatenate_sorted_param_tensors(shaderMapping, shaderIDs, "incidents_rest")
 
-        return shaderIDIndexes.keys, shaderIDIndexes.values
+        self.shaderIDs = torch.Tensor(list(shaderIDs))
+        self.shaderSplatCount = torch.Tensor(list(shaderIDIndexes.values()))
     
     @torch.no_grad()     
     def concatenate_sorted_param_tensors(self, shaderMapping, shaderIDs, paramName):

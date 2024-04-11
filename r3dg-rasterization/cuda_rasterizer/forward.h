@@ -50,6 +50,9 @@ namespace FORWARD
 
 	// Runs after preprocess but before renderer. Allows changing values for individual gaussians.
 	void shade(
+		const int shaderCount,
+		const float* shaderIDs,			
+		const float* shaderSplatCount,  // Number of splats to render with each shader
 		int W, int H,	
 		// TODO:  void *shader			// Function pointer to specific shader to call.
 		// Gaussian information:

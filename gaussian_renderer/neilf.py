@@ -49,7 +49,9 @@ def render_view(viewpoint_camera: Camera, pc: GaussianModel, pipe, bg_color: tor
         prefiltered=False,
         backward_geometry=True,
         computer_pseudo_normal=True,
-        debug=pipe.debug
+        debug=pipe.debug,
+        shaderSplatCount = pc.shaderSplatCount,
+        shaderIDs = pc.shaderIDs
     )
 
     rasterizer = GaussianRasterizer(raster_settings=raster_settings)

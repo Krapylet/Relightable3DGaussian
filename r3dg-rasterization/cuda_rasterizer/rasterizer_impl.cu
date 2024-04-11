@@ -198,6 +198,9 @@ CudaRasterizer::BinningState CudaRasterizer::BinningState::fromChunk(char*& chun
 // Forward rendering procedure for differentiable rasterization
 // of Gaussians.
 int CudaRasterizer::Rasterizer::forward(
+	const int shaderCount,
+	const float* shaderIDs,
+	const float* shaderSplatCount,
 	std::function<char* (size_t)> geometryBuffer,
 	std::function<char* (size_t)> binningBuffer,
 	std::function<char* (size_t)> imageBuffer,
@@ -291,6 +294,9 @@ int CudaRasterizer::Rasterizer::forward(
 	// Outputs by modifying features.
 
 	CHECK_CUDA(FORWARD::shade(
+		shaderCount,
+		shaderIDs,
+		shaderSplatCount,
 		width, height,
 		P,							
 		means3D,  		

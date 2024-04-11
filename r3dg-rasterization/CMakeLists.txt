@@ -28,6 +28,8 @@ add_library(CudaRasterizer
 	cuda_rasterizer/rasterizer_impl.cu
 	cuda_rasterizer/rasterizer_impl.h
 	cuda_rasterizer/rasterizer.h
+	cuda_rasterizer/shader.h
+	cuda_rasterizer/shader.cu
 )
 
 set_target_properties(CudaRasterizer PROPERTIES CUDA_ARCHITECTURES "75;86")

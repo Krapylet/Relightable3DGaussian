@@ -698,13 +698,14 @@ __device__ void ShadeTest(
 
 
 
-// Runs after preprocess but before renderer. Allows changing values for individual gaussians.
+// Runs after preprocess but before renderer. Allows changing values for individual splats.
 template<int C>
 	__global__ void shadeCUDA(
+		int splatsInShader, int currentSplatIndex,
 		int W, int H,					// Sceen width and height
 		// TODO:  void *shader			// Function pointer to specific shader to call.
 		// Gaussian information:
-		int P,							// Total number of gaussians.
+		int P,							// Total number of splats.
 		const float* orig_points,  		// mean 3d position of gaussian in world space.
 		float2* points_xy_image,		// mean 2d position of gaussian in screen space.
 		// Projection information
@@ -743,7 +744,7 @@ template<int C>
 	){
 		// calculate indexes for the gaussian
 		auto idx = cg::this_grid().thread_rank();
-		if (idx >= P)
+		if (idx >= splatsInShader)
 			return;
 		
 		int featureIdx = idx * S;
@@ -770,13 +771,16 @@ template<int C>
 		//}
 
 		// Set output color
-		out_color[colorIdx + 0] = colors[colorIdx + 0 ] * opacity;
-		out_color[colorIdx + 1] = colors[colorIdx + 1 ] * opacity;
-		out_color[colorIdx + 2] = colors[colorIdx + 2 ] * opacity;
+		out_color[colorIdx + 0] = colors[colorIdx + 0 ] * opacity * currentSplatIndex + abs(1-currentSplatIndex) * (1 - colors[colorIdx + 0 ]);
+		out_color[colorIdx + 1] = colors[colorIdx + 1 ] * opacity * currentSplatIndex + abs(1-currentSplatIndex) * (1 - colors[colorIdx + 1 ]);
+		out_color[colorIdx + 2] = colors[colorIdx + 2 ] * opacity * currentSplatIndex + abs(1-currentSplatIndex) * (1 - colors[colorIdx + 2 ]);
 	}
 
 	
 void FORWARD::shade(
+		const int shaderCount,
+		const float* shaderIDs,
+		const float* shaderSplatCount,
 		int W, int H,			
 		int P,					
 		const float* orig_points,
@@ -794,22 +798,32 @@ void FORWARD::shade(
 		const float* features,
 		float* out_color)
 	{
-		shadeCUDA<NUM_CHANNELS> <<<(P + 255) / 256, 256 >> >(
-			W, H,	
-			P,							
-			orig_points,  		
-			points_xy_image,		
-			viewmatrix,
-			viewmatrix_inv,
-			projmatrix,
-			projmatrix_inv,
-			focal_x, focal_y,
-			tan_fovx, tan_fovy,
-			depths,					
-			colors,					
-			conic_opacity,          
-			S,							
-			features,
-			out_color
-		);
+		int currentSplatIndex = 0;
+		for (size_t shaderIdx = 0; shaderIdx < shaderCount; shaderIdx++)
+		{
+			int shaderID = (int)shaderIDs[shaderIdx];
+			int splatsInShader = shaderSplatCount[shaderIdx];
+
+			shadeCUDA<NUM_CHANNELS> <<<(splatsInShader + 255) / 256, 256 >> >(
+				splatsInShader, currentSplatIndex,
+				W, H,	
+				P,							
+				orig_points,  		
+				points_xy_image,		
+				viewmatrix,
+				viewmatrix_inv,
+				projmatrix,
+				projmatrix_inv,
+				focal_x, focal_y,
+				tan_fovx, tan_fovy,
+				depths,					
+				colors,					
+				conic_opacity,          
+				S,							
+				features,
+				out_color
+			);
+
+			currentSplatIndex += splatsInShader;
+		}
 	}
