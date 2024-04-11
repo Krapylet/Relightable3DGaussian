@@ -88,9 +88,14 @@ class GaussianModel:
         nested_dict = lambda: defaultdict(nested_dict)
         shaderMapping = nested_dict()
 
+        print("Starting sorting " + str(splatCount) + " splat sorting")
+        #First sort all the spats by shader
         for i in range(splatCount):
             # first get id of the shader. Currently this is based off of position. 
             # but ideally this should be stored in the file, and use direct function pointers intead of IDs.
+
+            if i % 10000 == 0:
+                print(str(i) + " splats sorted so far")
             splat_x_pos = self._xyz.data[i][0]
             if splat_x_pos < 0:
                 shaderID = 0
@@ -99,37 +104,74 @@ class GaussianModel:
 
             shaderIdx = shaderIDIndexes[shaderID]
             #Assign data with only 1 value
-            shaderMapping[shaderID]["opacity"][shaderIdx] = self._opacity[i]
+            shaderMapping[shaderID]["opacity"][shaderIdx] = self._opacity.data[i]
             if self.use_pbr:
-                shaderMapping[shaderID]["roughness"][shaderIdx] = self._opacity[i]
-                shaderMapping[shaderID]["metallic"][shaderIdx] = self._opacity[i]
-                shaderMapping[shaderID]["visibility_dc"][shaderIdx] = self._visibility_dc[i][0][0]
+                shaderMapping[shaderID]["roughness"][shaderIdx] = self._roughness.data[i]
+                shaderMapping[shaderID]["metallic"][shaderIdx] = self._metallic.data[i]
+                shaderMapping[shaderID]["visibility_dc"][shaderIdx] = self._visibility_dc.data[i][0][0]
 
             #Assign data with 3-tuple values
-            for offset in range(3):
-                shaderMapping[shaderID]["xyz"][shaderIdx][offset] = self._xyz.data[i][offset]
-                shaderMapping[shaderID]["normal"][shaderIdx][offset] = self._normal.data[i][offset]
-                shaderMapping[shaderID]["scaling"][shaderIdx][offset] = self._scaling.data[i][offset]
-                shaderMapping[shaderID]["incidents_dc"][shaderIdx][offset] = self._incidents_dc[i][0][offset]
-                
-                if self.use_pbr:
-                    shaderMapping[shaderID]["base_color"][shaderIdx][offset] = self._base_color.data[i][offset]
+            shaderMapping[shaderID]["xyz"][shaderIdx] = self._xyz.data[i][:3]
+            shaderMapping[shaderID]["normal"][shaderIdx] = self._normal.data[i][:3]
+            shaderMapping[shaderID]["scaling"][shaderIdx] = self._scaling.data[i][:3]
+            shaderMapping[shaderID]["incidents_dc"][shaderIdx] = self._incidents_dc.data[i][0][:3]
+            if self.use_pbr:
+                shaderMapping[shaderID]["base_color"][shaderIdx] = self._base_color.data[i][:3]
             
             #Assign data with 4-tuple values
-            for offset in range(3):
-                shaderMapping[shaderID]["rotation"][shaderIdx][offset] = self._rotation.data[i][offset]
+            shaderMapping[shaderID]["rotation"][shaderIdx] = self._rotation.data[i][:4]
 
             #Assign data with 15+ values
-            for offset in range(15):
-                shaderMapping[shaderID]["visibility_rest"][shaderIdx][offset] = self._visibility_rest[i][offset][0]
+            shaderMapping[shaderID]["visibility_rest"][shaderIdx] = self._visibility_rest.data[i][:15][0]
+            shaderMapping[shaderID]["incidents_rest"][shaderIdx] = self._incidents_rest.data[i][:15][:3]
 
-                for offset2 in range(3):
-                    shaderMapping[shaderID]["incidents_rest"][shaderIdx][offset] = self._incidents_rest[i][offset][offset2]
-            
-             
             shaderIDIndexes[shaderID] += 1
 
-            return shaderIDIndexes.keys, shaderIDIndexes.values
+        print("Reassigning sorted splats")
+
+        #Then write the sorted arrays back to the original tensors.
+        total_i = 0
+        for shaderID, splatCount in shaderIDIndexes.items():
+            print("Assiging " + str(splatCount) + " splats from shader " + str(shaderID))
+
+            for i in range(splatCount):
+                
+                if total_i % 10000 == 0:
+                    print(str(total_i) + " splats assigned from " + str(shaderID) + " so far")
+
+                if i == 0:
+                    print("First xyz value of shader:\n"+
+                          "total i   = " + str(total_i) +"\n" +
+                          "shader ID = " + str(shaderID) + "\n" + 
+                          "i         = " + str(i) + "\n" +
+                          "value     = " + str(shaderMapping[shaderID]["xyz"][i]))
+
+                #Assign data with only 1 value
+                self._opacity.data[total_i] = shaderMapping[shaderID]["opacity"][i]
+                if self.use_pbr:
+                    self._roughness.data[total_i] = shaderMapping[shaderID]["roughness"][i]
+                    self._metallic.data[total_i] = shaderMapping[shaderID]["metallic"][i]
+                    self._visibility_dc.data[total_i][0][0] = shaderMapping[shaderID]["visibility_dc"][i]
+
+                #Assign data with 3-tuple values
+                self._xyz.data[total_i][:3] = shaderMapping[shaderID]["xyz"][i]
+                self._normal.data[total_i][:3] = shaderMapping[shaderID]["normal"][i]
+                self._scaling.data[total_i][:3] = shaderMapping[shaderID]["scaling"][i]
+                self._incidents_dc.data[total_i][0][:3] = shaderMapping[shaderID]["incidents_dc"][i]
+                if self.use_pbr:
+                    self._base_color.data[total_i][:3] = shaderMapping[shaderID]["base_color"][i]
+
+                #Assign data with 4-tuple values
+                self._rotation.data[total_i][:4] = shaderMapping[shaderID]["rotation"][i]
+
+                #Assign data with 15+ values
+                self._visibility_rest.data[total_i][:15][0] = shaderMapping[shaderID]["visibility_rest"][i]
+                #incidents_rest has 15x3 values pr. entry
+                self._incidents_rest.data[total_i][:15][:3] = shaderMapping[shaderID]["incidents_rest"][i]
+
+                total_i += 1
+
+        return shaderIDIndexes.keys, shaderIDIndexes.values
             
     @torch.no_grad()
     def set_transform(self, rotation=None, center=None, scale=None, offset=None, transform=None):
