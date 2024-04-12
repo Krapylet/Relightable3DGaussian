@@ -641,61 +641,39 @@ void FORWARD::render_pseudo_normal(
 }
 
 
-__device__ void ShadeTest(
-    const int S, const int W, const int H,
-	// The following only currently exist in the second normal calculation step.
-	// TODO: inclue later
-    //const float* viewmatrix,
-    //const float focal_x, const float focal_y,
-    //const float cx, const float cy,
-    //const float tan_fovx, const float tan_fovy,
-	//const float2 point_xy_image,
-	//const float surface_xyz,	
-	// float3 screen x/y pos * depth, depth.
-	const float *color,   			// float3 rgb
-	const float alpha,			
-	const float depth,
-	const float *features, 		// float3 brdf_color,
-												// float3 normal,
-												// float3 base_color,
-												// float  roughness,
-												// float  metallic
-												// float  incident_light
-												// float  local_incident_light
-												// float  global_incident_light
-												// float  incident_visibility
-	const float* bg_color, 		// float3 rgb
-	const float weight,
-	float* out_color,
-	float* out_alpha,
-	float* out_depth,
-	float* out_feature)
+
+template<int C>
+__global__ void shadeCUDAtest(CudaShader::shaderParams p)
 {
+	// calculate indexes for the gaussian
+	auto idx = cg::this_grid().thread_rank();
+	if (idx >= p.splatsInShader)
+		return;
+	
+	int featureIdx = idx * p.S;
+	int colorIdx = idx * C;
+	int posIdx = idx * 3; // mult with 3 because of x, y and z
 
+	// TODO: make everything either glm::vec3 or float3 for consistency.
+	// Glm has a lot of inbuilt functionality, but float3 is a native cuda type and probably pretty fast.
+	glm::vec3 pointWorldMedian = {p.orig_points[posIdx], p.orig_points[posIdx + 1], p.orig_points[posIdx + 2]};
+	glm::vec2 pointScreenMedian = {p.points_xy_image[idx].x, p.points_xy_image[idx].y};
+	glm::vec3 normal = {p.features[featureIdx + 3], p.features[featureIdx + 4], p.features[featureIdx + 5]};
+	glm::vec3 cameraPos = {p.viewmatrix_inv[12], p.viewmatrix_inv[13], p.viewmatrix_inv[14]};
 
+	// Get angle between splat and camera:
+	glm::vec3 directionToCamera = cameraPos - pointWorldMedian;
+	float angle = 1 - abs(glm::dot(glm::normalize(directionToCamera), glm::normalize(normal)));
+	// easing from https://easings.net/#easeInOutQuint
+	float opacity = angle < 0.5
+		? 1 - 16 * pow(angle, 5)
+		: pow(-2 * angle + 2, 5) / 2;
 
-	float calculatedColor[3];
-	for (size_t i = 0; i < NUM_CHANNELS; i++)
-	{
-		calculatedColor[i] = color[i] * (1 - depth);
-	}
-
-	// Write output:
-	out_alpha[0] = alpha;
-	out_depth[0] = depth;
-
-	// write to all 3 RGB color channels.
-	for (size_t i = 0; i < NUM_CHANNELS; i++)
-	{
-		out_color[i] += calculatedColor[i] * weight;
-	}
-
-	// write to all S feature channels at once.
-	for (size_t i = 0; i < S; i++)
-	{
-		out_feature[i] += features[i] * weight;
-	}
-}
+	// Set output color
+	p.out_color[colorIdx + 0] = p.colors[colorIdx + 0 ] * opacity;
+	p.out_color[colorIdx + 1] = p.colors[colorIdx + 1 ] * opacity;
+	p.out_color[colorIdx + 2] = p.colors[colorIdx + 2 ] * opacity;
+};
 	
 void FORWARD::shade(
 		const int shaderCount,
@@ -725,12 +703,13 @@ void FORWARD::shade(
 
 	// Start execution of each shader.
 	int currentSplatIndex = 0;
-	for (size_t shaderIdx = 0; shaderIdx < shaderCount; shaderIdx++)
+	for (size_t shaderIdx = 0; shaderIdx < shaderCount - 1; shaderIdx++)
 	{
 		// First pack the shader parameters
 		int shaderID = (int)shaderIDs[shaderIdx];
 		int splatsInShader = (int)shaderSplatCount[shaderIdx];
-		
+		splatsInShader = P;
+
 		CudaShader::shaderParams params {
 			W,H,			
 			P,		
@@ -756,11 +735,13 @@ void FORWARD::shade(
 		//TODO: shoudl index with shaderID
 		CudaShader::shader currentShader = shaders[0];
 		// TODO: argue for this exact number of kernals at launch.
-		CudaShader::ExecuteShader<<<(splatsInShader + 255) / 256, 256>>>(currentShader, &params);
+		shadeCUDAtest<3><<<(P + 255) / 256, 256>>>(params);
+		//CudaShader::ExecuteShader<<<(splatsInShader + 255) / 256, 256>>>(currentShader, params);
 		currentSplatIndex += splatsInShader;
 	}
 	// Wait for each shader to finish.
 	cudaDeviceSynchronize();
+	
 }
 
 
