@@ -15,7 +15,9 @@
 #include <cuda.h>
 #include "cuda_runtime.h"
 #include "device_launch_parameters.h"
+#ifndef GLM_FORCE_CUDA
 #define GLM_FORCE_CUDA
+#endif
 #include <glm/glm.hpp>
 
 namespace FORWARD
@@ -121,7 +123,8 @@ namespace FORWARD
 		const float* depths,
 		float* normals,
 		float* surface_xyz);
-}
 
+	
+}
 
 #endif

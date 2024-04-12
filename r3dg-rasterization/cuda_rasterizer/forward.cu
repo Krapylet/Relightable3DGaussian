@@ -11,8 +11,10 @@
 
 #include "forward.h"
 #include "auxiliary.h"
+#include "shader.h"
 #include <cooperative_groups.h>
 #include <cooperative_groups/reduce.h>
+#include <vector>
 namespace cg = cooperative_groups;
 
 // Forward method for converting the input spherical harmonics
@@ -694,88 +696,6 @@ __device__ void ShadeTest(
 		out_feature[i] += features[i] * weight;
 	}
 }
-
-
-
-
-// Runs after preprocess but before renderer. Allows changing values for individual splats.
-template<int C>
-	__global__ void shadeCUDA(
-		int splatsInShader, int currentSplatIndex,
-		int W, int H,					// Sceen width and height
-		// TODO:  void *shader			// Function pointer to specific shader to call.
-		// Gaussian information:
-		int P,							// Total number of splats.
-		const float* orig_points,  		// mean 3d position of gaussian in world space.
-		float2* points_xy_image,		// mean 2d position of gaussian in screen space.
-		// Projection information
-		const float* viewmatrix,
-			// RightX  RightY  RightZ  0
-			// UpX     UpY     UpZ     0
-			// LookX   LookY   LookZ   0
-			// PosX    PosY    PosZ    1
-		const float* viewmatrix_inv,
-			// RightX  UpX     LookX      0
-			// RightY  UpY     LookY      0
-			// RightZ  UpZ     LookZ      0
-			// -(Pos*Right)  -(Pos*Up)  -(Pos*Look)  1      // * = dot product
-		const float* projmatrix,
-		const float* projmatrix_inv,
-		const float focal_x, float focal_y,
-		const float tan_fovx, float tan_fovy,
-		// pr. frame texture information
-		float* depths,					// Gaussian depth in view space.
-		float* colors,					// Raw Gaussian SH color.
-		float4* conic_opacity,          // ???? Float4 that contains conic something in the first 3 indexes, and opacity in the last. Read up on original splatting paper.
-		// Precomputed 'texture' information
-		int S,							// Feature channel count.
-		const float* features,			// Interleaved array of precomputed 'textures' for each individual gaussian. Stored in the following order:
-										// float3 brdf_color,
-										// float3 normal,	       Object space
-										// float3 base_color,
-										// float  roughness,
-										// float  metallic
-										// float  incident_light
-										// float  local_incident_light
-										// float  global_incident_light
-										// float  incident_visibility
-		// output
-		float* out_color				// Sequential RGB color output
-	){
-		// calculate indexes for the gaussian
-		auto idx = cg::this_grid().thread_rank();
-		if (idx >= splatsInShader)
-			return;
-		
-		int featureIdx = idx * S;
-		int colorIdx = idx * C;
-		int posIdx = idx * 3; // times 3 because x, y and z
-
-		// TODO: make everything either glm::vec3 or float3 for consistency.
-		glm::vec3 pointWorldMedian = {orig_points[posIdx], orig_points[posIdx + 1], orig_points[posIdx + 2]};
-		glm::vec2 pointScreenMedian = {points_xy_image[idx].x, points_xy_image[idx].y};
-		glm::vec3 normal = {features[featureIdx + 3], features[featureIdx + 4], features[featureIdx + 5]};
-		glm::vec3 cameraPos = {viewmatrix_inv[12], viewmatrix_inv[13], viewmatrix_inv[14]};
-
-		// Get angle between splat and camera:
-		glm::vec3 directionToCamera = cameraPos - pointWorldMedian;
-		float angle = 1 - abs(glm::dot(glm::normalize(directionToCamera), glm::normalize(normal)));
-		// easing from https://easings.net/#easeInOutQuint
-		float opacity = angle < 0.5
-			? 1 - 16 * pow(angle, 5)
-			: pow(-2 * angle + 2, 5) / 2;
-		//if(idx == 1){
-		//	printf("Camera pos: %f, %f, %f\n", cameraPos.x, cameraPos.y, cameraPos.z);
-		//	printf("Point pos: %f, %f, %f\n", pointWorldMedian.x, pointWorldMedian.y, pointWorldMedian.z);
-		//	printf("Direction to camera: %f, %f, %f\n", directionToCamera.x, directionToCamera.y, directionToCamera.z);
-		//}
-
-		// Set output color
-		out_color[colorIdx + 0] = colors[colorIdx + 0 ] * opacity * currentSplatIndex + abs(1-currentSplatIndex) * (1 - colors[colorIdx + 0 ]);
-		out_color[colorIdx + 1] = colors[colorIdx + 1 ] * opacity * currentSplatIndex + abs(1-currentSplatIndex) * (1 - colors[colorIdx + 1 ]);
-		out_color[colorIdx + 2] = colors[colorIdx + 2 ] * opacity * currentSplatIndex + abs(1-currentSplatIndex) * (1 - colors[colorIdx + 2 ]);
-	}
-
 	
 void FORWARD::shade(
 		const int shaderCount,
@@ -797,33 +717,51 @@ void FORWARD::shade(
 		int S,					
 		const float* features,
 		float* out_color)
+{
+	// TODO: This vector should be build during initialization when analyzing which shaders are used by the provided gaussian models.
+	// But that is a bit difficult when the initialization process is written in python.
+	std::vector<CudaShader::shader> shaders;
+	shaders.push_back(CudaShader::outlineShader);
+
+	// Start execution of each shader.
+	int currentSplatIndex = 0;
+	for (size_t shaderIdx = 0; shaderIdx < shaderCount; shaderIdx++)
 	{
-		int currentSplatIndex = 0;
-		for (size_t shaderIdx = 0; shaderIdx < shaderCount; shaderIdx++)
-		{
-			int shaderID = (int)shaderIDs[shaderIdx];
-			int splatsInShader = shaderSplatCount[shaderIdx];
+		// First pack the shader parameters
+		int shaderID = (int)shaderIDs[shaderIdx];
+		int splatsInShader = (int)shaderSplatCount[shaderIdx];
+		
+		CudaShader::shaderParams params {
+			W,H,			
+			P,		
+			splatsInShader,
+			currentSplatIndex,			
+			orig_points,
+			points_xy_image,
+			viewmatrix,
+			viewmatrix_inv,
+			projmatrix,
+			projmatrix_inv,
+			focal_x, focal_y,
+			tan_fovx, tan_fovy,
+			depths,			
+			colors,			
+			conic_opacity, 
+			S,					
+			features,
+			out_color
+		};
 
-			shadeCUDA<NUM_CHANNELS> <<<(splatsInShader + 255) / 256, 256 >> >(
-				splatsInShader, currentSplatIndex,
-				W, H,	
-				P,							
-				orig_points,  		
-				points_xy_image,		
-				viewmatrix,
-				viewmatrix_inv,
-				projmatrix,
-				projmatrix_inv,
-				focal_x, focal_y,
-				tan_fovx, tan_fovy,
-				depths,					
-				colors,					
-				conic_opacity,          
-				S,							
-				features,
-				out_color
-			);
-
-			currentSplatIndex += splatsInShader;
-		}
+		// Then execute the shaders asyncronously.
+		//TODO: shoudl index with shaderID
+		CudaShader::shader currentShader = shaders[0];
+		// TODO: argue for this exact number of kernals at launch.
+		CudaShader::ExecuteShader<<<(splatsInShader + 255) / 256, 256>>>(currentShader, &params);
+		currentSplatIndex += splatsInShader;
 	}
+	// Wait for each shader to finish.
+	cudaDeviceSynchronize();
+}
+
+
+

@@ -293,6 +293,9 @@ int CudaRasterizer::Rasterizer::forward(
 	// takes in 2d position, 3d position, camera information, transformation matriexes and features.
 	// Outputs by modifying features.
 
+
+	
+
 	CHECK_CUDA(FORWARD::shade(
 		shaderCount,
 		shaderIDs,
