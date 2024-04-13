@@ -11,16 +11,14 @@ namespace cg = cooperative_groups;
 
 namespace CudaShader
 {
-
-    
-    // Runs after preprocess but before renderer. Allows changing values for individual splats.
     template<int C>
-        __device__ static void shadeCUDA(shaderParams p)
+        __device__ static void OutlineShaderCUDA(shaderParams p)
         {
             // calculate indexes for the gaussian
             auto idx = cg::this_grid().thread_rank();
             if (idx >= p.splatsInShader)
                 return;
+            idx += p.shaderStartingOffset;
             
             int featureIdx = idx * p.S;
             int colorIdx = idx * C;
@@ -48,12 +46,12 @@ namespace CudaShader
         }
 
     ///// Assign all the shaders to their short handles.
-    shader outlineShader = &shadeCUDA<NUM_CHANNELS>;
+    shader outlineShader = &OutlineShaderCUDA<NUM_CHANNELS>;
 
     __global__ void ExecuteShader(shader shader, shaderParams params){
         // No need to dereference function pointers.
         
-        shadeCUDA<3>(params);
+        outlineShader(params);
     }
 
 }

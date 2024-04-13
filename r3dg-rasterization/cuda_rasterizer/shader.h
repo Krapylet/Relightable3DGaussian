@@ -25,7 +25,7 @@ namespace CudaShader
         // Gaussian information:
 		int P;							// Total number of splats.
 		int splatsInShader;				// Total number of splats to be rendered with this shader.
-		int startingSplatIndex;			// Starting index of the splats this shader needs to render.
+		int shaderStartingOffset;			// Starting index of the splats this shader needs to render.
 		const float* orig_points;  		// mean 3d position of gaussian in world space.
 		float2* points_xy_image;		// mean 2d position of gaussian in screen space.
 

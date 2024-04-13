@@ -650,7 +650,7 @@ __global__ void shadeCUDAtest(CudaShader::shaderParams p)
 	if (idx >= p.splatsInShader)
 		return;
 	// Apply the offset to the first splat
-	idx += p.startingSplatIndex;
+	idx += p.shaderStartingOffset;
 
 
 	int featureIdx = idx * p.S;
@@ -704,6 +704,7 @@ void FORWARD::shade(
 	// But that is a bit difficult when the initialization process is written in python.
 	std::vector<CudaShader::shader> shaders;
 	shaders.push_back(CudaShader::outlineShader);
+	shaders.push_back(CudaShader::outlineShader);
 	
 	// Start execution of each shader.
 	int currentSplatIndex = 0;
@@ -737,8 +738,8 @@ void FORWARD::shade(
 		//TODO: shoudl index with shaderID
 		CudaShader::shader currentShader = shaders[0];
 		// TODO: argue for this exact number of kernals at launch.
-		shadeCUDAtest<3><<<(splatsInShader + 255) / 256, 256>>>(params);
-		//CudaShader::ExecuteShader<<<(splatsInShader + 255) / 256, 256>>>(currentShader, params);
+		//shadeCUDAtest<3><<<(splatsInShader + 255) / 256, 256>>>(params);
+		CudaShader::ExecuteShader<<<(splatsInShader + 255) / 256, 256>>>(currentShader, params);
 		currentSplatIndex += splatsInShader;
 	}
 	// Wait for each shader to finish.
