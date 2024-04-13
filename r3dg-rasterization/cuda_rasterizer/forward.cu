@@ -649,7 +649,10 @@ __global__ void shadeCUDAtest(CudaShader::shaderParams p)
 	auto idx = cg::this_grid().thread_rank();
 	if (idx >= p.splatsInShader)
 		return;
-	
+	// Apply the offset to the first splat
+	idx += p.startingSplatIndex;
+
+
 	int featureIdx = idx * p.S;
 	int colorIdx = idx * C;
 	int posIdx = idx * 3; // mult with 3 because of x, y and z
@@ -696,20 +699,19 @@ void FORWARD::shade(
 		const float* features,
 		float* out_color)
 {
+	
 	// TODO: This vector should be build during initialization when analyzing which shaders are used by the provided gaussian models.
 	// But that is a bit difficult when the initialization process is written in python.
 	std::vector<CudaShader::shader> shaders;
 	shaders.push_back(CudaShader::outlineShader);
-
+	
 	// Start execution of each shader.
 	int currentSplatIndex = 0;
-	for (size_t shaderIdx = 0; shaderIdx < shaderCount - 1; shaderIdx++)
+	for (size_t shaderIdx = 0; shaderIdx < shaderCount; shaderIdx++)
 	{
 		// First pack the shader parameters
 		int shaderID = (int)shaderIDs[shaderIdx];
 		int splatsInShader = (int)shaderSplatCount[shaderIdx];
-		splatsInShader = P;
-
 		CudaShader::shaderParams params {
 			W,H,			
 			P,		
@@ -735,7 +737,7 @@ void FORWARD::shade(
 		//TODO: shoudl index with shaderID
 		CudaShader::shader currentShader = shaders[0];
 		// TODO: argue for this exact number of kernals at launch.
-		shadeCUDAtest<3><<<(P + 255) / 256, 256>>>(params);
+		shadeCUDAtest<3><<<(splatsInShader + 255) / 256, 256>>>(params);
 		//CudaShader::ExecuteShader<<<(splatsInShader + 255) / 256, 256>>>(currentShader, params);
 		currentSplatIndex += splatsInShader;
 	}

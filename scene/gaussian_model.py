@@ -78,6 +78,7 @@ class GaussianModel:
     #Sorts the data so splats that use the same shader is contigious.
     #Returns a map of shader IDs in sorted order and the count of splats using them.
     def sort_by_shaders(self):
+
         splatCount = self._opacity.shape[0]
 
         #TODO: Make count of shaders dynamic instead of hard-coded
@@ -93,16 +94,42 @@ class GaussianModel:
 
         #TODO: Sorting could be sped up by sorting in place, so we don't need to assign new memory all the time.
 
-        print("Starting sorting " + str(splatCount) + " splat sorting")
+        #print("####### First splat #######")
+        #print("Opacity: " + str(self._opacity.shape))
+        #print("xyz: " + str(self._xyz.shape))
+        #print("normal: " + str(self._normal.shape))
+        #print("scaling: " + str(self._scaling.shape))
+        #print("rotation: " + str(self._rotation.shape))
+        #print("roughness: " + str(self._roughness.shape))
+        #print("metallic: " + str(self._metallic.shape))
+        #print("vis dc: " + str(self._visibility_dc.shape))
+        #print("inc dc: " + str(self._incidents_dc.shape))
+        #print("vis rest: " + str(self._visibility_rest.shape))
+        #print("inc rest: " + str(self._incidents_rest.shape))
+        #print("##########################")
+        print("_shs_dc: " + str(self._shs_dc.shape))
+        print("_shs_rest dc: " + str(self._shs_rest.shape))
+        print("max_radii2D dc: " + str(self.max_radii2D.shape))
+        print("xyz_gradient_accum: " + str(self.xyz_gradient_accum.shape))
+        print("normal_gradient_accum: " + str(self.normal_gradient_accum.shape))
+        print("denom: " + str(self.denom.shape))
+
+
+        print("Sorting " + str(splatCount) + " splats")
         #First sort all the spats by shader
         for i in range(splatCount):
             # first get id of the shader. Currently this is based off of position. 
             # but ideally this should be stored in the file, and use direct function pointers intead of IDs.
 
             if i % 10000 == 0:
-                print(str(i) + " splats sorted so far")
+                print(str(i) + " sorted")
+
+
+
+            # Determine which shader should be used for the splat.
+            # Ideally this is assigned and sorted ahead of time, so we don't have to waste time doing it on every initialization.
             splat_x_pos = self._xyz[i][0]
-            if splat_x_pos < 0:
+            if splat_x_pos > 0:
                 shaderID = 0
             else:
                 shaderID = 1
@@ -115,35 +142,76 @@ class GaussianModel:
             shaderMapping[shaderID]["normal"].append(self._normal[i])
             shaderMapping[shaderID]["scaling"].append(self._scaling[i])
             shaderMapping[shaderID]["rotation"].append(self._rotation[i])
-            if self.use_pbr:
-                shaderMapping[shaderID]["roughness"].append(self._roughness[i])
-                shaderMapping[shaderID]["metallic"].append(self._metallic[i])
-                shaderMapping[shaderID]["visibility_dc"].append(self._visibility_dc[i])
-                shaderMapping[shaderID]["incidents_dc"].append(self._incidents_dc[i])
-                shaderMapping[shaderID]["base_color"].append(self._base_color[i])
-                shaderMapping[shaderID]["visibility_rest"].append(self._visibility_rest[i])
-                shaderMapping[shaderID]["incidents_rest"].append(self._incidents_rest[i])
+            shaderMapping[shaderID]["_shs_dc"].append(self._shs_dc[i])
+            shaderMapping[shaderID]["_shs_rest"].append(self._shs_rest[i])
+            # Not used during rendering.
+            #shaderMapping[shaderID]["max_radii2D"].append(self.max_radii2D[i])
+            #shaderMapping[shaderID]["xyz_gradient_accum"].append(self.xyz_gradient_accum[i])
+            #shaderMapping[shaderID]["normal_gradient_accum"].append(self.normal_gradient_accum[i])
+            #shaderMapping[shaderID]["denom"].append(self.denom[i])
+            #if self.use_pbr:
+                #shaderMapping[shaderID]["roughness"].append(self._roughness[i])
+                #shaderMapping[shaderID]["metallic"].append(self._metallic[i])
+                #shaderMapping[shaderID]["visibility_dc"].append(self._visibility_dc[i])
+                #shaderMapping[shaderID]["incidents_dc"].append(self._incidents_dc[i])
+                #shaderMapping[shaderID]["base_color"].append(self._base_color[i])
+                #shaderMapping[shaderID]["visibility_rest"].append(self._visibility_rest[i])
+                #shaderMapping[shaderID]["incidents_rest"].append(self._incidents_rest[i])
+
+            if i == 10000:
+                i_tenK = (shaderID, shaderIDIndexes[shaderID])
 
             shaderIDIndexes[shaderID] += 1
 
-        #Copy tensor views in order (points to unsorted memory)
+        #Copied tensor views still refer to old memory locations, but when cocatenating, the data is assigned to new linear memory.
         shaderIDs = shaderIDIndexes.keys()
         self._opacity = self.concatenate_sorted_param_tensors(shaderMapping, shaderIDs, "opacity")
         self._xyz = self.concatenate_sorted_param_tensors(shaderMapping, shaderIDs, "xyz")
         self._normal = self.concatenate_sorted_param_tensors(shaderMapping, shaderIDs, "normal")
         self._scaling = self.concatenate_sorted_param_tensors(shaderMapping, shaderIDs, "scaling")
         self._rotation = self.concatenate_sorted_param_tensors(shaderMapping, shaderIDs, "rotation")
-        if self.use_pbr:
-            self._roughness = self.concatenate_sorted_param_tensors(shaderMapping, shaderIDs, "roughness")
-            self._metallic = self.concatenate_sorted_param_tensors(shaderMapping, shaderIDs, "metallic")
-            self._visibility_dc = self.concatenate_sorted_param_tensors(shaderMapping, shaderIDs, "visibility_dc")
-            self._incidents_dc = self.concatenate_sorted_param_tensors(shaderMapping, shaderIDs, "incidents_dc")
-            self._base_color = self.concatenate_sorted_param_tensors(shaderMapping, shaderIDs, "base_color")
-            self._visibility_rest = self.concatenate_sorted_param_tensors(shaderMapping, shaderIDs, "visibility_rest")
-            self._incidents_rest = self.concatenate_sorted_param_tensors(shaderMapping, shaderIDs, "incidents_rest")
+        self._shs_dc = self.concatenate_sorted_param_tensors(shaderMapping, shaderIDs, "_shs_dc")
+        self._shs_rest = self.concatenate_sorted_param_tensors(shaderMapping, shaderIDs, "_shs_rest")
+        #Not used during rendering.
+        #self.max_radii2D = self.concatenate_sorted_param_tensors(shaderMapping, shaderIDs, "max_radii2D")
+        #self.xyz_gradient_accum = self.concatenate_sorted_param_tensors(shaderMapping, shaderIDs, "xyz_gradient_accum")
+        #self.normal_gradient_accum = self.concatenate_sorted_param_tensors(shaderMapping, shaderIDs, "normal_gradient_accum")
+        #self.denom = self.concatenate_sorted_param_tensors(shaderMapping, shaderIDs, "denom")
+        #if self.use_pbr:
+         #   self._roughness = self.concatenate_sorted_param_tensors(shaderMapping, shaderIDs, "roughness")
+          #  self._metallic = self.concatenate_sorted_param_tensors(shaderMapping, shaderIDs, "metallic")
+           # self._visibility_dc = self.concatenate_sorted_param_tensors(shaderMapping, shaderIDs, "visibility_dc")
+            #self._incidents_dc = self.concatenate_sorted_param_tensors(shaderMapping, shaderIDs, "incidents_dc")
+            #self._base_color = self.concatenate_sorted_param_tensors(shaderMapping, shaderIDs, "base_color")
+            #self._visibility_rest = self.concatenate_sorted_param_tensors(shaderMapping, shaderIDs, "visibility_rest")
+            #self._incidents_rest = self.concatenate_sorted_param_tensors(shaderMapping, shaderIDs, "incidents_rest")
 
-        self.shaderIDs = torch.Tensor(list(shaderIDs))
+        print("Sorting done.")
+
+        if i_tenK[0] == 0:
+            i = i_tenK[1]
+        else:
+            i = i_tenK[1] + shaderIDIndexes[0]
+            
+        #print("####### First splat #######")
+        #print("Opacity: " + str(self._opacity.shape))
+        #print("xyz: " + str(self._xyz.shape))
+        #print("normal: " + str(self._normal.shape))
+        #print("scaling: " + str(self._scaling.shape))
+        #print("rotation: " + str(self._rotation.shape))
+        #print("roughness: " + str(self._roughness.shape))
+        #print("metallic: " + str(self._metallic.shape))
+        #print("vis dc: " + str(self._visibility_dc.shape))
+        #print("inc dc: " + str(self._incidents_dc.shape))
+        #print("vis rest: " + str(self._visibility_rest.shape))
+        #print("inc rest: " + str(self._incidents_rest.shape))
+        #print("##########################")
+
+        #Collect the sorted tensors into a single tensor to get linear memory layout.
+        self.shaderIDs = torch.Tensor(list(shaderIDIndexes.keys()))
         self.shaderSplatCount = torch.Tensor(list(shaderIDIndexes.values()))
+        print("Shader IDs: " + str(self.shaderIDs))
+        print("Shader splat counts: " + str(self.shaderSplatCount))
     
     @torch.no_grad()     
     def concatenate_sorted_param_tensors(self, shaderMapping, shaderIDs, paramName):
