@@ -92,29 +92,6 @@ class GaussianModel:
         paramMapping = lambda: defaultdict(list)
         shaderMapping = defaultdict(paramMapping)
 
-        #TODO: Sorting could be sped up by sorting in place, so we don't need to assign new memory all the time.
-
-        #print("####### First splat #######")
-        #print("Opacity: " + str(self._opacity.shape))
-        #print("xyz: " + str(self._xyz.shape))
-        #print("normal: " + str(self._normal.shape))
-        #print("scaling: " + str(self._scaling.shape))
-        #print("rotation: " + str(self._rotation.shape))
-        #print("roughness: " + str(self._roughness.shape))
-        #print("metallic: " + str(self._metallic.shape))
-        #print("vis dc: " + str(self._visibility_dc.shape))
-        #print("inc dc: " + str(self._incidents_dc.shape))
-        #print("vis rest: " + str(self._visibility_rest.shape))
-        #print("inc rest: " + str(self._incidents_rest.shape))
-        #print("##########################")
-        print("_shs_dc: " + str(self._shs_dc.shape))
-        print("_shs_rest dc: " + str(self._shs_rest.shape))
-        print("max_radii2D dc: " + str(self.max_radii2D.shape))
-        print("xyz_gradient_accum: " + str(self.xyz_gradient_accum.shape))
-        print("normal_gradient_accum: " + str(self.normal_gradient_accum.shape))
-        print("denom: " + str(self.denom.shape))
-
-
         print("Sorting " + str(splatCount) + " splats")
         #First sort all the spats by shader
         for i in range(splatCount):
@@ -123,8 +100,6 @@ class GaussianModel:
 
             if i % 10000 == 0:
                 print(str(i) + " sorted")
-
-
 
             # Determine which shader should be used for the splat.
             # Ideally this is assigned and sorted ahead of time, so we don't have to waste time doing it on every initialization.
@@ -187,25 +162,6 @@ class GaussianModel:
             #self._incidents_rest = self.concatenate_sorted_param_tensors(shaderMapping, shaderIDs, "incidents_rest")
 
         print("Sorting done.")
-
-        if i_tenK[0] == 0:
-            i = i_tenK[1]
-        else:
-            i = i_tenK[1] + shaderIDIndexes[0]
-            
-        #print("####### First splat #######")
-        #print("Opacity: " + str(self._opacity.shape))
-        #print("xyz: " + str(self._xyz.shape))
-        #print("normal: " + str(self._normal.shape))
-        #print("scaling: " + str(self._scaling.shape))
-        #print("rotation: " + str(self._rotation.shape))
-        #print("roughness: " + str(self._roughness.shape))
-        #print("metallic: " + str(self._metallic.shape))
-        #print("vis dc: " + str(self._visibility_dc.shape))
-        #print("inc dc: " + str(self._incidents_dc.shape))
-        #print("vis rest: " + str(self._visibility_rest.shape))
-        #print("inc rest: " + str(self._incidents_rest.shape))
-        #print("##########################")
 
         #Collect the sorted tensors into a single tensor to get linear memory layout.
         self.shaderIDs = torch.Tensor(list(shaderIDIndexes.keys()))
