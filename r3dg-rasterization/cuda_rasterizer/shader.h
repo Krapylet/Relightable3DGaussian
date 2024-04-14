@@ -71,12 +71,16 @@ namespace CudaShader
 	//The unpacking should be done in ExecuteShader()
 
 	// Define a shared type of fuction pointer that can point to all implemented shaders.
-    typedef void (*shader)(shaderParams);
+    typedef void (*shader)(shaderParams params);
 
+	// Function pointers to the implemented shaders. Has the benefits of also being much more concise.
+	// TODO: Renable __device__ on extern as soon as seperate compilation works.
+	//__device__ extern shader outlineShader;
+	extern shader outlineShader;
+	
 	// Executes a shader on the GPU with the given parameters.
 	__global__ extern void ExecuteShader(shader shader, shaderParams params);
 
-	// Function pointers to the implemented shaders. Has the benefits of also being much more concise.
-	extern shader outlineShader;
+	
 };
 #endif 

@@ -24,6 +24,7 @@ conda activate r3dg
 
 # install pytorch=1.12.1
 conda install pytorch==1.12.1 torchvision==0.13.1 torchaudio==0.12.1 cudatoolkit=11.6 -c pytorch -c conda-forge
+ conda install pytorch torchvision torchaudio pytorch-cuda=11.8 -c pytorch -c nvidia
 
 # install torch_scatter==2.1.1
 pip install torch_scatter==2.1.1

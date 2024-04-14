@@ -28,9 +28,12 @@ setup(
                 "cuda_rasterizer/backward.cu",
                 "rasterize_points.cu",
                 "render_equation.cu",
-                "ext.cpp"],
+                "ext.cpp",
+                "compileTester.cpp"],
+            dlink=True,
             extra_compile_args={
-                "nvcc": ["-I" + os.path.join(os.path.dirname(os.path.abspath(__file__)), "third_party/glm/"),
+                "nvcc": ["-rdc=true",
+                         "-I" + os.path.join(os.path.dirname(os.path.abspath(__file__)), "third_party/glm/"),
                          "-O3"],
                 "cxx": ["-O3"]})
     ],

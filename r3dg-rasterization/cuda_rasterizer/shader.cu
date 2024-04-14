@@ -11,6 +11,8 @@ namespace cg = cooperative_groups;
 
 namespace CudaShader
 {
+   
+
     template<int C>
         __device__ static void OutlineShaderCUDA(shaderParams p)
         {
@@ -51,7 +53,7 @@ namespace CudaShader
     __global__ void ExecuteShader(shader shader, shaderParams params){
         // No need to dereference function pointers.
         
-        outlineShader(params);
+        OutlineShaderCUDA<3>(params);
     }
 
 }
