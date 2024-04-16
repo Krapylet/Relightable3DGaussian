@@ -74,9 +74,8 @@ namespace CudaShader
     typedef void (*shader)(shaderParams params);
 
 	// Function pointers to the implemented shaders. Has the benefits of also being much more concise.
-	// TODO: Renable __device__ on extern as soon as seperate compilation works.
-	//__device__ extern shader outlineShader;
-	extern shader outlineShader;
+	__device__ extern shader outlineShader;
+	__device__ extern shader wireframeShader;
 	
 	// Executes a shader on the GPU with the given parameters.
 	__global__ extern void ExecuteShader(shader shader, shaderParams params);

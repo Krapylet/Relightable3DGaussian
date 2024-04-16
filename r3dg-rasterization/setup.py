@@ -28,11 +28,10 @@ setup(
                 "cuda_rasterizer/backward.cu",
                 "rasterize_points.cu",
                 "render_equation.cu",
-                "ext.cpp",
-                "compileTester.cpp"],
+                "ext.cpp"],
             dlink=True,
             extra_compile_args={
-                "nvcc": ["-rdc=true",
+                "nvcc": ["--device-c",
                          "-I" + os.path.join(os.path.dirname(os.path.abspath(__file__)), "third_party/glm/"),
                          "-O3"],
                 "cxx": ["-O3"]})

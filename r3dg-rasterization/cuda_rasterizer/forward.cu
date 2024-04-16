@@ -703,8 +703,16 @@ void FORWARD::shade(
 	// TODO: This vector should be build during initialization when analyzing which shaders are used by the provided gaussian models.
 	// But that is a bit difficult when the initialization process is written in python.
 	std::vector<CudaShader::shader> shaders;
-	shaders.push_back(CudaShader::outlineShader);
-	shaders.push_back(CudaShader::outlineShader);
+	size_t shaderMemorySize = sizeof(CudaShader::shader);
+
+	// Copy device shader pointers to host 
+	CudaShader::shader h_outlineShader;
+	cudaMemcpyFromSymbol(&h_outlineShader, CudaShader::outlineShader, shaderMemorySize);
+	shaders.push_back(h_outlineShader);
+
+	CudaShader::shader h_wireframeShader;
+	cudaMemcpyFromSymbol(&h_wireframeShader, CudaShader::wireframeShader, shaderMemorySize);
+	shaders.push_back(h_wireframeShader);
 	
 	// Start execution of each shader.
 	int currentSplatIndex = 0;
@@ -736,9 +744,8 @@ void FORWARD::shade(
 
 		// Then execute the shaders asyncronously.
 		//TODO: shoudl index with shaderID
-		CudaShader::shader currentShader = shaders[0];
+		CudaShader::shader currentShader = shaders[shaderID];
 		// TODO: argue for this exact number of kernals at launch.
-		//shadeCUDAtest<3><<<(splatsInShader + 255) / 256, 256>>>(params);
 		CudaShader::ExecuteShader<<<(splatsInShader + 255) / 256, 256>>>(currentShader, params);
 		currentSplatIndex += splatsInShader;
 	}
