@@ -1,0 +1,36 @@
+
+
+# Manual patching guide to make nvcc seperate compilation work on windows
+
+First, locate the folder of the torch installation that will be used during package install.
+If you are working inside the r3dgs environment, the install location should be at:
+	C:\Users\<user>\AppData\Local\miniconda3\envs\r3dgs\Lib\site-packages\torch\utils
+
+Apply the following changes to torch/utils/cpp_extensions.py:
+	Inside the method CUDAExtension()
+		Change the lines:
+			extra_compile_args_dlink += [f'-L{x}' for x in library_dirs]
+			extra_compile_args_dlink += [f'-l{x}' for x in dlink_libraries]
+		To:
+			if IS_WINDOWS:
+				extra_compile_args_dlink += [f'-L"{x}"' for x in library_dirs]
+				extra_compile_args_dlink += [f'-l"{x}"' for x in dlink_libraries]
+			else:
+				extra_compile_args_dlink += [f'-L{x}' for x in library_dirs]
+				extra_compile_args_dlink += [f'-l{x}' for x in dlink_libraries]
+
+	Inside the method modding _write_ninja_file()
+		Change the lines:
+			devlink = [f'build {devlink_out}: cuda_devlink {" ".join(objects).replace(':', '$:')}']
+		To:
+			if IS_WINDOWS:
+				devlink = [f'build {devlink_out.replace(':', '$:')}: cuda_devlink {" ".join(objects).replace(':', '$:')}']
+			else:
+				devlink = [f'build {devlink_out}: cuda_devlink {" ".join(objects).replace(':', '$:')}']
+
+	(optional. Increases runtime performance) Inside _get_cuda_arch_flags()
+		Add line:
+			flags.append(f'-gencode=arch=compute_{num},code=lto_{num}')
+		Between the lines:
+			flags.append(f'-gencode=arch=compute_{num},code=sm_{num}')
+			if arch.endswith('+PTX'):
