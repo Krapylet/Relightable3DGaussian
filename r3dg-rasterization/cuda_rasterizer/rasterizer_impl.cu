@@ -260,6 +260,9 @@ int CudaRasterizer::Rasterizer::forward(
 		throw std::runtime_error("For non-RGB, provide precomputed Gaussian colors!");
 	}
 
+	// An additional shader step here could be inserted, analogues to a vertex shader, which would let us edit transformations, but also SHs before they're evaluated.
+
+	
 	// Run preprocessing per-Gaussian (transformation, bounding, conversion of SHs to RGB)
 	CHECK_CUDA(FORWARD::preprocess(
 		P, D, M,

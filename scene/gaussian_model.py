@@ -166,8 +166,6 @@ class GaussianModel:
         #Collect the sorted tensors into a single tensor to get linear memory layout.
         self.shaderIDs = torch.Tensor(list(shaderIDIndexes.keys()))
         self.shaderSplatCount = torch.Tensor(list(shaderIDIndexes.values()))
-        print("Shader IDs: " + str(self.shaderIDs))
-        print("Shader splat counts: " + str(self.shaderSplatCount))
     
     @torch.no_grad()     
     def concatenate_sorted_param_tensors(self, shaderMapping, shaderIDs, paramName):
