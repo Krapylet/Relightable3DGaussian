@@ -62,7 +62,7 @@ class GaussianModel:
         self.percent_dense = 0
         self.spatial_lr_scale = 0
         self.shaderIDs = torch.Tensor(list([0]))
-        self.shaderSplatCount = torch.Tensor(list([0]))
+        self.shaderIndexOffset = torch.Tensor(list([0]))
 
         self.setup_functions()
         self.transform = {}
@@ -165,7 +165,7 @@ class GaussianModel:
 
         #Collect the sorted tensors into a single tensor to get linear memory layout.
         self.shaderIDs = torch.Tensor(list(shaderIDIndexes.keys()))
-        self.shaderSplatCount = torch.Tensor(list(shaderIDIndexes.values()))
+        self.shaderIndexOffset = torch.Tensor(list(shaderIDIndexes.values()))
     
     @torch.no_grad()     
     def concatenate_sorted_param_tensors(self, shaderMapping, shaderIDs, paramName):
@@ -463,7 +463,7 @@ class GaussianModel:
                 self._visibility_rest = nn.Parameter(
                     visibility[:, :, 1:].transpose(1, 2).contiguous().requires_grad_(True))
                 
-        self.shaderSplatCount = torch.Tensor(list([self._xyz.shape[0]]))
+        self.shaderIndexOffset = torch.Tensor(list([self._xyz.shape[0]]))
 
         if restore_optimizer:
             # TODO automatically match the opt_dict
@@ -730,7 +730,7 @@ class GaussianModel:
             self._visibility_rest = nn.Parameter(
                 torch.tensor(visibility_extra, dtype=torch.float, device="cuda").transpose(
                     1, 2).contiguous().requires_grad_(True))
-        self.shaderSplatCount = torch.Tensor(list([self._xyz.shape[0]]))
+        self.shaderIndexOffset = torch.Tensor(list([self._xyz.shape[0]]))
 
     def replace_tensor_to_optimizer(self, tensor, name):
         optimizable_tensors = {}

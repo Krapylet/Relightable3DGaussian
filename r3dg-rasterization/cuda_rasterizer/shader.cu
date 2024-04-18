@@ -14,11 +14,11 @@ namespace CudaShader
     __device__ shaderParams::shaderParams(PackedShaderParams p, int idx):
         W(p.W),
         H(p.H),
-		orig_point(p.orig_points[idx]),
+		position(p.positions[idx]),
         // world space position = 
         // view space up, right, forward,
         // world space up, right, forward,  		
-		point_xy_image(p.points_xy_image[idx]),
+		screen_position(p.screen_positions[idx]),
 		viewmatrix(p.viewmatrix),
 		viewmatrix_inv(p.viewmatrix_inv),
 		projmatrix (p.projmatrix),
@@ -32,11 +32,11 @@ namespace CudaShader
 		// pr. frame texture information
 		depth (p.depths[idx]),		
 		conic_opacity (p.conic_opacity[idx]), // Todo: split opacity to own variable
-        color (p.colors + idx),
+        color_SH (p.colors_SH + idx),
 		// Precomputed 'texture' information from the neilf pbr decomposition
-		brdf_color ({p.features[idx * p.S + 0], p.features[idx * p.S + 1], p.features[idx * p.S + 2]}),
+		color_brdf ({p.features[idx * p.S + 0], p.features[idx * p.S + 1], p.features[idx * p.S + 2]}),
 		normal ({p.features[idx * p.S + 3], p.features[idx * p.S + 4], p.features[idx * p.S + 5]}),
-		base_color ({p.features[idx * p.S + 6], p.features[idx * p.S + 7], p.features[idx * p.S + 8]}),
+		color_base ({p.features[idx * p.S + 6], p.features[idx * p.S + 7], p.features[idx * p.S + 8]}),
 		roughness (p.features[idx * p.S + 9]),
 		metallic (p.features[idx * p.S + 10]),
 		incident_light (p.features[idx * p.S + 11]),
@@ -55,7 +55,7 @@ namespace CudaShader
     __device__ static void OutlineShaderCUDA(shaderParams p)
     {
         // Get angle between splat and camera:
-        glm::vec3 directionToCamera = p.camera_position - p.orig_point;
+        glm::vec3 directionToCamera = p.camera_position - p.position;
         float angle = 1 - glm::abs(glm::dot(glm::normalize(directionToCamera), glm::normalize(p.normal)));
         // easing from https://easings.net/#easeInOutQuint
         float opacity = angle < 0.5
@@ -63,14 +63,14 @@ namespace CudaShader
             : pow(-2 * angle + 2, 5) / 2;
 
         // Set output color
-        *p.out_color = (*p.color) * opacity;
+        *p.out_color = (*p.color_SH) * opacity;
     }
 
     template<int C>
     __device__ static void WireframeShaderCUDA(shaderParams p)
     {
         // Get angle between splat and camera:
-        glm::vec3 directionToCamera = p.camera_position - p.orig_point;
+        glm::vec3 directionToCamera = p.camera_position - p.position;
         float angle = 1 - glm::abs(glm::dot(glm::normalize(directionToCamera), glm::normalize(p.normal)));
         // easing from https://easings.net/#easeInOutQuint
         float opacity = angle < 0.5

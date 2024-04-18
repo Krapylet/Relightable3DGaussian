@@ -52,7 +52,7 @@ uint32_t getHigherMsb(uint32_t n)
 // Wrapper method to call auxiliary coarse frustum containment test.
 // Mark all Gaussians that pass it.
 __global__ void checkFrustum(int P,
-	const float* orig_points,
+	const float* positions,
 	const float* viewmatrix,
 	const float* projmatrix,
 	bool* present)
@@ -62,7 +62,7 @@ __global__ void checkFrustum(int P,
 		return;
 
 	float3 p_view;
-	present[idx] = in_frustum(idx, orig_points, viewmatrix, projmatrix, false, p_view);
+	present[idx] = in_frustum(idx, positions, viewmatrix, projmatrix, false, p_view);
 }
 
 // Generates one key/value pair for all Gaussian / tile overlaps. 
@@ -200,7 +200,7 @@ CudaRasterizer::BinningState CudaRasterizer::BinningState::fromChunk(char*& chun
 int CudaRasterizer::Rasterizer::forward(
 	const int shaderCount,
 	const float* shaderIDs,
-	const float* shaderSplatCount,
+	const float* shaderIndexOffset,
 	std::function<char* (size_t)> geometryBuffer,
 	std::function<char* (size_t)> binningBuffer,
 	std::function<char* (size_t)> imageBuffer,
@@ -302,7 +302,7 @@ int CudaRasterizer::Rasterizer::forward(
 	CHECK_CUDA(FORWARD::shade(
 		shaderCount,
 		shaderIDs,
-		shaderSplatCount,
+		shaderIndexOffset,
 		width, height,
 		P,							
 		means3D,  		

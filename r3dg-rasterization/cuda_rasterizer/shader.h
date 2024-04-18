@@ -22,39 +22,33 @@ namespace CudaShader
 	// This representation contains data for all the splats packed together.
 	struct PackedShaderParams {
 		// Screen information:
-        int const W; int const H;			// Sceen width and height
+        int const W; int const H;			
 
-        // Model information:
+        // shader execution information:
 		int const P;						// Total number of splats.
 		int const splatsInShader;			// Total number of splats to be rendered with this shader.
 		int const shaderStartingOffset;		// Starting index of the splats this shader needs to render.
-		glm::vec3 const *const orig_points;  			// mean 3d position of gaussian in world space.
-		glm::vec2 const *const points_xy_image;		// mean 2d position of gaussian in screen space.
+
+		// position information
+		glm::vec3 const *const positions;  			
+		glm::vec2 const *const screen_positions;		
 
 		// Projection information.
 		float const *const viewmatrix;
-				// RightX  RightY  RightZ  0
-                // UpX     UpY     UpZ     0
-                // LookX   LookY   LookZ   0
-                // PosX    PosY    PosZ    1
 		float const *const viewmatrix_inv;
-				// RightX  UpX     LookX      0
-                // RightY  UpY     LookY      0
-                // RightZ  UpZ     LookZ      0
-                // -(Pos*Right)  -(Pos*Up)  -(Pos*Look)  1
 		float const *const projmatrix;
 		float const *const projmatrix_inv;
-		const float focal_x; const float focal_y;
-		const float tan_fovx; const float tan_fovy;
+		float const focal_x; float const focal_y;
+		float const tan_fovx; float const tan_fovy;
 
 		// pr. frame texture information
-		float const *const depths;				// Gaussian depth in view space.
-		glm::vec3 *const colors;				// sarts as raw Gaussian SH color		
-		glm::vec4 const *const conic_opacity;		// ???? Float4 that contains conic something in the first 3 indexes, and opacity in the last. Read up on original splatting paper.
+		float const *const depths;				
+		glm::vec3 const *const colors_SH;				
+		glm::vec4 const *const conic_opacity;		
 
 		// Precomputed 'texture' information from the neilf pbr decomposition
-		int const S;						// Feature channel count.
-		float const *const features;				// Interleaved array of precomputed 'textures' for each individual gaussian. Stored in the following order:
+		int const  S;						// Feature channel count.
+		float const *const features;		// Interleaved array of precomputed 'textures' for each individual gaussian. Stored in the following order:
                                             // float3 brdf_color,
                                             // float3 normal,	       Object space
                                             // float3 base_color,
@@ -85,9 +79,9 @@ namespace CudaShader
 		// TODO: Collapse depth into a screen texture during the preprocessing (after the SH shader), so we can see the depth of the entire scene during this step.
 		// This woudl be a cheap way to approximate how visible each individual splat is. 
 
-        // splat information:
-		const glm::vec3 orig_point;  			// mean 3d position of gaussian in world space.
-		const glm::vec2 point_xy_image;		// mean 2d position of gaussian in screen space.
+        // position information:
+		glm::vec3 const position;  			// mean 3d position of gaussian in world space.
+		glm::vec2 const screen_position;		// mean 2d position of gaussian in screen space.
 
 		// Projection information.
 		float const *const viewmatrix;
@@ -102,24 +96,25 @@ namespace CudaShader
                 // -(Pos*Right)  -(Pos*Up)  -(Pos*Look)  1
 		float const *const projmatrix;
 		float const *const projmatrix_inv;
-		const float focal_x; float focal_y;
-		const float tan_fovx; float tan_fovy;
-		const glm::vec3 camera_position;
+		float const focal_x; float const focal_y;
+		float const tan_fovx; float const tan_fovy;
+		glm::vec3 const camera_position;	// Position of camera in world space
 
 		// pr. frame texture information
-		const float depth;					// Mean splat depth in view space.
-		const glm::vec4 conic_opacity;		// ???? Float4 that contains conic something in the first 3 indexes, and opacity in the last. Read up on original splatting paper.
-		glm::vec3 *const color;	
+		float const depth;					// Mean splat depth in view space.
+		glm::vec4 const conic_opacity;		// ???? Float4 that contains conic something in the first 3 indexes, and opacity in the last. Read up on original splatting paper.
+		glm::vec3 const *const color_SH;	// Color from SH evaluation
+		
 		// Precomputed 'texture' information from the neilf pbr decomposition
-		const glm::vec3 brdf_color;
-		const glm::vec3 normal;
-		const glm::vec3 base_color;
-		const float  roughness;
-		const float  metallic;
-		const float  incident_light;
-		const float  local_incident_light;
-		const float  global_incident_light;
-		const float  incident_visibility;
+		glm::vec3 const color_brdf;			// pbr splat color
+		glm::vec3 const normal;				// Splat normal in object space
+		glm::vec3 const color_base;			// Decomposed splat color without lighting
+		float const  roughness;
+		float const  metallic;
+		float const  incident_light;
+		float const  local_incident_light;
+		float const  global_incident_light;
+		float const  incident_visibility;
 
 		// output
 		// We use pointers to the output instead of return values to make it easy to extend during development.

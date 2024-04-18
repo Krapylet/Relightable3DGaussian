@@ -50,7 +50,7 @@ def render_view(viewpoint_camera: Camera, pc: GaussianModel, pipe, bg_color: tor
         backward_geometry=True,
         computer_pseudo_normal=True,
         debug=pipe.debug,
-        shaderSplatCount = pc.shaderSplatCount,
+        shaderIndexOffset = pc.shaderIndexOffset,
         shaderIDs = pc.shaderIDs
     )
 

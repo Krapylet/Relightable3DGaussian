@@ -75,7 +75,7 @@ class _RasterizeGaussians(torch.autograd.Function):
         # Restructure arguments the way that the C++ lib expects them
         args = (
             raster_settings.shaderIDs,
-            raster_settings.shaderSplatCount,
+            raster_settings.shaderIndexOffset,
             raster_settings.bg,
             means3D,
             features,
@@ -212,7 +212,7 @@ class GaussianRasterizationSettings(NamedTuple):
     backward_geometry: bool
     computer_pseudo_normal: bool
     debug: bool
-    shaderSplatCount: torch.Tensor
+    shaderIndexOffset: torch.Tensor
     shaderIDs: torch.Tensor
 
 

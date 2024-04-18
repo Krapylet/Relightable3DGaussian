@@ -25,7 +25,7 @@ namespace FORWARD
 {
 	// Perform initial steps for each Gaussian prior to rasterization.
 	void preprocess(int P, int D, int M,
-		const float* orig_points,
+		const float* positions,
 		const glm::vec3* scales,
 		const float scale_modifier,
 		const glm::vec4* rotations,
@@ -41,7 +41,7 @@ namespace FORWARD
 		const float focal_x, float focal_y,
 		const float tan_fovx, float tan_fovy,
 		int* radii,
-		float2* points_xy_image,
+		float2* screen_positions,
 		float* depths,
 		float* cov3Ds,
 		float* colors,
@@ -55,13 +55,13 @@ namespace FORWARD
 	void shade(
 		const int shaderCount,
 		const float* shaderIDs,			
-		const float* shaderSplatCount,  // Number of splats to render with each shader
+		const float* shaderIndexOffset,  // Number of splats to render with each shader
 		int W, int H,	
 		// TODO:  void *shader			// Function pointer to specific shader to call.
 		// Gaussian information:
 		int P,							// Total number of gaussians.
-		const float* orig_points,  		// mean 3d position of gaussian in world space.
-		float2* points_xy_image,		// mean 2d position of gaussian in screen space.
+		const float* positions,  		// mean 3d position of gaussian in world space.
+		float2* screen_positions,		// mean 2d position of gaussian in screen space.
 		// Projection information
 		const float* viewmatrix,
 		const float* viewmatrix_inv,
@@ -71,7 +71,7 @@ namespace FORWARD
 		const float tan_fovx, float tan_fovy,
 		// pr. frame texture information
 		float* depths,					// Gaussian depth in view space.
-		float* colors,
+		float* colors, 
 		float4* conic_opacity,          // ???? Read up on original splatting paper.
 		// Precomputed 'texture' information
 		int S,							// Feature channel count.
@@ -86,7 +86,7 @@ namespace FORWARD
 		const uint2* ranges,
 		const uint32_t* point_list,
 		int S, int W, int H,
-		const float2* points_xy_image,
+		const float2* screen_positions,
 		const float* depths,
 		const float* features,
 		const float* shader_colors,

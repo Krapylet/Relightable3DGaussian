@@ -157,7 +157,7 @@ __device__ void computeCov3D(const glm::vec3 scale, float mod, const glm::vec4 r
 // Perform initial steps for each Gaussian prior to rasterization.
 template<int C>
 __global__ void preprocessCUDA(int P, int D, int M,
-	const float* orig_points,
+	const float* positions,
 	const glm::vec3* scales,
 	const float scale_modifier,
 	const glm::vec4* rotations,
@@ -173,7 +173,7 @@ __global__ void preprocessCUDA(int P, int D, int M,
 	const float tan_fovx, float tan_fovy,
 	const float focal_x, float focal_y,
 	int* radii,
-	float2* points_xy_image,
+	float2* screen_positions,
 	float* depths,
 	float* cov3Ds,
 	float* rgb,
@@ -193,11 +193,11 @@ __global__ void preprocessCUDA(int P, int D, int M,
 
 	// Perform near culling, quit if outside.
 	float3 p_view;
-	if (!in_frustum(idx, orig_points, viewmatrix, projmatrix, prefiltered, p_view))
+	if (!in_frustum(idx, positions, viewmatrix, projmatrix, prefiltered, p_view))
 		return;
 
 	// Transform point by projecting
-	float3 p_orig = { orig_points[3 * idx], orig_points[3 * idx + 1], orig_points[3 * idx + 2] };
+	float3 p_orig = { positions[3 * idx], positions[3 * idx + 1], positions[3 * idx + 2] };
 	float4 p_hom = transformPoint4x4(p_orig, projmatrix);
 	float p_w = 1.0f / (p_hom.w + 0.0000001f);
 	float3 p_proj = { p_hom.x * p_w, p_hom.y * p_w, p_hom.z * p_w };
@@ -243,7 +243,7 @@ __global__ void preprocessCUDA(int P, int D, int M,
 	// spherical harmonics coefficients to RGB color.
 	if (colors_precomp == nullptr)
 	{
-		glm::vec3 result = computeColorFromSH(idx, D, M, (glm::vec3*)orig_points, *cam_pos, shs, clamped);
+		glm::vec3 result = computeColorFromSH(idx, D, M, (glm::vec3*)positions, *cam_pos, shs, clamped);
 		rgb[idx * C + 0] = result.x;
 		rgb[idx * C + 1] = result.y;
 		rgb[idx * C + 2] = result.z;
@@ -253,7 +253,7 @@ __global__ void preprocessCUDA(int P, int D, int M,
 	depths[idx] = p_view.z;
 	radii[idx] = my_radius;
 
-	points_xy_image[idx] = point_image;
+	screen_positions[idx] = point_image;
 	// Inverse 2D covariance and opacity neatly pack into one float4
 	conic_opacity[idx] = { conic.x, conic.y, conic.z, opacities[idx] };
 	tiles_touched[idx] = (rect_max.y - rect_min.y) * (rect_max.x - rect_min.x);
@@ -268,7 +268,7 @@ renderCUDA(
 	const uint2* __restrict__ ranges,
 	const uint32_t* __restrict__ point_list,
 	const int S, int W, int H,
-	const float2* __restrict__ points_xy_image,
+	const float2* __restrict__ screen_positions,
 	const float* __restrict__ depths,
 	const float* __restrict__ features,
 	const float* __restrict__ shader_colors,
@@ -327,7 +327,7 @@ renderCUDA(
 		{
 			int coll_id = point_list[range.x + progress];
 			collected_id[block.thread_rank()] = coll_id;
-			collected_xy[block.thread_rank()] = points_xy_image[coll_id];
+			collected_xy[block.thread_rank()] = screen_positions[coll_id];
 			collected_conic_opacity[block.thread_rank()] = conic_opacity[coll_id];
 		}
 		block.sync();
@@ -643,11 +643,11 @@ void FORWARD::render_pseudo_normal(
 void FORWARD::shade(
 		const int shaderCount,
 		const float* shaderIDs,
-		const float* shaderSplatCount,
+		const float* shaderIndexOffset,
 		int W, int H,			
 		int P,					
-		const float* orig_points,
-		float2* points_xy_image,
+		const float* positions,
+		float2* screen_positions,
 		const float* viewmatrix,
 		const float* viewmatrix_inv,
 		const float* projmatrix,
@@ -683,14 +683,14 @@ void FORWARD::shade(
 	{
 		// First pack the shader parameters
 		int shaderID = (int)shaderIDs[shaderIdx];
-		int splatsInShader = (int)shaderSplatCount[shaderIdx];
+		int splatsInShader = (int)shaderIndexOffset[shaderIdx];
 		CudaShader::PackedShaderParams params {
 			W,H,			
 			P,		
 			splatsInShader,
 			currentSplatIndex,			
-			(glm::vec3*) orig_points,
-			(glm::vec2*)points_xy_image,
+			(glm::vec3*) positions,
+			(glm::vec2*)screen_positions,
 			viewmatrix,
 			viewmatrix_inv,
 			projmatrix,
