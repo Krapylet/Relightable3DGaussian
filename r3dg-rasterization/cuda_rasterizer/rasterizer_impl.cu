@@ -313,11 +313,12 @@ int CudaRasterizer::Rasterizer::forward(
 		projmatrix_inv,
 		focal_x, focal_y,
 		tan_fovx, tan_fovy,
-		geomState.depths,		
+		geomState.depths,
+		geomState.rgb,		
 		geomState.conic_opacity,          
 		S,							
 		features,
-		geomState.rgb
+		geomState.shader_rgb
 	), debug);
 	
 

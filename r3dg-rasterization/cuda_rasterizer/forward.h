@@ -71,12 +71,13 @@ namespace FORWARD
 		const float tan_fovx, float tan_fovy,
 		// pr. frame texture information
 		float* depths,					// Gaussian depth in view space.
+		float* colors,
 		float4* conic_opacity,          // ???? Read up on original splatting paper.
 		// Precomputed 'texture' information
 		int S,							// Feature channel count.
 		const float* features,			// Interleaved array of precomputed 'textures', such as color, normal, AOO ect for each gaussian.
 		// output
-		float* colors					// Raw Gaussian SH color.
+		float* shader_colors					// Raw Gaussian SH color.
 	);
 
 	// Main rasterization method.

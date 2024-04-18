@@ -49,7 +49,7 @@ namespace CudaShader
 
 		// pr. frame texture information
 		float const *const depths;				// Gaussian depth in view space.
-		
+		glm::vec3 *const colors;				// sarts as raw Gaussian SH color		
 		glm::vec4 const *const conic_opacity;		// ???? Float4 that contains conic something in the first 3 indexes, and opacity in the last. Read up on original splatting paper.
 
 		// Precomputed 'texture' information from the neilf pbr decomposition
@@ -65,8 +65,9 @@ namespace CudaShader
                                             // float  global_incident_light
                                             // float  incident_visibility
 
-		// input/output
-		glm::vec3 *const colors;			// sarts as raw Gaussian SH color, but can be overwritten by shader.
+		// output
+		// In producion code, the colors field should function both as SH color input and as color output though reassignment, but we keep them seperate to make it easy to illustrate the difference.
+		glm::vec3 *const out_colors;			// shader color output.
 	};
 
 	// Used as input and output interface to the shaders.
@@ -108,7 +109,7 @@ namespace CudaShader
 		// pr. frame texture information
 		const float depth;					// Mean splat depth in view space.
 		const glm::vec4 conic_opacity;		// ???? Float4 that contains conic something in the first 3 indexes, and opacity in the last. Read up on original splatting paper.
-
+		glm::vec3 *const color;	
 		// Precomputed 'texture' information from the neilf pbr decomposition
 		const glm::vec3 brdf_color;
 		const glm::vec3 normal;
@@ -122,7 +123,7 @@ namespace CudaShader
 
 		// output
 		// We use pointers to the output instead of return values to make it easy to extend during development.
-		glm::vec3 *const color;					// RGB color output the splat. Will get combined based on alpha in the next step.
+		glm::vec3 *const out_color;					// RGB color output the splat. Will get combined based on alpha in the next step.
 	};
 
 	// Define a shared type of fuction pointer that can point to all implemented shaders.

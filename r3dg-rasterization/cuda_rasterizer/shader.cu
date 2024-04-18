@@ -32,7 +32,7 @@ namespace CudaShader
 		// pr. frame texture information
 		depth (p.depths[idx]),		
 		conic_opacity (p.conic_opacity[idx]), // Todo: split opacity to own variable
-
+        color (p.colors + idx),
 		// Precomputed 'texture' information from the neilf pbr decomposition
 		brdf_color ({p.features[idx * p.S + 0], p.features[idx * p.S + 1], p.features[idx * p.S + 2]}),
 		normal ({p.features[idx * p.S + 3], p.features[idx * p.S + 4], p.features[idx * p.S + 5]}),
@@ -46,7 +46,7 @@ namespace CudaShader
 
 		// output
 		// We use pointers to the output instead of return values to make it easy to extend during development.             
-		color (p.colors + idx)
+		out_color (p.out_colors + idx)
         {
 		// for now we're not actually doing anyting in the constuctior other than initializing the constants.
     }
@@ -63,7 +63,7 @@ namespace CudaShader
             : pow(-2 * angle + 2, 5) / 2;
 
         // Set output color
-        *p.color = (*p.color) * opacity;
+        *p.out_color = (*p.color) * opacity;
     }
 
     template<int C>
@@ -78,7 +78,7 @@ namespace CudaShader
             : pow(-2 * angle + 2, 5) / 2;
 
         // Set output color
-        *p.color = glm::vec3(1 - opacity);
+        *p.out_color = glm::vec3(1 - opacity);
     }
 
     ///// Assign all the shaders to their short handles.
