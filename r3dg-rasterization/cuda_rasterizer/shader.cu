@@ -30,8 +30,7 @@ namespace CudaShader
         camera_position({p.viewmatrix_inv[12], p.viewmatrix_inv[13], p.viewmatrix_inv[14]}),
 
 		// pr. frame texture information
-		depth (p.depths[idx]),                       
-		color (p.colors[idx]),	// TODO: merge with out_color		
+		depth (p.depths[idx]),		
 		conic_opacity (p.conic_opacity[idx]), // Todo: split opacity to own variable
 
 		// Precomputed 'texture' information from the neilf pbr decomposition
@@ -46,8 +45,8 @@ namespace CudaShader
 		incident_visibility (p.features[idx * p.S + 14]),
 
 		// output
-		// We use pointers to the output instead of return values to make it easy to extend during development.
-        out_color (p.out_color + idx * NUM_CHANNELS)
+		// We use pointers to the output instead of return values to make it easy to extend during development.             
+		color (p.colors + idx)
         {
 		// for now we're not actually doing anyting in the constuctior other than initializing the constants.
     }
@@ -64,9 +63,7 @@ namespace CudaShader
             : pow(-2 * angle + 2, 5) / 2;
 
         // Set output color
-        p.out_color[0] = p.color.r * opacity;
-        p.out_color[1] = p.color.g * opacity;
-        p.out_color[2] = p.color.b * opacity;
+        *p.color = (*p.color) * opacity;
     }
 
     template<int C>
@@ -81,9 +78,7 @@ namespace CudaShader
             : pow(-2 * angle + 2, 5) / 2;
 
         // Set output color
-        p.out_color[0] = 1 - opacity;
-        p.out_color[1] = 1 - opacity;
-        p.out_color[2] = 1 - opacity;
+        *p.color = glm::vec3(1 - opacity);
     }
 
     ///// Assign all the shaders to their short handles.

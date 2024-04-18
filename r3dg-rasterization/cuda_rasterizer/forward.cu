@@ -655,11 +655,10 @@ void FORWARD::shade(
 		const float focal_x, float focal_y,
 		const float tan_fovx, float tan_fovy,
 		float* depths,			
-		float* colors,			
 		float4* conic_opacity, 
 		int S,					
 		const float* features,
-		float* out_color)
+		float* colors)
 {
 	
 	// Ideally this vector should be build during initialization when analyzing which shaders are used by the provided gaussian models.
@@ -697,11 +696,10 @@ void FORWARD::shade(
 			focal_x, focal_y,
 			tan_fovx, tan_fovy,
 			depths,			
-			(glm::vec3*)colors,			
 			(glm::vec4*)conic_opacity, 
 			S,					
 			features,
-			out_color
+			(glm::vec3*)colors
 		};
 
 		// Then execute the shaders asyncronously.

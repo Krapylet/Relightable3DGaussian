@@ -465,7 +465,7 @@ if __name__ == '__main__':
     windows = GUI(H, W, fovy,
                   c2w=c2w, center=center,
                   render_fn=render_fn, render_kwargs=render_kwargs,
-                  mode='shader', use_hdr2ldr=args.hdr2ldr)
+                  mode='render', use_hdr2ldr=args.hdr2ldr)
 
     while True:
         windows.render()

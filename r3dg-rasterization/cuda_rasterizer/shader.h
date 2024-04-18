@@ -49,7 +49,7 @@ namespace CudaShader
 
 		// pr. frame texture information
 		float const *const depths;				// Gaussian depth in view space.
-		glm::vec3 const *const colors;				// Raw Gaussian SH color.
+		
 		glm::vec4 const *const conic_opacity;		// ???? Float4 that contains conic something in the first 3 indexes, and opacity in the last. Read up on original splatting paper.
 
 		// Precomputed 'texture' information from the neilf pbr decomposition
@@ -65,8 +65,8 @@ namespace CudaShader
                                             // float  global_incident_light
                                             // float  incident_visibility
 
-		// output
-		float* out_color;					// Sequential RGB color output of each splat. Will get combined based on alpha in the next step.
+		// input/output
+		glm::vec3 *const colors;			// sarts as raw Gaussian SH color, but can be overwritten by shader.
 	};
 
 	// Used as input and output interface to the shaders.
@@ -75,7 +75,7 @@ namespace CudaShader
 	// The reason we don't just create unpacked params from the start, is that it would take too long to do in the host functions.
 	//TODO: Test memory and speed cost of this approach.
 	//TODO: Also pass SHs? Can we do something interesting with them in the code? They function as a low-pass filter on the detail if you reduce the order.
-	__device__ struct shaderParams {
+	struct shaderParams {
 		// Constructor
 		__device__ shaderParams(PackedShaderParams params, int idx);
 
@@ -107,8 +107,7 @@ namespace CudaShader
 
 		// pr. frame texture information
 		const float depth;					// Mean splat depth in view space.
-		const glm::vec3 color;					// Raw splat SH color. In an optimized production, this would also be used as the shader color output, but I'll keep them sperate for debugging and demonstration.
-		const glm::vec4 conic_opacity;			// ???? Float4 that contains conic something in the first 3 indexes, and opacity in the last. Read up on original splatting paper.
+		const glm::vec4 conic_opacity;		// ???? Float4 that contains conic something in the first 3 indexes, and opacity in the last. Read up on original splatting paper.
 
 		// Precomputed 'texture' information from the neilf pbr decomposition
 		const glm::vec3 brdf_color;
@@ -123,7 +122,7 @@ namespace CudaShader
 
 		// output
 		// We use pointers to the output instead of return values to make it easy to extend during development.
-		float* out_color;					// RGB color output the splat. Will get combined based on alpha in the next step.
+		glm::vec3 *const color;					// RGB color output the splat. Will get combined based on alpha in the next step.
 	};
 
 	// Define a shared type of fuction pointer that can point to all implemented shaders.
