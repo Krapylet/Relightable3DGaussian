@@ -14,7 +14,7 @@ namespace CudaShader
     __device__ shaderParams::shaderParams(PackedShaderParams p, int idx):
         W(p.W),
         H(p.H),
-		orig_point({p.orig_points[idx + 0], p.orig_points[idx + 1], p.orig_points[idx + 2]}),
+		orig_point({p.orig_points[idx * 3 + 0], p.orig_points[idx * 3 + 1], p.orig_points[idx * 3 + 2]}),
         // world space position = 
         // view space up, right, forward,
         // world space up, right, forward,  		
@@ -31,7 +31,7 @@ namespace CudaShader
 
 		// pr. frame texture information
 		depth (p.depths[idx]),                       
-		color ({p.colors[idx + 0], p.colors[idx + 0], p.colors[idx + 0]}),	// TODO: merge with out_color		
+		color ({p.colors[idx + 0], p.colors[idx + 1], p.colors[idx + 2]}),	// TODO: merge with out_color		
 		conic_opacity ({p.conic_opacity[idx].x, p.conic_opacity[idx].y, p.conic_opacity[idx].z, p.conic_opacity[idx].w}), // Todo: split opacity to own variable
 
 		// Precomputed 'texture' information from the neilf pbr decomposition
@@ -65,9 +65,9 @@ namespace CudaShader
 
         // Set output color
         //TODO: Make into glm::vec3 or something.
-        p.out_color[0] = p.color.r * opacity;
-        p.out_color[1] = p.color.g * opacity;
-        p.out_color[2] = p.color.b * opacity;
+        p.out_color[0] =  p.color.r * opacity;
+        p.out_color[1] =  p.color.g * opacity;
+        p.out_color[2] =  p.color.b * opacity;
     }
 
     template<int C>
