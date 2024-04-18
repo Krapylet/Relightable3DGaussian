@@ -30,25 +30,25 @@ namespace CudaShader
 		int const shaderStartingOffset;		// Starting index of the splats this shader needs to render.
 
 		// position information
-		glm::vec3 const *const positions;  			
-		glm::vec2 const *const screen_positions;		
+		glm::vec3 const *const __restrict__ positions;  			
+		glm::vec2 const *const __restrict__ screen_positions;		
 
 		// Projection information.
-		float const *const viewmatrix;
-		float const *const viewmatrix_inv;
-		float const *const projmatrix;
-		float const *const projmatrix_inv;
+		float const *const __restrict__ viewmatrix;
+		float const *const __restrict__ viewmatrix_inv;
+		float const *const __restrict__ projmatrix;
+		float const *const __restrict__ projmatrix_inv;
 		float const focal_x; float const focal_y;
 		float const tan_fovx; float const tan_fovy;
 
 		// pr. frame texture information
-		float const *const depths;				
-		glm::vec3 const *const colors_SH;				
-		glm::vec4 const *const conic_opacity;		
+		float const *const __restrict__ depths;				
+		glm::vec3 const *const __restrict__ colors_SH;				
+		glm::vec4 const *const __restrict__ conic_opacity;		
 
 		// Precomputed 'texture' information from the neilf pbr decomposition
 		int const  S;						// Feature channel count.
-		float const *const features;		// Interleaved array of precomputed 'textures' for each individual gaussian. Stored in the following order:
+		float const *const __restrict__ features;		// Interleaved array of precomputed 'textures' for each individual gaussian. Stored in the following order:
                                             // float3 brdf_color,
                                             // float3 normal,	       Object space
                                             // float3 base_color,
@@ -61,7 +61,7 @@ namespace CudaShader
 
 		// output
 		// In producion code, the colors field should function both as SH color input and as color output though reassignment, but we keep them seperate to make it easy to illustrate the difference.
-		glm::vec3 *const out_colors;			// shader color output.
+		glm::vec3 *const __restrict__ out_colors;			// shader color output.
 	};
 
 	// Used as input and output interface to the shaders.
@@ -84,18 +84,18 @@ namespace CudaShader
 		glm::vec2 const screen_position;		// mean 2d position of gaussian in screen space.
 
 		// Projection information.
-		float const *const viewmatrix;
+		float const *const __restrict__ viewmatrix;
 				// RightX  RightY  RightZ  0
                 // UpX     UpY     UpZ     0
                 // LookX   LookY   LookZ   0
                 // PosX    PosY    PosZ    1
-		float const *const viewmatrix_inv;
+		float const *const __restrict__ viewmatrix_inv;
 				// RightX  UpX     LookX      0
                 // RightY  UpY     LookY      0
                 // RightZ  UpZ     LookZ      0
                 // -(Pos*Right)  -(Pos*Up)  -(Pos*Look)  1
-		float const *const projmatrix;
-		float const *const projmatrix_inv;
+		float const *const __restrict__ projmatrix;
+		float const *const __restrict__ projmatrix_inv;
 		float const focal_x; float const focal_y;
 		float const tan_fovx; float const tan_fovy;
 		glm::vec3 const camera_position;	// Position of camera in world space
@@ -103,8 +103,8 @@ namespace CudaShader
 		// pr. frame texture information
 		float const depth;					// Mean splat depth in view space.
 		glm::vec4 const conic_opacity;		// ???? Float4 that contains conic something in the first 3 indexes, and opacity in the last. Read up on original splatting paper.
-		glm::vec3 const *const color_SH;	// Color from SH evaluation
-		
+		glm::vec3 const *const __restrict__ color_SH;	// Color from SH evaluation
+
 		// Precomputed 'texture' information from the neilf pbr decomposition
 		glm::vec3 const color_brdf;			// pbr splat color
 		glm::vec3 const normal;				// Splat normal in object space
@@ -118,7 +118,7 @@ namespace CudaShader
 
 		// output
 		// We use pointers to the output instead of return values to make it easy to extend during development.
-		glm::vec3 *const out_color;					// RGB color output the splat. Will get combined based on alpha in the next step.
+		glm::vec3 *const __restrict__ out_color;					// RGB color output the splat. Will get combined based on alpha in the next step.
 	};
 
 	// Define a shared type of fuction pointer that can point to all implemented shaders.

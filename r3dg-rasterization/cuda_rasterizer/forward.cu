@@ -641,25 +641,25 @@ void FORWARD::render_pseudo_normal(
 }
 	
 void FORWARD::shade(
-		const int shaderCount,
-		const float* shaderIDs,
-		const float* shaderIndexOffset,
-		int W, int H,			
-		int P,					
-		const float* positions,
-		float2* screen_positions,
-		const float* viewmatrix,
-		const float* viewmatrix_inv,
-		const float* projmatrix,
-		const float* projmatrix_inv,
-		const float focal_x, float focal_y,
-		const float tan_fovx, float tan_fovy,
-		float* depths,	
-		float* colors,		
-		float4* conic_opacity, 
-		int S,					
-		const float* features,
-		float* shader_colors
+		int const shaderCount,
+		float const *const __restrict__ shaderIDs,
+		float const *const __restrict__ shaderIndexOffset,
+		int const W, int const H,			
+		int const P,					
+		float const *const __restrict__ positions,
+		float2 const *const __restrict__ screen_positions,
+		float const *const __restrict__ viewmatrix,
+		float const *const __restrict__ viewmatrix_inv,
+		float const *const __restrict__ projmatrix,
+		float const *const __restrict__ projmatrix_inv,
+		float const focal_x, float const focal_y,
+		float const tan_fovx, float const tan_fovy,
+		float const *const __restrict__ depths,	
+		float const *const __restrict__ colors_SH,		
+		float4 const *const __restrict__ conic_opacity, 
+		int const S,					
+		float const *const __restrict__ features,
+		float *const __restrict__ out_colors
 		)
 {
 	
@@ -690,7 +690,7 @@ void FORWARD::shade(
 			splatsInShader,
 			currentSplatIndex,			
 			(glm::vec3*) positions,
-			(glm::vec2*)screen_positions,
+			(glm::vec2*) screen_positions,
 			viewmatrix,
 			viewmatrix_inv,
 			projmatrix,
@@ -698,11 +698,11 @@ void FORWARD::shade(
 			focal_x, focal_y,
 			tan_fovx, tan_fovy,
 			depths,
-			(glm::vec3*)colors,
+			(glm::vec3*)colors_SH,
 			(glm::vec4*)conic_opacity, 
 			S,					
 			features,
-			(glm::vec3*)shader_colors
+			(glm::vec3*)out_colors
 		};
 
 		// Then execute the shaders asyncronously.

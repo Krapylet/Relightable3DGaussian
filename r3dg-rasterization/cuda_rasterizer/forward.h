@@ -53,31 +53,26 @@ namespace FORWARD
 
 	// Runs after preprocess but before renderer. Allows changing values for individual gaussians.
 	void shade(
-		const int shaderCount,
-		const float* shaderIDs,			
-		const float* shaderIndexOffset,  // Number of splats to render with each shader
-		int W, int H,	
-		// TODO:  void *shader			// Function pointer to specific shader to call.
-		// Gaussian information:
-		int P,							// Total number of gaussians.
-		const float* positions,  		// mean 3d position of gaussian in world space.
-		float2* screen_positions,		// mean 2d position of gaussian in screen space.
-		// Projection information
-		const float* viewmatrix,
-		const float* viewmatrix_inv,
-		const float* projmatrix,
-		const float* projmatrix_inv,
-		const float focal_x, float focal_y,
-		const float tan_fovx, float tan_fovy,
-		// pr. frame texture information
-		float* depths,					// Gaussian depth in view space.
-		float* colors, 
-		float4* conic_opacity,          // ???? Read up on original splatting paper.
-		// Precomputed 'texture' information
-		int S,							// Feature channel count.
-		const float* features,			// Interleaved array of precomputed 'textures', such as color, normal, AOO ect for each gaussian.
+		int const shaderCount,
+		float const *const shaderIDs,			
+		float const *const shaderIndexOffset,
+		int const W, int const H,	
+		int const P,
+		float const *const positions,  
+		float2 const *const screen_positions,
+		float const *const viewmatrix,
+		float const *const viewmatrix_inv,
+		float const *const projmatrix,
+		float const *const projmatrix_inv,
+		const float focal_x, float const focal_y,
+		const float tan_fovx, float const tan_fovy,
+		float const *const depths,		
+		float const *const colors_SH, 
+		float4 const *const conic_opacity,        
+		int const S,						
+		float const *const features,	
 		// output
-		float* shader_colors					// Raw Gaussian SH color.
+		float *const out_colors
 	);
 
 	// Main rasterization method.
