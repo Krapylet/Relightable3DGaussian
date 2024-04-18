@@ -22,39 +22,39 @@ namespace CudaShader
 	// This representation contains data for all the splats packed together.
 	struct PackedShaderParams {
 		// Screen information:
-        const int W; const int H;			// Sceen width and height
+        int const W; int const H;			// Sceen width and height
 
         // Model information:
-		const int P;						// Total number of splats.
-		const int splatsInShader;			// Total number of splats to be rendered with this shader.
-		const int shaderStartingOffset;		// Starting index of the splats this shader needs to render.
-		const float* orig_points;  			// mean 3d position of gaussian in world space.
-		const float2* points_xy_image;		// mean 2d position of gaussian in screen space.
+		int const P;						// Total number of splats.
+		int const splatsInShader;			// Total number of splats to be rendered with this shader.
+		int const shaderStartingOffset;		// Starting index of the splats this shader needs to render.
+		glm::vec3 const *const orig_points;  			// mean 3d position of gaussian in world space.
+		glm::vec2 const *const points_xy_image;		// mean 2d position of gaussian in screen space.
 
 		// Projection information.
-		const float* viewmatrix;
+		float const *const viewmatrix;
 				// RightX  RightY  RightZ  0
                 // UpX     UpY     UpZ     0
                 // LookX   LookY   LookZ   0
                 // PosX    PosY    PosZ    1
-		const float* viewmatrix_inv;
+		float const *const viewmatrix_inv;
 				// RightX  UpX     LookX      0
                 // RightY  UpY     LookY      0
                 // RightZ  UpZ     LookZ      0
                 // -(Pos*Right)  -(Pos*Up)  -(Pos*Look)  1
-		const float* projmatrix;
-		const float* projmatrix_inv;
+		float const *const projmatrix;
+		float const *const projmatrix_inv;
 		const float focal_x; const float focal_y;
 		const float tan_fovx; const float tan_fovy;
 
 		// pr. frame texture information
-		const float* depths;				// Gaussian depth in view space.
-		const float* colors;				// Raw Gaussian SH color.
-		const float4* conic_opacity;		// ???? Float4 that contains conic something in the first 3 indexes, and opacity in the last. Read up on original splatting paper.
+		float const *const depths;				// Gaussian depth in view space.
+		glm::vec3 const *const colors;				// Raw Gaussian SH color.
+		glm::vec4 const *const conic_opacity;		// ???? Float4 that contains conic something in the first 3 indexes, and opacity in the last. Read up on original splatting paper.
 
 		// Precomputed 'texture' information from the neilf pbr decomposition
-		const int S;						// Feature channel count.
-		const float* features;				// Interleaved array of precomputed 'textures' for each individual gaussian. Stored in the following order:
+		int const S;						// Feature channel count.
+		float const *const features;				// Interleaved array of precomputed 'textures' for each individual gaussian. Stored in the following order:
                                             // float3 brdf_color,
                                             // float3 normal,	       Object space
                                             // float3 base_color,
@@ -80,7 +80,7 @@ namespace CudaShader
 		__device__ shaderParams(PackedShaderParams params, int idx);
 
 		// Screen information:
-        const int W; const int H;							// Sceen width and height
+        int const W; int const H;							// Sceen width and height
 		// TODO: Collapse depth into a screen texture during the preprocessing (after the SH shader), so we can see the depth of the entire scene during this step.
 		// This woudl be a cheap way to approximate how visible each individual splat is. 
 
@@ -89,18 +89,18 @@ namespace CudaShader
 		const glm::vec2 point_xy_image;		// mean 2d position of gaussian in screen space.
 
 		// Projection information.
-		const float* viewmatrix;
+		float const *const viewmatrix;
 				// RightX  RightY  RightZ  0
                 // UpX     UpY     UpZ     0
                 // LookX   LookY   LookZ   0
                 // PosX    PosY    PosZ    1
-		const float* viewmatrix_inv;
+		float const *const viewmatrix_inv;
 				// RightX  UpX     LookX      0
                 // RightY  UpY     LookY      0
                 // RightZ  UpZ     LookZ      0
                 // -(Pos*Right)  -(Pos*Up)  -(Pos*Look)  1
-		const float* projmatrix;
-		const float* projmatrix_inv;
+		float const *const projmatrix;
+		float const *const projmatrix_inv;
 		const float focal_x; float focal_y;
 		const float tan_fovx; float tan_fovy;
 		const glm::vec3 camera_position;

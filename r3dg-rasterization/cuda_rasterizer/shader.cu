@@ -14,11 +14,11 @@ namespace CudaShader
     __device__ shaderParams::shaderParams(PackedShaderParams p, int idx):
         W(p.W),
         H(p.H),
-		orig_point({p.orig_points[idx * 3 + 0], p.orig_points[idx * 3 + 1], p.orig_points[idx * 3 + 2]}),
+		orig_point(p.orig_points[idx]),
         // world space position = 
         // view space up, right, forward,
         // world space up, right, forward,  		
-		point_xy_image(p.points_xy_image[idx].x, p.points_xy_image[idx].y),
+		point_xy_image(p.points_xy_image[idx]),
 		viewmatrix(p.viewmatrix),
 		viewmatrix_inv(p.viewmatrix_inv),
 		projmatrix (p.projmatrix),
@@ -31,19 +31,19 @@ namespace CudaShader
 
 		// pr. frame texture information
 		depth (p.depths[idx]),                       
-		color ({p.colors[idx + 0], p.colors[idx + 1], p.colors[idx + 2]}),	// TODO: merge with out_color		
-		conic_opacity ({p.conic_opacity[idx].x, p.conic_opacity[idx].y, p.conic_opacity[idx].z, p.conic_opacity[idx].w}), // Todo: split opacity to own variable
+		color (p.colors[idx]),	// TODO: merge with out_color		
+		conic_opacity (p.conic_opacity[idx]), // Todo: split opacity to own variable
 
 		// Precomputed 'texture' information from the neilf pbr decomposition
-		brdf_color ({p.features[idx + 0], p.features[idx + 1], p.features[idx + 2]}),
-		normal ({p.features[idx + 3], p.features[idx + 4], p.features[idx + 5]}),
-		base_color ({p.features[idx + 6], p.features[idx + 7], p.features[idx + 8]}),
-		roughness (p.features[idx + 9]),
-		metallic (p.features[idx + 10]),
-		incident_light (p.features[idx + 11]),
-		local_incident_light (p.features[idx + 12]),
-		global_incident_light (p.features[idx + 13]),
-		incident_visibility (p.features[idx + 14]),
+		brdf_color ({p.features[idx * p.S + 0], p.features[idx * p.S + 1], p.features[idx * p.S + 2]}),
+		normal ({p.features[idx * p.S + 3], p.features[idx * p.S + 4], p.features[idx * p.S + 5]}),
+		base_color ({p.features[idx * p.S + 6], p.features[idx * p.S + 7], p.features[idx * p.S + 8]}),
+		roughness (p.features[idx * p.S + 9]),
+		metallic (p.features[idx * p.S + 10]),
+		incident_light (p.features[idx * p.S + 11]),
+		local_incident_light (p.features[idx * p.S + 12]),
+		global_incident_light (p.features[idx * p.S + 13]),
+		incident_visibility (p.features[idx * p.S + 14]),
 
 		// output
 		// We use pointers to the output instead of return values to make it easy to extend during development.
@@ -57,17 +57,16 @@ namespace CudaShader
     {
         // Get angle between splat and camera:
         glm::vec3 directionToCamera = p.camera_position - p.orig_point;
-        float angle = 1 - abs(glm::dot(glm::normalize(directionToCamera), glm::normalize(p.normal)));
+        float angle = 1 - glm::abs(glm::dot(glm::normalize(directionToCamera), glm::normalize(p.normal)));
         // easing from https://easings.net/#easeInOutQuint
         float opacity = angle < 0.5
             ? 1 - 16 * pow(angle, 5)
             : pow(-2 * angle + 2, 5) / 2;
 
         // Set output color
-        //TODO: Make into glm::vec3 or something.
-        p.out_color[0] =  p.color.r * opacity;
-        p.out_color[1] =  p.color.g * opacity;
-        p.out_color[2] =  p.color.b * opacity;
+        p.out_color[0] = p.color.r * opacity;
+        p.out_color[1] = p.color.g * opacity;
+        p.out_color[2] = p.color.b * opacity;
     }
 
     template<int C>
@@ -75,7 +74,7 @@ namespace CudaShader
     {
         // Get angle between splat and camera:
         glm::vec3 directionToCamera = p.camera_position - p.orig_point;
-        float angle = 1 - abs(glm::dot(glm::normalize(directionToCamera), glm::normalize(p.normal)));
+        float angle = 1 - glm::abs(glm::dot(glm::normalize(directionToCamera), glm::normalize(p.normal)));
         // easing from https://easings.net/#easeInOutQuint
         float opacity = angle < 0.5
             ? 1 - 16 * pow(angle, 5)
