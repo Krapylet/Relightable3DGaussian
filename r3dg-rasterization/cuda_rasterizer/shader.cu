@@ -51,7 +51,6 @@ namespace CudaShader
 		// for now we're not actually doing anyting in the constuctior other than initializing the constants.
     }
 
-    template<int C>
     __device__ static void OutlineShaderCUDA(shaderParams p)
     {
         // Get angle between splat and camera:
@@ -66,7 +65,6 @@ namespace CudaShader
         *p.out_color = (*p.color_SH) * opacity;
     }
 
-    template<int C>
     __device__ static void WireframeShaderCUDA(shaderParams p)
     {
         // Get angle between splat and camera:
@@ -82,8 +80,8 @@ namespace CudaShader
     }
 
     ///// Assign all the shaders to their short handles.
-    __device__ shader outlineShader = &OutlineShaderCUDA<NUM_CHANNELS>;
-    __device__ shader wireframeShader = &WireframeShaderCUDA<NUM_CHANNELS>;
+    __device__ shader outlineShader = &OutlineShaderCUDA;
+    __device__ shader wireframeShader = &WireframeShaderCUDA;
 
     __global__ void ExecuteShader(shader shader, PackedShaderParams packedParams){
         // calculate index for the spalt.
