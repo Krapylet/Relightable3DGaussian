@@ -29,7 +29,7 @@ setup(
                 "cuda_rasterizer/backward.cu",
                 "rasterize_points.cu",
                 "render_equation.cu",
-                "ext.cpp"],
+                "ext.cu"],
             dlink=True,
             extra_compile_args={
                 "nvcc": ["--device-c",

@@ -71,7 +71,6 @@ class _RasterizeGaussians(torch.autograd.Function):
             cov3Ds_precomp,
             raster_settings,
     ):
-
         # Restructure arguments the way that the C++ lib expects them
         args = (
             raster_settings.shaderIDs,
@@ -103,6 +102,9 @@ class _RasterizeGaussians(torch.autograd.Function):
             raster_settings.debug
         )
         
+        print("Trying to call GetShaderPointer")
+        pointer = _C.GetShaderPointer("DebugName")
+        print(f"Got the following pointer: {pointer}")
 
         # Invoke C++/CUDA rasterizer
         if raster_settings.debug:

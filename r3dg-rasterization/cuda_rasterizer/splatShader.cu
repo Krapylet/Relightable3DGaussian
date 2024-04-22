@@ -90,6 +90,15 @@ namespace SplatShader
     __device__ SplatShader outlineShader = &OutlineShaderCUDA;
     __device__ SplatShader wireframeShader = &WireframeShaderCUDA;
 
+    uint64_t GetSplatShader(std::string shaderName){
+        SplatShader::SplatShader h_shaderPointer;
+        size_t shaderMemorySize = sizeof(SplatShader::SplatShader);
+        cudaMemcpyFromSymbol(&h_shaderPointer, defaultShader, shaderMemorySize);
+
+        printf("Pointer adress on GPU: %p", h_shaderPointer);
+        return (uint64_t)h_shaderPointer;
+    }
+
     __global__ void ExecuteShader(SplatShader shader, PackedSplatShaderParams packedParams){
         // calculate index for the spalt.
         auto idx = cg::this_grid().thread_rank();
