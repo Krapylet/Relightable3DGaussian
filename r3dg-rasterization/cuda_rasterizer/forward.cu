@@ -639,6 +639,27 @@ void FORWARD::render_pseudo_normal(
         normals,
         surface_xyz);
 }
+
+std::vector<CudaShader::shader> GetShaderAddresses(){
+	// TODO: Ideally this vector should be build during initialization when analyzing which shaders are used by the provided gaussian models.
+	std::vector<CudaShader::shader> shaders;
+	size_t shaderMemorySize = sizeof(CudaShader::shader);
+
+	// Copy device shader pointers to host
+	CudaShader::shader h_defaultShader;
+	cudaMemcpyFromSymbol(&h_defaultShader, CudaShader::defaultShader, shaderMemorySize);
+	shaders.push_back(h_defaultShader);
+
+	CudaShader::shader h_outlineShader;
+	cudaMemcpyFromSymbol(&h_outlineShader, CudaShader::outlineShader, shaderMemorySize);
+	shaders.push_back(h_outlineShader);
+
+	CudaShader::shader h_wireframeShader;
+	cudaMemcpyFromSymbol(&h_wireframeShader, CudaShader::wireframeShader, shaderMemorySize);
+	shaders.push_back(h_wireframeShader);
+
+	return shaders;
+}
 	
 void FORWARD::shade(
 		int const shaderCount,
@@ -662,21 +683,9 @@ void FORWARD::shade(
 		float *const __restrict__ out_colors
 		)
 {
-	
-	// Ideally this vector should be build during initialization when analyzing which shaders are used by the provided gaussian models.
-	// But that is a bit difficult when the initialization process is written in python.
-	std::vector<CudaShader::shader> shaders;
-	size_t shaderMemorySize = sizeof(CudaShader::shader);
+	// Get pointers to the shader functions in device memory.
+	std::vector<CudaShader::shader> shaders = GetShaderAddresses();
 
-	// Copy device shader pointers to host 
-	CudaShader::shader h_outlineShader;
-	cudaMemcpyFromSymbol(&h_outlineShader, CudaShader::outlineShader, shaderMemorySize);
-	shaders.push_back(h_outlineShader);
-
-	CudaShader::shader h_wireframeShader;
-	cudaMemcpyFromSymbol(&h_wireframeShader, CudaShader::wireframeShader, shaderMemorySize);
-	shaders.push_back(h_wireframeShader);
-	
 	// Start execution of each shader.
 	int currentSplatIndex = 0;
 	for (size_t shaderIdx = 0; shaderIdx < shaderCount; shaderIdx++)

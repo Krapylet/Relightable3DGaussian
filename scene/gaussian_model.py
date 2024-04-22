@@ -85,7 +85,8 @@ class GaussianModel:
         #Used to keep track of how many splats has been assigned to each shader so far. 
         shaderIDIndexes = {
             0 : 0,
-            1 : 0
+            1 : 0,
+            2 : 0
         }
         
         # Define a dict of dicts of lists. It is a very strange syntax...
@@ -124,14 +125,14 @@ class GaussianModel:
             #shaderMapping[shaderID]["xyz_gradient_accum"].append(self.xyz_gradient_accum[i])
             #shaderMapping[shaderID]["normal_gradient_accum"].append(self.normal_gradient_accum[i])
             #shaderMapping[shaderID]["denom"].append(self.denom[i])
-            #if self.use_pbr:
-                #shaderMapping[shaderID]["roughness"].append(self._roughness[i])
-                #shaderMapping[shaderID]["metallic"].append(self._metallic[i])
-                #shaderMapping[shaderID]["visibility_dc"].append(self._visibility_dc[i])
-                #shaderMapping[shaderID]["incidents_dc"].append(self._incidents_dc[i])
-                #shaderMapping[shaderID]["base_color"].append(self._base_color[i])
-                #shaderMapping[shaderID]["visibility_rest"].append(self._visibility_rest[i])
-                #shaderMapping[shaderID]["incidents_rest"].append(self._incidents_rest[i])
+            if self.use_pbr:
+                shaderMapping[shaderID]["roughness"].append(self._roughness[i])
+                shaderMapping[shaderID]["metallic"].append(self._metallic[i])
+                shaderMapping[shaderID]["visibility_dc"].append(self._visibility_dc[i])
+                shaderMapping[shaderID]["incidents_dc"].append(self._incidents_dc[i])
+                shaderMapping[shaderID]["base_color"].append(self._base_color[i])
+                shaderMapping[shaderID]["visibility_rest"].append(self._visibility_rest[i])
+                shaderMapping[shaderID]["incidents_rest"].append(self._incidents_rest[i])
 
             if i == 10000:
                 i_tenK = (shaderID, shaderIDIndexes[shaderID])
@@ -152,14 +153,14 @@ class GaussianModel:
         #self.xyz_gradient_accum = self.concatenate_sorted_param_tensors(shaderMapping, shaderIDs, "xyz_gradient_accum")
         #self.normal_gradient_accum = self.concatenate_sorted_param_tensors(shaderMapping, shaderIDs, "normal_gradient_accum")
         #self.denom = self.concatenate_sorted_param_tensors(shaderMapping, shaderIDs, "denom")
-        #if self.use_pbr:
-         #   self._roughness = self.concatenate_sorted_param_tensors(shaderMapping, shaderIDs, "roughness")
-          #  self._metallic = self.concatenate_sorted_param_tensors(shaderMapping, shaderIDs, "metallic")
-           # self._visibility_dc = self.concatenate_sorted_param_tensors(shaderMapping, shaderIDs, "visibility_dc")
-            #self._incidents_dc = self.concatenate_sorted_param_tensors(shaderMapping, shaderIDs, "incidents_dc")
-            #self._base_color = self.concatenate_sorted_param_tensors(shaderMapping, shaderIDs, "base_color")
-            #self._visibility_rest = self.concatenate_sorted_param_tensors(shaderMapping, shaderIDs, "visibility_rest")
-            #self._incidents_rest = self.concatenate_sorted_param_tensors(shaderMapping, shaderIDs, "incidents_rest")
+        if self.use_pbr:
+            self._roughness = self.concatenate_sorted_param_tensors(shaderMapping, shaderIDs, "roughness")
+            self._metallic = self.concatenate_sorted_param_tensors(shaderMapping, shaderIDs, "metallic")
+            self._visibility_dc = self.concatenate_sorted_param_tensors(shaderMapping, shaderIDs, "visibility_dc")
+            self._incidents_dc = self.concatenate_sorted_param_tensors(shaderMapping, shaderIDs, "incidents_dc")
+            self._base_color = self.concatenate_sorted_param_tensors(shaderMapping, shaderIDs, "base_color")
+            self._visibility_rest = self.concatenate_sorted_param_tensors(shaderMapping, shaderIDs, "visibility_rest")
+            self._incidents_rest = self.concatenate_sorted_param_tensors(shaderMapping, shaderIDs, "incidents_rest")
 
         print("Sorting done.")
 

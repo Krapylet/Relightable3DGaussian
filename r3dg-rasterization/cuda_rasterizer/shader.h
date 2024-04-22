@@ -125,6 +125,7 @@ namespace CudaShader
     typedef void (*shader)(shaderParams params);
 
 	// Function pointers to the implemented shaders. Has the benefits of also being much more concise.
+	__device__ extern shader defaultShader;
 	__device__ extern shader outlineShader;
 	__device__ extern shader wireframeShader;
 	

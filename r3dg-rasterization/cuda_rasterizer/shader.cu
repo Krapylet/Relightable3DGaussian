@@ -51,6 +51,12 @@ namespace CudaShader
 		// for now we're not actually doing anyting in the constuctior other than initializing the constants.
     }
 
+    __device__ static void DefaultShaderCUDA(shaderParams p)
+    {
+        // Set output color
+        *p.out_color = (*p.color_SH);
+    }
+
     __device__ static void OutlineShaderCUDA(shaderParams p)
     {
         // Get angle between splat and camera:
@@ -80,6 +86,7 @@ namespace CudaShader
     }
 
     ///// Assign all the shaders to their short handles.
+    __device__ shader defaultShader = &DefaultShaderCUDA;
     __device__ shader outlineShader = &OutlineShaderCUDA;
     __device__ shader wireframeShader = &WireframeShaderCUDA;
 
