@@ -51,7 +51,7 @@ namespace SplatShader
 		// for now we're not actually doing anyting in the constuctior other than initializing the constants.
     }
 
-    __device__ static void DefaultShaderCUDA(SplatShaderParams p)
+    __device__ static void DefaultSplatShaderCUDA(SplatShaderParams p)
     {
         // Set output color
         *p.out_color = (*p.color_SH);
@@ -86,7 +86,7 @@ namespace SplatShader
     }
 
     ///// Assign all the shaders to their short handles.
-    __device__ SplatShader defaultShader = &DefaultShaderCUDA;
+    __device__ SplatShader defaultShader = &DefaultSplatShaderCUDA;
     __device__ SplatShader outlineShader = &OutlineShaderCUDA;
     __device__ SplatShader wireframeShader = &WireframeShaderCUDA;
 

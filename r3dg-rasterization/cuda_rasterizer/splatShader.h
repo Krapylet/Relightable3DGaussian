@@ -9,6 +9,8 @@
 
 #include <cuda.h>
 #include "cuda_runtime.h"
+#include <vector>
+#include <functional>
 
 #ifndef GLM_FORCE_CUDA
 	#define GLM_FORCE_CUDA
@@ -122,7 +124,14 @@ namespace SplatShader
 	};
 
 	// Define a shared type of fuction pointer that can point to all implemented shaders.
+	//typedef std::function<void(SplatShaderParams)> SplatShader;
     typedef void (*SplatShader)(SplatShaderParams params);
+
+	// A vector containing the adresses of all the shaders used in the program.
+	__device__ static std::vector<SplatShader> registeredSplatShaders;
+
+	// Getter function for function adresses. Populates RegisteredShaders first time it is called.
+
 
 	// Function pointers to the implemented shaders. Has the benefits of also being much more concise.
 	__device__ extern SplatShader defaultShader;
