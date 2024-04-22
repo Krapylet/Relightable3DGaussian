@@ -90,13 +90,28 @@ namespace SplatShader
     __device__ SplatShader outlineShader = &OutlineShaderCUDA;
     __device__ SplatShader wireframeShader = &WireframeShaderCUDA;
 
-    uint64_t GetSplatShader(std::string shaderName){
-        SplatShader::SplatShader h_shaderPointer;
+    std::map<std::string, uint64_t> GetSplatShaderAddressMap(){
+        // we cast pointers to uint64_t since pure pointers aren't supported by pybind
+        std::map<std::string, uint64_t> shaderMap;
         size_t shaderMemorySize = sizeof(SplatShader::SplatShader);
-        cudaMemcpyFromSymbol(&h_shaderPointer, defaultShader, shaderMemorySize);
+        
+        // Copy device shader pointers to host map
+        SplatShader::SplatShader h_defaultShader;
+        cudaMemcpyFromSymbol(&h_defaultShader, SplatShader::defaultShader, shaderMemorySize);
+        shaderMap["Default"] = (uint64_t)h_defaultShader;
 
-        printf("Pointer adress on GPU: %p", h_shaderPointer);
-        return (uint64_t)h_shaderPointer;
+        SplatShader::SplatShader h_outlineShader;
+        cudaMemcpyFromSymbol(&h_outlineShader, SplatShader::outlineShader, shaderMemorySize);
+        shaderMap["OutlineShader"] = (uint64_t)h_outlineShader;
+
+        SplatShader::SplatShader h_wireframeShader;
+        cudaMemcpyFromSymbol(&h_wireframeShader, SplatShader::wireframeShader, shaderMemorySize);
+        shaderMap["WireframeShader"] = (uint64_t)h_wireframeShader;
+
+
+
+
+        return shaderMap;
     }
 
     __global__ void ExecuteShader(SplatShader shader, PackedSplatShaderParams packedParams){

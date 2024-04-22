@@ -1,6 +1,6 @@
 /*
 *  Inspired by lai Mao at https://leimao.github.io/blog/Pass-Function-Pointers-to-Kernels-CUDA/
-*
+*  And the official cuda sample at https://github.com/NVIDIA/cuda-samples/blob/master/Samples/2_Concepts_and_Techniques/FunctionPointers/FunctionPointers_kernels.cu
 *
 *
 */
@@ -12,6 +12,7 @@
 #include <vector>
 #include <functional>
 #include <string>
+#include <map>
 
 #ifndef GLM_FORCE_CUDA
 	#define GLM_FORCE_CUDA
@@ -128,14 +129,14 @@ namespace SplatShader
 	//typedef std::function<void(SplatShaderParams)> SplatShader;
     typedef void (*SplatShader)(SplatShaderParams params);
 
-	// Getter function for function adresses. Populates RegisteredShaders first time it is called.
-	// Function is returned as a uint_t so we can pass it back to the python frontend though pybind.
-	uint64_t GetSplatShader(std::string shaderName);
-
 	// Function pointers to the implemented shaders. Has the benefits of also being much more concise.
 	__device__ extern SplatShader defaultShader;
 	__device__ extern SplatShader outlineShader;
 	__device__ extern SplatShader wireframeShader;
+	
+	// Returns a map of shader names and shader device function pointers that can be passed back to the python frontend though pybind.
+	// we cast pointers to uint64_t since pure pointers aren't supported by pybind
+	std::map<std::string, uint64_t> GetSplatShaderAddressMap();
 	
 	// Executes a shader on the GPU with the given parameters.
 	__global__ extern void ExecuteShader(SplatShader shader, PackedSplatShaderParams packedParams);

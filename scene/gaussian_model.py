@@ -15,6 +15,7 @@ from arguments import OptimizationParams
 from tqdm import tqdm
 from bvh import RayTracer
 from collections import defaultdict
+from r3dg_rasterization import _C
 
 
 class GaussianModel:

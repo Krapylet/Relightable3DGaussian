@@ -21,5 +21,5 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   m.def("render_equation_forward_complex", &RenderEquationForwardCUDA_complex);
   m.def("render_equation_backward", &RenderEquationBackwardCUDA);
   m.def("mark_visible", &markVisible);
-  m.def("GetShaderPointer", &SplatShader::GetSplatShader);
+  m.def("GetSplatShaderAddressMap", &SplatShader::GetSplatShaderAddressMap);
 }

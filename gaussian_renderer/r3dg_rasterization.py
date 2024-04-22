@@ -102,9 +102,9 @@ class _RasterizeGaussians(torch.autograd.Function):
             raster_settings.debug
         )
         
-        print("Trying to call GetShaderPointer")
-        pointer = _C.GetShaderPointer("DebugName")
-        print(f"Got the following pointer: {pointer}")
+        print("Trying to call GetSplatShaderAddressMap")
+        pointerMap = _C.GetSplatShaderAddressMap()
+        print(f"Got the following pointer: {pointerMap}\n With default k/v pair: {"Default"}:{pointerMap["Default"]}")
 
         # Invoke C++/CUDA rasterizer
         if raster_settings.debug:
