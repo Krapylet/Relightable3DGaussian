@@ -75,6 +75,32 @@ class GaussianModel:
             self._incidents_rest = torch.empty(0)
             self._visibility_dc = torch.empty(0)
             self._visibility_rest = torch.empty(0)
+
+    #Adds an additional tensor to the model, which contians the shader device function pointers for each individual splat. 
+    def append_shader_addresses(self):
+        splatCount = self._opacity.shape[0]
+        shaderAddressDictionary = _C.GetSplatShaderAddressMap()
+
+        self.shader_addresses = torch.empty(0)
+
+        print("Appending shader addresses to " + str(splatCount) + " splats")
+        for i in range(splatCount):
+
+            if i % 10000 == 0:
+                print(str(i) + " sorted")
+
+            # Determine which shader should be used for the splat.
+            # Ideally this should be determined directly in the object file so we know this when we load the model in.
+            splat_x_pos = self._xyz[i][0]
+            if splat_x_pos > 0:
+                shaderName = "Default"
+            else:
+                shaderName = "Wireframe"
+            
+            self.shader_addresses[i] = shaderAddressDictionary[shaderName]
+        print("Done appending adresses")
+
+
         
     #Sorts the data so splats that use the same shader is contigious.
     #Returns a map of shader IDs in sorted order and the count of splats using them.
