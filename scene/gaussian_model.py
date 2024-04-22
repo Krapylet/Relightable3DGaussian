@@ -81,21 +81,21 @@ class GaussianModel:
         splatCount = self._opacity.shape[0]
         shaderAddressDictionary = _C.GetSplatShaderAddressMap()
 
-        self.shader_addresses = torch.empty(0)
+        self.shader_addresses = torch.empty(splatCount, dtype=torch.int)
 
         print("Appending shader addresses to " + str(splatCount) + " splats")
         for i in range(splatCount):
 
             if i % 10000 == 0:
-                print(str(i) + " sorted")
+                print(str(i) + " appended")
 
             # Determine which shader should be used for the splat.
-            # Ideally this should be determined directly in the object file so we know this when we load the model in.
+            # Ideally assigned shaders sould be written direcly in the object file so we know this when we load the model in.
             splat_x_pos = self._xyz[i][0]
             if splat_x_pos > 0:
                 shaderName = "Default"
             else:
-                shaderName = "Wireframe"
+                shaderName = "WireframeShader"
             
             self.shader_addresses[i] = shaderAddressDictionary[shaderName]
         print("Done appending adresses")

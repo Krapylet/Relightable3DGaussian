@@ -53,13 +53,11 @@ namespace FORWARD
 
 	// Runs after preprocess but before renderer. Allows changing values for individual gaussians.
 	void RunSplatShaders(
-		int const shaderCount,
-		float const *const shaderIDs,			
-		float const *const shaderIndexOffset,
 		int const W, int const H,	
 		int const P,
 		float const *const positions,  
 		float2 const *const screen_positions,
+		int const *const shaderAddresses,
 		float const *const viewmatrix,
 		float const *const viewmatrix_inv,
 		float const *const projmatrix,

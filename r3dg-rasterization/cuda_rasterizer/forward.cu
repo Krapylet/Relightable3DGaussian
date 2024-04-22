@@ -662,13 +662,11 @@ std::vector<SplatShader::SplatShader> GetShaderAddresses(){
 }
 	
 void FORWARD::RunSplatShaders(
-		int const shaderCount,
-		float const *const __restrict__ shaderIDs,
-		float const *const __restrict__ shaderIndexOffset,
 		int const W, int const H,			
 		int const P,					
 		float const *const __restrict__ positions,
 		float2 const *const __restrict__ screen_positions,
+		int const *const __restrict__ shaderAddresses,
 		float const *const __restrict__ viewmatrix,
 		float const *const __restrict__ viewmatrix_inv,
 		float const *const __restrict__ projmatrix,
@@ -683,21 +681,9 @@ void FORWARD::RunSplatShaders(
 		float *const __restrict__ out_colors
 		)
 {
-	// Get pointers to the shader functions in device memory.
-	std::vector<SplatShader::SplatShader> shaders = GetShaderAddresses();
-
-	// Start execution of each shader.
-	int currentSplatIndex = 0;
-	for (size_t shaderIdx = 0; shaderIdx < shaderCount; shaderIdx++)
-	{
-		// First pack the shader parameters
-		int shaderID = (int)shaderIDs[shaderIdx];
-		int splatsInShader = (int)shaderIndexOffset[shaderIdx];
 		SplatShader::PackedSplatShaderParams params {
 			W,H,			
-			P,		
-			splatsInShader,
-			currentSplatIndex,			
+			P,			
 			(glm::vec3*) positions,
 			(glm::vec2*) screen_positions,
 			viewmatrix,
@@ -714,11 +700,11 @@ void FORWARD::RunSplatShaders(
 			(glm::vec3*)out_colors
 		};
 
-		// Then execute the shaders asyncronously.
-		SplatShader::SplatShader currentShader = shaders[shaderID];
-		SplatShader::ExecuteShader<<<(splatsInShader + 255) / 256, 256>>>(currentShader, params);
-		currentSplatIndex += splatsInShader;
-	}
+		printf("Trying to execute shader: %i as %p\n", shaderAddresses[0], (SplatShader::SplatShader*)shaderAddresses[0]);
+		printf("Compared to Default: %p\n", &SplatShader::defaultShader);
+		SplatShader::ExecuteShader<<<(P + 255) / 256, 256>>>((SplatShader::SplatShader*)shaderAddresses, params);
+		printf("Shader executed!\n");
+
 	// Wait for each shader to finish.
 	cudaDeviceSynchronize();
 	

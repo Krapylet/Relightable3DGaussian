@@ -29,9 +29,6 @@ namespace CudaRasterizer
 			bool* present);
 
 		static int forward(
-			const int shaderCount,
-			const float* shaderIDs,
-			const float* shaderSplatCount,
 			std::function<char* (size_t)> geometryBuffer,
 			std::function<char* (size_t)> binningBuffer,
 			std::function<char* (size_t)> imageBuffer,
@@ -47,6 +44,7 @@ namespace CudaRasterizer
 			const float scale_modifier,
 			const float* rotations,
 			const float* cov3D_precomp,
+			const int* shaderAddresses,
 			const float* viewmatrix,
 			const float* viewmatrix_inv,
 			const float* projmatrix,

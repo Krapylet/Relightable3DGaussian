@@ -73,8 +73,6 @@ class _RasterizeGaussians(torch.autograd.Function):
     ):
         # Restructure arguments the way that the C++ lib expects them
         args = (
-            raster_settings.shaderIDs,
-            raster_settings.shaderIndexOffset,
             raster_settings.bg,
             means3D,
             features,
@@ -84,6 +82,7 @@ class _RasterizeGaussians(torch.autograd.Function):
             rotations,
             raster_settings.scale_modifier,
             cov3Ds_precomp,
+            raster_settings.shaderAddresses,
             raster_settings.viewmatrix,
             raster_settings.viewmatrix_inv,
             raster_settings.projmatrix,
@@ -102,9 +101,6 @@ class _RasterizeGaussians(torch.autograd.Function):
             raster_settings.debug
         )
         
-        print("Trying to call GetSplatShaderAddressMap")
-        pointerMap = _C.GetSplatShaderAddressMap()
-        print(f"Got the following pointer: {pointerMap}\n With default k/v pair: {"Default"}:{pointerMap["Default"]}")
 
         # Invoke C++/CUDA rasterizer
         if raster_settings.debug:
@@ -214,8 +210,7 @@ class GaussianRasterizationSettings(NamedTuple):
     backward_geometry: bool
     computer_pseudo_normal: bool
     debug: bool
-    shaderIndexOffset: torch.Tensor
-    shaderIDs: torch.Tensor
+    shaderAddresses: torch.Tensor
 
 
 class GaussianRasterizer(nn.Module):

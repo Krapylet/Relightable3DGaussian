@@ -90,23 +90,29 @@ namespace SplatShader
     __device__ SplatShader outlineShader = &OutlineShaderCUDA;
     __device__ SplatShader wireframeShader = &WireframeShaderCUDA;
 
-    std::map<std::string, uint64_t> GetSplatShaderAddressMap(){
-        // we cast pointers to uint64_t since pure pointers aren't supported by pybind
-        std::map<std::string, uint64_t> shaderMap;
-        size_t shaderMemorySize = sizeof(SplatShader::SplatShader);
+    __global__ void testPrint(){
+        printf("Casting shader pointer from: %p to %p \n", defaultShader, (int)defaultShader);
+    }
+
+    std::map<std::string, int> GetSplatShaderAddressMap(){
+        // we cast pointers to int since pure pointers aren't supported by pybind
+        std::map<std::string, int> shaderMap;
+        size_t shaderMemorySize = sizeof(SplatShader);
         
         // Copy device shader pointers to host map
         SplatShader::SplatShader h_defaultShader;
-        cudaMemcpyFromSymbol(&h_defaultShader, SplatShader::defaultShader, shaderMemorySize);
-        shaderMap["Default"] = (uint64_t)h_defaultShader;
+        cudaMemcpyFromSymbol(&h_defaultShader, defaultShader, shaderMemorySize);
+        shaderMap["Default"] = (int)h_defaultShader;
+
+        printf("Casting shader pointer from: %p to %p \n", defaultShader, h_defaultShader);
 
         SplatShader::SplatShader h_outlineShader;
-        cudaMemcpyFromSymbol(&h_outlineShader, SplatShader::outlineShader, shaderMemorySize);
-        shaderMap["OutlineShader"] = (uint64_t)h_outlineShader;
+        cudaMemcpyFromSymbol(&h_outlineShader, outlineShader, shaderMemorySize);
+        shaderMap["OutlineShader"] = (int)h_outlineShader;
 
         SplatShader::SplatShader h_wireframeShader;
-        cudaMemcpyFromSymbol(&h_wireframeShader, SplatShader::wireframeShader, shaderMemorySize);
-        shaderMap["WireframeShader"] = (uint64_t)h_wireframeShader;
+        cudaMemcpyFromSymbol(&h_wireframeShader, wireframeShader, shaderMemorySize);
+        shaderMap["WireframeShader"] = (int)h_wireframeShader;
 
 
 
@@ -114,19 +120,18 @@ namespace SplatShader
         return shaderMap;
     }
 
-    __global__ void ExecuteShader(SplatShader shader, PackedSplatShaderParams packedParams){
+    __global__ void ExecuteShader(SplatShader* shader, PackedSplatShaderParams packedParams){
         // calculate index for the spalt.
         auto idx = cg::this_grid().thread_rank();
-        if (idx >= packedParams.splatsInShader)
+        if (idx >= packedParams.P)
             return;
-        idx += packedParams.shaderStartingOffset;
 
         // Unpack shader parameters into a format that is easier to work with. Increases memory footprint as tradeoff.
         // Could easily be optimized away by only indexing into the params inside the shader, but for now I'm prioritizing ease of use.
         SplatShaderParams params(packedParams, idx);
 
         // No need to dereference the shader function pointer.
-        shader(params);
+        shader[idx](params);
     }
 
 }

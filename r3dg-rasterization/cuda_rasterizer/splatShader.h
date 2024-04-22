@@ -30,8 +30,6 @@ namespace SplatShader
 
         // shader execution information:
 		int const P;						// Total number of splats.
-		int const splatsInShader;			// Total number of splats to be rendered with this shader.
-		int const shaderStartingOffset;		// Starting index of the splats this shader needs to render.
 
 		// position information
 		glm::vec3 const *const __restrict__ positions;  			
@@ -135,11 +133,11 @@ namespace SplatShader
 	__device__ extern SplatShader wireframeShader;
 	
 	// Returns a map of shader names and shader device function pointers that can be passed back to the python frontend though pybind.
-	// we cast pointers to uint64_t since pure pointers aren't supported by pybind
-	std::map<std::string, uint64_t> GetSplatShaderAddressMap();
+	// we cast pointers to int since pure pointers aren't supported by pybind (ideally uint64_t, but pythorch only supports usigned 8-bit ints)
+	std::map<std::string, int> GetSplatShaderAddressMap();
 	
 	// Executes a shader on the GPU with the given parameters.
-	__global__ extern void ExecuteShader(SplatShader shader, PackedSplatShaderParams packedParams);
+	__global__ extern void ExecuteShader(SplatShader* shader, PackedSplatShaderParams packedParams);
 
 	
 };

@@ -198,9 +198,6 @@ CudaRasterizer::BinningState CudaRasterizer::BinningState::fromChunk(char*& chun
 // Forward rendering procedure for differentiable rasterization
 // of Gaussians.
 int CudaRasterizer::Rasterizer::forward(
-	const int shaderCount,
-	const float* shaderIDs,
-	const float* shaderIndexOffset,
 	std::function<char* (size_t)> geometryBuffer,
 	std::function<char* (size_t)> binningBuffer,
 	std::function<char* (size_t)> imageBuffer,
@@ -216,6 +213,7 @@ int CudaRasterizer::Rasterizer::forward(
 	const float scale_modifier,
 	const float* rotations,
 	const float* cov3D_precomp,
+	const int* shaderAddresses,
 	const float* viewmatrix,
 	const float* viewmatrix_inv,
 	const float* projmatrix,
@@ -295,14 +293,13 @@ int CudaRasterizer::Rasterizer::forward(
 	// gaussian shader: works on every single gaussian in order.
 	// takes in 2d position, 3d position, camera information, transformation matriexes and features.
 	// Outputs by modifying features.
+	
 	CHECK_CUDA(FORWARD::RunSplatShaders(
-		shaderCount,
-		shaderIDs,
-		shaderIndexOffset,
 		width, height,
 		P,							
 		means3D,  		
-		geomState.means2D,		
+		geomState.means2D,
+		shaderAddresses,
 		viewmatrix,
 		viewmatrix_inv,
 		projmatrix,
