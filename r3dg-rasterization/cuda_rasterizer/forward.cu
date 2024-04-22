@@ -11,7 +11,7 @@
 
 #include "forward.h"
 #include "auxiliary.h"
-#include "shader.h"
+#include "splatShader.h"
 #include <cooperative_groups.h>
 #include <cooperative_groups/reduce.h>
 #include <vector>
@@ -640,28 +640,28 @@ void FORWARD::render_pseudo_normal(
         surface_xyz);
 }
 
-std::vector<CudaShader::shader> GetShaderAddresses(){
+std::vector<SplatShader::SplatShader> GetShaderAddresses(){
 	// TODO: Ideally this vector should be build during initialization when analyzing which shaders are used by the provided gaussian models.
-	std::vector<CudaShader::shader> shaders;
-	size_t shaderMemorySize = sizeof(CudaShader::shader);
+	std::vector<SplatShader::SplatShader> shaders;
+	size_t shaderMemorySize = sizeof(SplatShader::SplatShader);
 
 	// Copy device shader pointers to host
-	CudaShader::shader h_defaultShader;
-	cudaMemcpyFromSymbol(&h_defaultShader, CudaShader::defaultShader, shaderMemorySize);
+	SplatShader::SplatShader h_defaultShader;
+	cudaMemcpyFromSymbol(&h_defaultShader, SplatShader::defaultShader, shaderMemorySize);
 	shaders.push_back(h_defaultShader);
 
-	CudaShader::shader h_outlineShader;
-	cudaMemcpyFromSymbol(&h_outlineShader, CudaShader::outlineShader, shaderMemorySize);
+	SplatShader::SplatShader h_outlineShader;
+	cudaMemcpyFromSymbol(&h_outlineShader, SplatShader::outlineShader, shaderMemorySize);
 	shaders.push_back(h_outlineShader);
 
-	CudaShader::shader h_wireframeShader;
-	cudaMemcpyFromSymbol(&h_wireframeShader, CudaShader::wireframeShader, shaderMemorySize);
+	SplatShader::SplatShader h_wireframeShader;
+	cudaMemcpyFromSymbol(&h_wireframeShader, SplatShader::wireframeShader, shaderMemorySize);
 	shaders.push_back(h_wireframeShader);
 
 	return shaders;
 }
 	
-void FORWARD::shade(
+void FORWARD::RunSplatShaders(
 		int const shaderCount,
 		float const *const __restrict__ shaderIDs,
 		float const *const __restrict__ shaderIndexOffset,
@@ -684,7 +684,7 @@ void FORWARD::shade(
 		)
 {
 	// Get pointers to the shader functions in device memory.
-	std::vector<CudaShader::shader> shaders = GetShaderAddresses();
+	std::vector<SplatShader::SplatShader> shaders = GetShaderAddresses();
 
 	// Start execution of each shader.
 	int currentSplatIndex = 0;
@@ -693,7 +693,7 @@ void FORWARD::shade(
 		// First pack the shader parameters
 		int shaderID = (int)shaderIDs[shaderIdx];
 		int splatsInShader = (int)shaderIndexOffset[shaderIdx];
-		CudaShader::PackedShaderParams params {
+		SplatShader::PackedSplatShaderParams params {
 			W,H,			
 			P,		
 			splatsInShader,
@@ -715,8 +715,8 @@ void FORWARD::shade(
 		};
 
 		// Then execute the shaders asyncronously.
-		CudaShader::shader currentShader = shaders[shaderID];
-		CudaShader::ExecuteShader<<<(splatsInShader + 255) / 256, 256>>>(currentShader, params);
+		SplatShader::SplatShader currentShader = shaders[shaderID];
+		SplatShader::ExecuteShader<<<(splatsInShader + 255) / 256, 256>>>(currentShader, params);
 		currentSplatIndex += splatsInShader;
 	}
 	// Wait for each shader to finish.

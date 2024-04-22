@@ -1,4 +1,4 @@
-#include "shader.h"
+#include "splatShader.h"
 #include "config.h"
 #include <cooperative_groups.h>
 #ifndef GLM_FORCE_CUDA
@@ -9,9 +9,9 @@
 
 namespace cg = cooperative_groups;
 
-namespace CudaShader
+namespace SplatShader
 {
-    __device__ shaderParams::shaderParams(PackedShaderParams p, int idx):
+    __device__ SplatShaderParams::SplatShaderParams(PackedSplatShaderParams p, int idx):
         W(p.W),
         H(p.H),
 		position(p.positions[idx]),
@@ -51,13 +51,13 @@ namespace CudaShader
 		// for now we're not actually doing anyting in the constuctior other than initializing the constants.
     }
 
-    __device__ static void DefaultShaderCUDA(shaderParams p)
+    __device__ static void DefaultShaderCUDA(SplatShaderParams p)
     {
         // Set output color
         *p.out_color = (*p.color_SH);
     }
 
-    __device__ static void OutlineShaderCUDA(shaderParams p)
+    __device__ static void OutlineShaderCUDA(SplatShaderParams p)
     {
         // Get angle between splat and camera:
         glm::vec3 directionToCamera = p.camera_position - p.position;
@@ -71,7 +71,7 @@ namespace CudaShader
         *p.out_color = (*p.color_SH) * opacity;
     }
 
-    __device__ static void WireframeShaderCUDA(shaderParams p)
+    __device__ static void WireframeShaderCUDA(SplatShaderParams p)
     {
         // Get angle between splat and camera:
         glm::vec3 directionToCamera = p.camera_position - p.position;
@@ -86,11 +86,11 @@ namespace CudaShader
     }
 
     ///// Assign all the shaders to their short handles.
-    __device__ shader defaultShader = &DefaultShaderCUDA;
-    __device__ shader outlineShader = &OutlineShaderCUDA;
-    __device__ shader wireframeShader = &WireframeShaderCUDA;
+    __device__ SplatShader defaultShader = &DefaultShaderCUDA;
+    __device__ SplatShader outlineShader = &OutlineShaderCUDA;
+    __device__ SplatShader wireframeShader = &WireframeShaderCUDA;
 
-    __global__ void ExecuteShader(shader shader, PackedShaderParams packedParams){
+    __global__ void ExecuteShader(SplatShader shader, PackedSplatShaderParams packedParams){
         // calculate index for the spalt.
         auto idx = cg::this_grid().thread_rank();
         if (idx >= packedParams.splatsInShader)
@@ -99,7 +99,7 @@ namespace CudaShader
 
         // Unpack shader parameters into a format that is easier to work with. Increases memory footprint as tradeoff.
         // Could easily be optimized away by only indexing into the params inside the shader, but for now I'm prioritizing ease of use.
-        shaderParams params(packedParams, idx);
+        SplatShaderParams params(packedParams, idx);
 
         // No need to dereference the shader function pointer.
         shader(params);

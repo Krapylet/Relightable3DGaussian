@@ -295,11 +295,7 @@ int CudaRasterizer::Rasterizer::forward(
 	// gaussian shader: works on every single gaussian in order.
 	// takes in 2d position, 3d position, camera information, transformation matriexes and features.
 	// Outputs by modifying features.
-
-
-	
-
-	CHECK_CUDA(FORWARD::shade(
+	CHECK_CUDA(FORWARD::RunSplatShaders(
 		shaderCount,
 		shaderIDs,
 		shaderIndexOffset,
