@@ -1,4 +1,4 @@
-#include "ShShader.h"
+#include "shShader.h"
 #include "config.h"
 #include <cooperative_groups.h>
 #ifndef GLM_FORCE_CUDA
@@ -18,26 +18,43 @@ namespace ShShader
 
     __device__ static void DefaultShShaderCUDA(ShShaderParams p)
     {
-
+        // Set output color
+        //*p.out_color = (*p.color_SH);
     }
 
-    ///// Assign all the shaders to their short handles.
-    __device__ ShShader defaultShader = &DefaultShShaderCUDA;
+    std::map<std::string, int64_t> GetShShaderAddressMap(){
+        // we cast pointers to numbers since most pointers aren't supported by pybind
+        // Device function pointers seem to be 8 bytes long (at least on the devlopment machine with a GTX 2080 and when compiling to 64bit mode)
+        // The highest unsigned integer supported by torch, which we use for contigious memory, is 1 byte ints.
+        // This means we can either cut the pointer into 8 small ints when we send them back and forth to the python frontend,
+        // Or we can try to make our own pybind datatype binding.
+        // alternatively, we can try to do our own casting by using bitwise OR to encode the pointer into a signed int64 anyway.
 
-    __global__ void ExecuteShader(ShShader shader, PackedShShaderParams packedParams){
+        std::map<std::string, int64_t> shaderMap;
+        size_t shaderMemorySize = sizeof(ShShader);
+        
+        // Copy device shader pointers to host map
+        ShShader::ShShader h_defaultShader;
+        cudaMemcpyFromSymbol(&h_defaultShader, &DefaultShShaderCUDA, shaderMemorySize);
+        shaderMap["Default"] = (int64_t)h_defaultShader;
+
+        return shaderMap;
+    }
+
+    __global__ void ExecuteShader(ShShader* shaders, PackedShShaderParams packedParams){
         // calculate index for the spalt.
         auto idx = cg::this_grid().thread_rank();
-        if (idx >= packedParams.splatsInShader)
+        if (idx >= packedParams.P)
             return;
-        idx += packedParams.shaderStartingOffset;
 
         // Unpack shader parameters into a format that is easier to work with. Increases memory footprint as tradeoff.
         // Could easily be optimized away by only indexing into the params inside the shader, but for now I'm prioritizing ease of use.
         ShShaderParams params(packedParams, idx);
 
         // No need to dereference the shader function pointer.
-        shader(params);
+        //shaders[idx](params);
+
+        DefaultShShaderCUDA(params);
     }
 
 }
-

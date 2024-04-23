@@ -86,13 +86,11 @@ namespace SplatShader
     }
 
     ///// Assign all the shaders to their short handles.
+    // we need to keep them in constant device memory for them to stay valid when passed to host.
     __device__ const SplatShader defaultShader = &DefaultSplatShaderCUDA;
     __device__ const SplatShader outlineShader = &OutlineShaderCUDA;
     __device__ const SplatShader wireframeShader = &WireframeShaderCUDA;
 
-    __global__ void testPrint(){
-        printf("Casting shader pointer from: %p to %p \n", defaultShader, (int)defaultShader);
-    }
 
     std::map<std::string, int64_t> GetSplatShaderAddressMap(){
         // we cast pointers to numbers since most pointers aren't supported by pybind
@@ -117,9 +115,6 @@ namespace SplatShader
         SplatShader::SplatShader h_wireframeShader;
         cudaMemcpyFromSymbol(&h_wireframeShader, wireframeShader, shaderMemorySize);
         shaderMap["WireframeShader"] = (int64_t)h_wireframeShader;
-
-
-
 
         return shaderMap;
     }

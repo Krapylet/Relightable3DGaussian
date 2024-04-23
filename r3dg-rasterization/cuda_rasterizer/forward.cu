@@ -12,6 +12,7 @@
 #include "forward.h"
 #include "auxiliary.h"
 #include "splatShader.h"
+#include "shShader.h"
 #include <cooperative_groups.h>
 #include <cooperative_groups/reduce.h>
 #include <vector>
@@ -639,56 +640,112 @@ void FORWARD::render_pseudo_normal(
         normals,
         surface_xyz);
 }
-	
-void FORWARD::RunSplatShaders(
-		int const W, int const H,			
-		int const P,					
-		float const *const __restrict__ positions,
-		float2 const *const __restrict__ screen_positions,
-		int64_t const *const __restrict__ shaderAddresses,
-		float const *const __restrict__ viewmatrix,
-		float const *const __restrict__ viewmatrix_inv,
-		float const *const __restrict__ projmatrix,
-		float const *const __restrict__ projmatrix_inv,
-		float const focal_x, float const focal_y,
-		float const tan_fovx, float const tan_fovy,
-		float const *const __restrict__ depths,	
-		float const *const __restrict__ colors_SH,		
-		float4 const *const __restrict__ conic_opacity, 
-		int const S,					
-		float const *const __restrict__ features,
-		float *const __restrict__ out_colors
-		)
-{
-		SplatShader::PackedSplatShaderParams params {
-			W,H,			
-			P,			
-			(glm::vec3*) positions,
-			(glm::vec2*) screen_positions,
-			viewmatrix,
-			viewmatrix_inv,
-			projmatrix,
-			projmatrix_inv,
-			focal_x, focal_y,
-			tan_fovx, tan_fovy,
-			depths,
-			(glm::vec3*)colors_SH,
-			(glm::vec4*)conic_opacity, 
-			S,					
-			features,
-			(glm::vec3*)out_colors
-		};
-		
-		// For some reason the device is not allowed to dereference the function pointers if they're stored on host
-		// But it *is* allowed to derefrence alle the other pointers, such as out_colors?
-		// Anyway, this is fixed by copying all the shader addresses to device before we call them.
-		// (The addresses are stoerd as int64_ts, so there's also an implicit cast to SplatShader here.)
-		SplatShader::SplatShader* d_shaderAddresses;
-		size_t sizeOfAddresses = P * sizeof(SplatShader::SplatShader);
-		cudaMalloc(&d_shaderAddresses, sizeOfAddresses);
-		cudaMemcpy(d_shaderAddresses, shaderAddresses, sizeOfAddresses, cudaMemcpyHostToDevice);
 
-		SplatShader::ExecuteShader<<<(P + 255) / 256, 256>>>(d_shaderAddresses, params);
+void FORWARD::RunSHShaders(
+	const int P,
+	int64_t const *const shaderAddresses,
+
+	//input
+	float const scale_modifier,
+	dim3 const grid, // Could maybe be made dynamic?
+	float const *const viewmatrix,
+	float const *const viewmatrix_inv,
+	float const *const projmatrix,
+	float const *const projmatrix_inv,
+	int const W, int const H,
+	float const focal_x, float const focal_y,
+	float const tan_fovx, float const tan_fovy,
+
+	//input/output   -   contains values when the method is called that can be changed.
+	float *const means3D,
+	glm::vec3 *const scales,
+	glm::vec4 *const rotations,
+	float *const opacities,
+	float *const shs
+	)
+{
+	ShShader::PackedShShaderParams params {
+		P,
+		scale_modifier,
+		grid,			
+		viewmatrix,
+		viewmatrix_inv,
+		projmatrix,
+		projmatrix_inv,
+		W, H,
+		focal_x, focal_y,
+		tan_fovx, tan_fovy,
+		means3D,
+		scales,
+		rotations,
+		opacities,
+		shs
+	};
+	
+	// For some reason the device is not allowed to dereference the function pointers if they're stored on host
+	// But it *is* allowed to derefrence alle the other pointers, such as out_colors?
+	// Anyway, this is fixed by copying all the shader addresses to device before we call them.
+	// (The addresses are stoerd as int64_ts, so there's also an implicit cast to SplatShader here.)
+	ShShader::ShShader* d_shaderAddresses;
+	size_t sizeOfAddresses = P * sizeof(ShShader::ShShader);
+	cudaMalloc(&d_shaderAddresses, sizeOfAddresses);
+	cudaMemcpy(d_shaderAddresses, shaderAddresses, sizeOfAddresses, cudaMemcpyHostToDevice);
+
+	ShShader::ExecuteShader<<<(P + 255) / 256, 256>>>(d_shaderAddresses, params);
+
+	// Wait for each shader to finish.
+	cudaDeviceSynchronize();
+}
+
+void FORWARD::RunSplatShaders(
+	int const W, int const H,			
+	int const P,					
+	float const *const __restrict__ positions,
+	float2 const *const __restrict__ screen_positions,
+	int64_t const *const __restrict__ shaderAddresses,
+	float const *const __restrict__ viewmatrix,
+	float const *const __restrict__ viewmatrix_inv,
+	float const *const __restrict__ projmatrix,
+	float const *const __restrict__ projmatrix_inv,
+	float const focal_x, float const focal_y,
+	float const tan_fovx, float const tan_fovy,
+	float const *const __restrict__ depths,	
+	float const *const __restrict__ colors_SH,		
+	float4 const *const __restrict__ conic_opacity, 
+	int const S,					
+	float const *const __restrict__ features,
+	float *const __restrict__ out_colors
+	)
+{
+	SplatShader::PackedSplatShaderParams params {
+		W,H,			
+		P,			
+		(glm::vec3*) positions,
+		(glm::vec2*) screen_positions,
+		viewmatrix,
+		viewmatrix_inv,
+		projmatrix,
+		projmatrix_inv,
+		focal_x, focal_y,
+		tan_fovx, tan_fovy,
+		depths,
+		(glm::vec3*)colors_SH,
+		(glm::vec4*)conic_opacity, 
+		S,					
+		features,
+		(glm::vec3*)out_colors
+	};
+	
+	// For some reason the device is not allowed to dereference the function pointers if they're stored on host
+	// But it *is* allowed to derefrence alle the other pointers, such as out_colors?
+	// Anyway, this is fixed by copying all the shader addresses to device before we call them.
+	// (The addresses are stoerd as int64_ts, so there's also an implicit cast to SplatShader here.)
+	SplatShader::SplatShader* d_shaderAddresses;
+	size_t sizeOfAddresses = P * sizeof(SplatShader::SplatShader);
+	cudaMalloc(&d_shaderAddresses, sizeOfAddresses);
+	cudaMemcpy(d_shaderAddresses, shaderAddresses, sizeOfAddresses, cudaMemcpyHostToDevice);
+
+	SplatShader::ExecuteShader<<<(P + 255) / 256, 256>>>(d_shaderAddresses, params);
 
 	// Wait for each shader to finish.
 	cudaDeviceSynchronize();
