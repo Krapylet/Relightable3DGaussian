@@ -35,9 +35,10 @@ namespace ShShader
 		int const W; int const H;
 		float const focal_x; float const focal_y;
 		float const tan_fovx; float const tan_fovy;
+        int deg; int max_coeffs;
 
 		//input/output   -   contains values when the method is called that can be changed.
-		float *const means3D;
+		glm::vec3 *const positions;
 		glm::vec3 *const scales;
 		glm::vec4 *const rotations;
 		float *const opacities;
@@ -48,7 +49,25 @@ namespace ShShader
 		// Constructor
 		__device__ ShShaderParams(PackedShShaderParams params, int idx);
 
-        //TODO: Implement
+        //input
+		float const scale_modifier;
+		dim3 const grid; 
+		float const *const viewmatrix;
+		float const *const viewmatrix_inv;
+		float const *const projmatrix;
+		float const *const projmatrix_inv;
+        glm::vec3 const camera_position;
+		int const W; int const H;
+		float const focal_x; float const focal_y;
+		float const tan_fovx; float const tan_fovy;
+        int deg; int max_coeffs;
+
+		//input/output   -   contains values when the method is called that can be changed.
+		glm::vec3 *const position;
+		glm::vec3 *const scale;
+		glm::vec4 *const rotation;
+		float *const opacity;
+		float *const sh;
 	};
 
 	// Define a shared type of fuction pointer that can point to all implemented shaders.

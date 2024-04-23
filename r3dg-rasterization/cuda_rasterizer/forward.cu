@@ -655,9 +655,10 @@ void FORWARD::RunSHShaders(
 	int const W, int const H,
 	float const focal_x, float const focal_y,
 	float const tan_fovx, float const tan_fovy,
+	int deg, int max_coeffs,
 
 	//input/output   -   contains values when the method is called that can be changed.
-	float *const means3D,
+	glm::vec3 *const positions,
 	glm::vec3 *const scales,
 	glm::vec4 *const rotations,
 	float *const opacities,
@@ -675,7 +676,8 @@ void FORWARD::RunSHShaders(
 		W, H,
 		focal_x, focal_y,
 		tan_fovx, tan_fovy,
-		means3D,
+		deg, max_coeffs,
+		positions,
 		scales,
 		rotations,
 		opacities,

@@ -94,7 +94,11 @@ class GaussianModel:
 
             # Determine which shader should be used for the splat.
             # Ideally assigned shaders sould be written direcly in the object file so we know this when we load the model in.
-            shShaderName = "Default"
+            splat_y_pos = self._xyz[i][1]
+            if splat_y_pos > 0:
+                shShaderName = "Default"
+            else:
+                shShaderName = "ExpPos"
 
             splat_x_pos = self._xyz[i][0]
             if splat_x_pos > 0:

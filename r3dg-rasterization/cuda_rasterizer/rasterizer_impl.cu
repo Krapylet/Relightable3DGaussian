@@ -273,9 +273,10 @@ int CudaRasterizer::Rasterizer::forward(
 		width, height,
 		focal_x, focal_y,
 		tan_fovx, tan_fovy,
+		D, M,
 
 		//input/output   -   contains values when the method is called that can be changed.
-		means3D,
+		(glm::vec3*) means3D,
 		(glm::vec3*) scales,
 		(glm::vec4*) rotations,
 		opacities,

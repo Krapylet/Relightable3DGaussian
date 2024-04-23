@@ -11,7 +11,25 @@ namespace cg = cooperative_groups;
 
 namespace ShShader
 {
-    __device__ ShShaderParams::ShShaderParams(PackedShShaderParams p, int idx)
+    __device__ ShShaderParams::ShShaderParams(PackedShShaderParams p, int idx):
+        scale_modifier(p.scale_modifier),
+		grid(p.grid),
+		viewmatrix(p.viewmatrix),
+		viewmatrix_inv(p.viewmatrix_inv),
+		projmatrix(p.projmatrix),
+		projmatrix_inv(p.projmatrix_inv),
+        camera_position({p.viewmatrix_inv[12], p.viewmatrix_inv[13], p.viewmatrix_inv[14]}),
+		W(p.W), H(p.H),
+		focal_x(p.focal_x), focal_y(p.focal_y),
+		tan_fovx(p.tan_fovx), tan_fovy(tan_fovy),
+        deg(p.deg), max_coeffs(p.max_coeffs),
+
+		//input/output   -   contains values when the method is called that can be changed.
+		position(p.positions + idx),
+		scale(p.scales + idx),
+		rotation(p.rotations + idx),
+		opacity(p.opacities + idx),
+		sh(p.shs + idx * p.max_coeffs) // could also be calculated as idx + (p.deg + 1)^2
         {
 		// for now we're not actually doing anyting in the constuctior other than initializing the constants.
     }
@@ -22,9 +40,16 @@ namespace ShShader
         //*p.out_color = (*p.color_SH);
     }
 
+    __device__ static void ExponentialPositionShaderCUDA(ShShaderParams p)
+    {
+        // Set output color
+        *p.position += (*p.position);
+    }
+
     ///// Assign all the shaders to their short handles.
     // we need to keep them in constant device memory for them to stay valid when passed to host.
     __device__ const ShShader defaultShader = &DefaultShShaderCUDA;
+    __device__ const ShShader expPosShader = &ExponentialPositionShaderCUDA;
 
     std::map<std::string, int64_t> GetShShaderAddressMap(){
         // we cast pointers to numbers since most pointers aren't supported by pybind
@@ -41,6 +66,10 @@ namespace ShShader
         ShShader::ShShader h_defaultShader;
         cudaMemcpyFromSymbol(&h_defaultShader, defaultShader, shaderMemorySize);
         shaderMap["Default"] = (int64_t)h_defaultShader;
+
+        ShShader::ShShader h_exponentialPositionShader;
+        cudaMemcpyFromSymbol(&h_exponentialPositionShader, expPosShader, shaderMemorySize);
+        shaderMap["ExpPos"] = (int64_t)h_exponentialPositionShader;
 
         return shaderMap;
     }
