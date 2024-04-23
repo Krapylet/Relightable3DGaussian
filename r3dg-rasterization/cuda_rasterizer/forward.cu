@@ -682,8 +682,9 @@ void FORWARD::RunSplatShaders(
 		// For some reason the device is not allowed to dereference the function pointers if they're stored on host
 		// But it *is* allowed to derefrence alle the other pointers, such as out_colors?
 		// Anyway, this is fixed by copying all the shader addresses to device before we call them.
-		int64_t* d_shaderAddresses;
-		size_t sizeOfAddresses = P * sizeof(int64_t);
+		// (The addresses are stoerd as int64_ts, so there's also an implicit cast to SplatShader here.)
+		SplatShader::SplatShader* d_shaderAddresses;
+		size_t sizeOfAddresses = P * sizeof(SplatShader::SplatShader);
 		cudaMalloc(&d_shaderAddresses, sizeOfAddresses);
 		cudaMemcpy(d_shaderAddresses, shaderAddresses, sizeOfAddresses, cudaMemcpyHostToDevice);
 

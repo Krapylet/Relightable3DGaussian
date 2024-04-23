@@ -110,8 +110,6 @@ namespace SplatShader
         cudaMemcpyFromSymbol(&h_defaultShader, defaultShader, shaderMemorySize);
         shaderMap["Default"] = (int64_t)h_defaultShader;
 
-        printf("Default pointer cast adress %i\nUnsigned cast: %u", shaderMap["Default"], (uint64_t)h_defaultShader);
-
         SplatShader::SplatShader h_outlineShader;
         cudaMemcpyFromSymbol(&h_outlineShader, outlineShader, shaderMemorySize);
         shaderMap["OutlineShader"] = (int64_t)h_outlineShader;
@@ -126,7 +124,7 @@ namespace SplatShader
         return shaderMap;
     }
 
-    __global__ void ExecuteShader(int64_t const * const shaders, PackedSplatShaderParams packedParams){
+    __global__ void ExecuteShader(SplatShader* shaders, PackedSplatShaderParams packedParams){
         // calculate index for the spalt.
         auto idx = cg::this_grid().thread_rank();
         if (idx >= packedParams.P)
@@ -137,7 +135,7 @@ namespace SplatShader
         SplatShaderParams params(packedParams, idx);
 
         // No need to dereference the shader function pointer.
-        ((SplatShader)shaders[idx])(params);
+        shaders[idx](params);
     }
 
 }

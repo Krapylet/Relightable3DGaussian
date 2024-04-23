@@ -132,7 +132,7 @@ namespace SplatShader
 	std::map<std::string, int64_t> GetSplatShaderAddressMap();
 	
 	// Executes a shader on the GPU with the given parameters.
-	__global__ extern void ExecuteShader(int64_t const * const shaders, PackedSplatShaderParams packedParams);
+	__global__ extern void ExecuteShader(SplatShader*, PackedSplatShaderParams packedParams);
 
 	
 };
