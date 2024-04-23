@@ -127,17 +127,12 @@ namespace SplatShader
 	//typedef std::function<void(SplatShaderParams)> SplatShader;
     typedef void (*SplatShader)(SplatShaderParams params);
 
-	// Function pointers to the implemented shaders. Has the benefits of also being much more concise.
-	__device__ extern SplatShader defaultShader;
-	__device__ extern SplatShader outlineShader;
-	__device__ extern SplatShader wireframeShader;
-	
 	// Returns a map of shader names and shader device function pointers that can be passed back to the python frontend though pybind.
 	// we cast pointers to int since pure pointers aren't supported by pybind (ideally uint64_t, but pythorch only supports usigned 8-bit ints)
-	std::map<std::string, int> GetSplatShaderAddressMap();
+	std::map<std::string, int64_t> GetSplatShaderAddressMap();
 	
 	// Executes a shader on the GPU with the given parameters.
-	__global__ extern void ExecuteShader(SplatShader* shader, PackedSplatShaderParams packedParams);
+	__global__ extern void ExecuteShader(int64_t const * const shaders, PackedSplatShaderParams packedParams);
 
 	
 };

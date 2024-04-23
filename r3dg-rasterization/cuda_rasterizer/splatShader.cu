@@ -86,33 +86,39 @@ namespace SplatShader
     }
 
     ///// Assign all the shaders to their short handles.
-    __device__ SplatShader defaultShader = &DefaultSplatShaderCUDA;
-    __device__ SplatShader outlineShader = &OutlineShaderCUDA;
-    __device__ SplatShader wireframeShader = &WireframeShaderCUDA;
+    __device__ const SplatShader defaultShader = &DefaultSplatShaderCUDA;
+    __device__ const SplatShader outlineShader = &OutlineShaderCUDA;
+    __device__ const SplatShader wireframeShader = &WireframeShaderCUDA;
 
     __global__ void testPrint(){
         printf("Casting shader pointer from: %p to %p \n", defaultShader, (int)defaultShader);
     }
 
-    std::map<std::string, int> GetSplatShaderAddressMap(){
-        // we cast pointers to int since pure pointers aren't supported by pybind
-        std::map<std::string, int> shaderMap;
+    std::map<std::string, int64_t> GetSplatShaderAddressMap(){
+        // we cast pointers to numbers since most pointers aren't supported by pybind
+        // Device function pointers seem to be 8 bytes long (at least on the devlopment machine with a GTX 2080 and when compiling to 64bit mode)
+        // The highest unsigned integer supported by torch, which we use for contigious memory, is 1 byte ints.
+        // This means we can either cut the pointer into 8 small ints when we send them back and forth to the python frontend,
+        // Or we can try to make our own pybind datatype binding.
+        // alternatively, we can try to do our own casting by using bitwise OR to encode the pointer into a signed int64 anyway.
+
+        std::map<std::string, int64_t> shaderMap;
         size_t shaderMemorySize = sizeof(SplatShader);
         
         // Copy device shader pointers to host map
         SplatShader::SplatShader h_defaultShader;
         cudaMemcpyFromSymbol(&h_defaultShader, defaultShader, shaderMemorySize);
-        shaderMap["Default"] = (int)h_defaultShader;
+        shaderMap["Default"] = (int64_t)h_defaultShader;
 
-        printf("Casting shader pointer from: %p to %p \n", defaultShader, h_defaultShader);
+        printf("Default pointer cast adress %i\nUnsigned cast: %u", shaderMap["Default"], (uint64_t)h_defaultShader);
 
         SplatShader::SplatShader h_outlineShader;
         cudaMemcpyFromSymbol(&h_outlineShader, outlineShader, shaderMemorySize);
-        shaderMap["OutlineShader"] = (int)h_outlineShader;
+        shaderMap["OutlineShader"] = (int64_t)h_outlineShader;
 
         SplatShader::SplatShader h_wireframeShader;
         cudaMemcpyFromSymbol(&h_wireframeShader, wireframeShader, shaderMemorySize);
-        shaderMap["WireframeShader"] = (int)h_wireframeShader;
+        shaderMap["WireframeShader"] = (int64_t)h_wireframeShader;
 
 
 
@@ -120,7 +126,7 @@ namespace SplatShader
         return shaderMap;
     }
 
-    __global__ void ExecuteShader(SplatShader* shader, PackedSplatShaderParams packedParams){
+    __global__ void ExecuteShader(int64_t const * const shaders, PackedSplatShaderParams packedParams){
         // calculate index for the spalt.
         auto idx = cg::this_grid().thread_rank();
         if (idx >= packedParams.P)
@@ -131,7 +137,7 @@ namespace SplatShader
         SplatShaderParams params(packedParams, idx);
 
         // No need to dereference the shader function pointer.
-        shader[idx](params);
+        ((SplatShader)shaders[idx])(params);
     }
 
 }

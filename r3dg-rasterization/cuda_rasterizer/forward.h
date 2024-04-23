@@ -57,7 +57,7 @@ namespace FORWARD
 		int const P,
 		float const *const positions,  
 		float2 const *const screen_positions,
-		int const *const shaderAddresses,
+		int64_t const *const shaderAddresses,
 		float const *const viewmatrix,
 		float const *const viewmatrix_inv,
 		float const *const projmatrix,

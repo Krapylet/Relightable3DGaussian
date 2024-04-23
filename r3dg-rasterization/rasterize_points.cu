@@ -100,7 +100,6 @@ RasterizeGaussiansCUDA(
 	  {
 		M = sh.size(1);
       }
-
 	  rendered = CudaRasterizer::Rasterizer::forward(
 	    geomFunc,
 		binningFunc,
@@ -117,7 +116,7 @@ RasterizeGaussiansCUDA(
 		scale_modifier,
 		rotations.contiguous().data_ptr<float>(),
 		cov3D_precomp.contiguous().data_ptr<float>(),
-		shaderAddresses.contiguous().data_ptr<int>(),
+		shaderAddresses.contiguous().data_ptr<int64_t>(),
 		viewmatrix.contiguous().data_ptr<float>(),
 		viewmatrix_inv.contiguous().data_ptr<float>(),
 		projmatrix.contiguous().data_ptr<float>(),

@@ -639,34 +639,13 @@ void FORWARD::render_pseudo_normal(
         normals,
         surface_xyz);
 }
-
-std::vector<SplatShader::SplatShader> GetShaderAddresses(){
-	// TODO: Ideally this vector should be build during initialization when analyzing which shaders are used by the provided gaussian models.
-	std::vector<SplatShader::SplatShader> shaders;
-	size_t shaderMemorySize = sizeof(SplatShader::SplatShader);
-
-	// Copy device shader pointers to host
-	SplatShader::SplatShader h_defaultShader;
-	cudaMemcpyFromSymbol(&h_defaultShader, SplatShader::defaultShader, shaderMemorySize);
-	shaders.push_back(h_defaultShader);
-
-	SplatShader::SplatShader h_outlineShader;
-	cudaMemcpyFromSymbol(&h_outlineShader, SplatShader::outlineShader, shaderMemorySize);
-	shaders.push_back(h_outlineShader);
-
-	SplatShader::SplatShader h_wireframeShader;
-	cudaMemcpyFromSymbol(&h_wireframeShader, SplatShader::wireframeShader, shaderMemorySize);
-	shaders.push_back(h_wireframeShader);
-
-	return shaders;
-}
 	
 void FORWARD::RunSplatShaders(
 		int const W, int const H,			
 		int const P,					
 		float const *const __restrict__ positions,
 		float2 const *const __restrict__ screen_positions,
-		int const *const __restrict__ shaderAddresses,
+		int64_t const *const __restrict__ shaderAddresses,
 		float const *const __restrict__ viewmatrix,
 		float const *const __restrict__ viewmatrix_inv,
 		float const *const __restrict__ projmatrix,
@@ -699,11 +678,16 @@ void FORWARD::RunSplatShaders(
 			features,
 			(glm::vec3*)out_colors
 		};
+		
+		// For some reason the device is not allowed to dereference the function pointers if they're stored on host
+		// But it *is* allowed to derefrence alle the other pointers, such as out_colors?
+		// Anyway, this is fixed by copying all the shader addresses to device before we call them.
+		int64_t* d_shaderAddresses;
+		size_t sizeOfAddresses = P * sizeof(int64_t);
+		cudaMalloc(&d_shaderAddresses, sizeOfAddresses);
+		cudaMemcpy(d_shaderAddresses, shaderAddresses, sizeOfAddresses, cudaMemcpyHostToDevice);
 
-		printf("Trying to execute shader: %i as %p\n", shaderAddresses[0], (SplatShader::SplatShader*)shaderAddresses[0]);
-		printf("Compared to Default: %p\n", &SplatShader::defaultShader);
-		SplatShader::ExecuteShader<<<(P + 255) / 256, 256>>>((SplatShader::SplatShader*)shaderAddresses, params);
-		printf("Shader executed!\n");
+		SplatShader::ExecuteShader<<<(P + 255) / 256, 256>>>(d_shaderAddresses, params);
 
 	// Wait for each shader to finish.
 	cudaDeviceSynchronize();

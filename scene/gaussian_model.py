@@ -81,7 +81,7 @@ class GaussianModel:
         splatCount = self._opacity.shape[0]
         shaderAddressDictionary = _C.GetSplatShaderAddressMap()
 
-        self.shader_addresses = torch.empty(splatCount, dtype=torch.int)
+        self.shader_addresses = torch.empty(splatCount, dtype=torch.int64)
 
         print("Appending shader addresses to " + str(splatCount) + " splats")
         for i in range(splatCount):
