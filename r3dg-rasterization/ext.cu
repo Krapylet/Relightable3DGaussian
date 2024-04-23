@@ -13,6 +13,7 @@
 #include "rasterize_points.h"
 #include "render_equation.h"
 #include "cuda_rasterizer/splatShader.h"
+#include "cuda_rasterizer/shShader.h"
 
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   m.def("rasterize_gaussians", &RasterizeGaussiansCUDA);
@@ -22,4 +23,5 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   m.def("render_equation_backward", &RenderEquationBackwardCUDA);
   m.def("mark_visible", &markVisible);
   m.def("GetSplatShaderAddressMap", &SplatShader::GetSplatShaderAddressMap);
+    m.def("GetShShaderAddressMap", &ShShader::GetShShaderAddressMap);
 }

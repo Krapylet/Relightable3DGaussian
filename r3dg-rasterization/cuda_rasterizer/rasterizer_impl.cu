@@ -213,7 +213,8 @@ int CudaRasterizer::Rasterizer::forward(
 	const float scale_modifier,
 	float* rotations,
 	const float* cov3D_precomp,
-	const int64_t* shaderAddresses,
+	const int64_t* shShaderAddresses,
+	const int64_t* splatShaderAddresses,
 	const float* viewmatrix,
 	const float* viewmatrix_inv,
 	const float* projmatrix,
@@ -260,7 +261,7 @@ int CudaRasterizer::Rasterizer::forward(
 
 	CHECK_CUDA(FORWARD::RunSHShaders(
 		P,
-		nullptr,
+		shShaderAddresses,
 
 		//input
 		scale_modifier,
@@ -316,7 +317,7 @@ int CudaRasterizer::Rasterizer::forward(
 		P,							
 		means3D,  		
 		geomState.means2D,
-		shaderAddresses,
+		splatShaderAddresses,
 		viewmatrix,
 		viewmatrix_inv,
 		projmatrix,

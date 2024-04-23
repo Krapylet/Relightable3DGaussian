@@ -22,6 +22,10 @@ namespace ShShader
         //*p.out_color = (*p.color_SH);
     }
 
+    ///// Assign all the shaders to their short handles.
+    // we need to keep them in constant device memory for them to stay valid when passed to host.
+    __device__ const ShShader defaultShader = &DefaultShShaderCUDA;
+
     std::map<std::string, int64_t> GetShShaderAddressMap(){
         // we cast pointers to numbers since most pointers aren't supported by pybind
         // Device function pointers seem to be 8 bytes long (at least on the devlopment machine with a GTX 2080 and when compiling to 64bit mode)
@@ -35,7 +39,7 @@ namespace ShShader
         
         // Copy device shader pointers to host map
         ShShader::ShShader h_defaultShader;
-        cudaMemcpyFromSymbol(&h_defaultShader, &DefaultShShaderCUDA, shaderMemorySize);
+        cudaMemcpyFromSymbol(&h_defaultShader, defaultShader, shaderMemorySize);
         shaderMap["Default"] = (int64_t)h_defaultShader;
 
         return shaderMap;
@@ -52,9 +56,9 @@ namespace ShShader
         ShShaderParams params(packedParams, idx);
 
         // No need to dereference the shader function pointer.
-        //shaders[idx](params);
+        shaders[idx](params);
 
-        DefaultShShaderCUDA(params);
+        //DefaultShShaderCUDA(params);
     }
 
 }

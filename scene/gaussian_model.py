@@ -79,9 +79,12 @@ class GaussianModel:
     #Adds an additional tensor to the model, which contians the shader device function pointers for each individual splat. 
     def append_shader_addresses(self):
         splatCount = self._opacity.shape[0]
-        shaderAddressDictionary = _C.GetSplatShaderAddressMap()
+        
+        shShaderAddressDictionary = _C.GetShShaderAddressMap()
+        splatShaderAddressDictionary = _C.GetSplatShaderAddressMap()
 
-        self.shader_addresses = torch.empty(splatCount, dtype=torch.int64)
+        self.sh_shader_addresses = torch.empty(splatCount, dtype=torch.int64)
+        self.splat_shader_addresses = torch.empty(splatCount, dtype=torch.int64)
 
         print("Appending shader addresses to " + str(splatCount) + " splats")
         for i in range(splatCount):
@@ -91,13 +94,16 @@ class GaussianModel:
 
             # Determine which shader should be used for the splat.
             # Ideally assigned shaders sould be written direcly in the object file so we know this when we load the model in.
+            shShaderName = "Default"
+
             splat_x_pos = self._xyz[i][0]
             if splat_x_pos > 0:
-                shaderName = "Default"
+                splatShaderName = "Default"
             else:
-                shaderName = "WireframeShader"
-            
-            self.shader_addresses[i] = shaderAddressDictionary[shaderName]
+                splatShaderName = "WireframeShader"
+
+            self.sh_shader_addresses[i] = shShaderAddressDictionary[shShaderName]            
+            self.splat_shader_addresses[i] = splatShaderAddressDictionary[splatShaderName]
         print("Done appending adresses")
 
 
