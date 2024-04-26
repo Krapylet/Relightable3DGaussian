@@ -697,6 +697,8 @@ void FORWARD::RunSHShaders(
 
 	// Wait for each shader to finish.
 	cudaDeviceSynchronize();
+
+	cudaFree(d_shaderAddresses);
 }
 
 void FORWARD::RunSplatShaders(
@@ -751,6 +753,7 @@ void FORWARD::RunSplatShaders(
 
 	// Wait for each shader to finish.
 	cudaDeviceSynchronize();
+	cudaFree(d_shaderAddresses);
 	
 }
 
