@@ -37,13 +37,17 @@ def render_view(camera: Camera, pc: GaussianModel, pipe, bg_color: torch.Tensor,
         bg=bg_color,
         scale_modifier=scaling_modifier,
         viewmatrix=camera.world_view_transform,
+        viewmatrix_inv=camera.world_view_transform_inverse,
         projmatrix=camera.full_proj_transform,
+        projmatrix_inv=camera.full_proj_transform_inverse,
         sh_degree=pc.active_sh_degree,
         campos=camera.camera_center,
         prefiltered=False,
         backward_geometry=True,
         computer_pseudo_normal=computer_pseudo_normal,
-        debug=pipe.debug
+        debug=pipe.debug,
+        shShaderAddresses=pc.sh_shader_addresses,
+        splatShaderAddresses=pc.splat_shader_addresses
     )
 
     rasterizer = GaussianRasterizer(raster_settings=raster_settings)
@@ -82,7 +86,7 @@ def render_view(camera: Camera, pc: GaussianModel, pipe, bg_color: torch.Tensor,
     features = pc.get_normal
     # Rasterize visible Gaussians to image, obtain their radii (on screen).
     (num_rendered, num_contrib, rendered_image, rendered_opacity, rendered_depth,
-     rendered_feature, rendered_pseudo_normal, rendered_surface_xyz, radii) = rasterizer(
+     rendered_feature, rendered_shader, rendered_pseudo_normal, rendered_surface_xyz, radii) = rasterizer(
         means3D=means3D,
         means2D=means2D,
         shs=shs,

@@ -23,5 +23,5 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   m.def("render_equation_backward", &RenderEquationBackwardCUDA);
   m.def("mark_visible", &markVisible);
   m.def("GetSplatShaderAddressMap", &SplatShader::GetSplatShaderAddressMap);
-    m.def("GetShShaderAddressMap", &ShShader::GetShShaderAddressMap);
+  m.def("GetShShaderAddressMap", &ShShader::GetShShaderAddressMap);
 }

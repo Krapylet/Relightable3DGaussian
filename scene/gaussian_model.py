@@ -110,7 +110,17 @@ class GaussianModel:
             self.splat_shader_addresses[i] = splatShaderAddressDictionary[splatShaderName]
         print("Done appending adresses")
 
+    #Adds an additional tensor to the model with addresses for default shaders to use. Only used during training.
+    def append_default_shader_addresses(self):
+        splatCount = self._opacity.shape[0]
+        
+        shShaderAddressDictionary = _C.GetShShaderAddressMap()
+        splatShaderAddressDictionary = _C.GetSplatShaderAddressMap()
 
+        defaultShShaderAddress = shShaderAddressDictionary["Default"]
+        defaultSplatShaderAddress = splatShaderAddressDictionary["Default"]
+        self.sh_shader_addresses = torch.tensor([defaultShShaderAddress] * splatCount, dtype=torch.int64)
+        self.splat_shader_addresses = torch.tensor([defaultSplatShaderAddress] * splatCount, dtype=torch.int64)
         
     #Sorts the data so splats that use the same shader is contigious.
     #Returns a map of shader IDs in sorted order and the count of splats using them.
