@@ -12,25 +12,25 @@ Apply the following changes to torch/utils/cpp_extensions.py:
 			extra_compile_args_dlink += [f'-L{x}' for x in library_dirs]
 			extra_compile_args_dlink += [f'-l{x}' for x in dlink_libraries]
 		To:
-			if IS_WINDOWS:
-				extra_compile_args_dlink += [f'-L"{x}"' for x in library_dirs]
-				extra_compile_args_dlink += [f'-l"{x}"' for x in dlink_libraries]
-			else:
-				extra_compile_args_dlink += [f'-L{x}' for x in library_dirs]
-				extra_compile_args_dlink += [f'-l{x}' for x in dlink_libraries]
+            if IS_WINDOWS:
+                extra_compile_args_dlink += [f'-L"{x}"' for x in library_dirs]
+                extra_compile_args_dlink += [f'-l"{x}"' for x in dlink_libraries]
+            else:
+                extra_compile_args_dlink += [f'-L{x}' for x in library_dirs]
+                extra_compile_args_dlink += [f'-l{x}' for x in dlink_libraries]
 
 	Inside the method modding _write_ninja_file()
 		Change the lines:
-			devlink = [f'build {devlink_out}: cuda_devlink {" ".join(objects).replace(':', '$:')}']
+			devlink = [f'build {devlink_out}: cuda_devlink {" ".join(objects)}']
 		To:
-			if IS_WINDOWS:
-				devlink = [f'build {devlink_out.replace(':', '$:')}: cuda_devlink {" ".join(objects).replace(':', '$:')}']
-			else:
-				devlink = [f'build {devlink_out}: cuda_devlink {" ".join(objects).replace(':', '$:')}']
+            if IS_WINDOWS:
+                devlink = [f"build {devlink_out.replace(':', '$:')}: cuda_devlink {' '.join(objects).replace(':', '$:')}"]
+            else:
+                devlink = [f"build {devlink_out}: cuda_devlink {' '.join(objects).replace(':', '$:')}"]
 
 	(optional. Increases runtime performance) Inside _get_cuda_arch_flags()
 		Add line:
-			flags.append(f'-gencode=arch=compute_{num},code=lto_{num}')
+            flags.append(f'-gencode=arch=compute_{num},code=lto_{num}')
 		Between the lines:
 			flags.append(f'-gencode=arch=compute_{num},code=sm_{num}')
 			if arch.endswith('+PTX'):
