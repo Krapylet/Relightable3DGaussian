@@ -15,6 +15,7 @@ from arguments import OptimizationParams
 from tqdm import tqdm
 from bvh import RayTracer
 from collections import defaultdict
+from r3dg_rasterization import _C
 
 
 class GaussianModel:
@@ -74,6 +75,52 @@ class GaussianModel:
             self._incidents_rest = torch.empty(0)
             self._visibility_dc = torch.empty(0)
             self._visibility_rest = torch.empty(0)
+
+    #Adds an additional tensor to the model, which contians the shader device function pointers for each individual splat. 
+    def append_shader_addresses(self):
+        splatCount = self._opacity.shape[0]
+        
+        shShaderAddressDictionary = _C.GetShShaderAddressMap()
+        splatShaderAddressDictionary = _C.GetSplatShaderAddressMap()
+
+        self.sh_shader_addresses = torch.empty(splatCount, dtype=torch.int64)
+        self.splat_shader_addresses = torch.empty(splatCount, dtype=torch.int64)
+
+        print("Appending shader addresses to " + str(splatCount) + " splats")
+        for i in range(splatCount):
+
+            if i % 10000 == 0:
+                print(str(i) + " appended")
+
+            # Determine which shader should be used for the splat.
+            # Ideally assigned shaders sould be written direcly in the object file so we know this when we load the model in.
+            splat_y_pos = self._xyz[i][1]
+            if splat_y_pos > 0:
+                shShaderName = "Default"
+            else:
+                shShaderName = "ExpPos"
+
+            splat_x_pos = self._xyz[i][0]
+            if splat_x_pos > 0:
+                splatShaderName = "Default"
+            else:
+                splatShaderName = "WireframeShader"
+
+            self.sh_shader_addresses[i] = shShaderAddressDictionary[shShaderName]            
+            self.splat_shader_addresses[i] = splatShaderAddressDictionary[splatShaderName]
+        print("Done appending adresses")
+
+    #Adds an additional tensor to the model with addresses for default shaders to use. Only used during training.
+    def append_default_shader_addresses(self):
+        splatCount = self._opacity.shape[0]
+        
+        shShaderAddressDictionary = _C.GetShShaderAddressMap()
+        splatShaderAddressDictionary = _C.GetSplatShaderAddressMap()
+
+        defaultShShaderAddress = shShaderAddressDictionary["Default"]
+        defaultSplatShaderAddress = splatShaderAddressDictionary["Default"]
+        self.sh_shader_addresses = torch.tensor([defaultShShaderAddress] * splatCount, dtype=torch.int64)
+        self.splat_shader_addresses = torch.tensor([defaultSplatShaderAddress] * splatCount, dtype=torch.int64)
         
     #Sorts the data so splats that use the same shader is contigious.
     #Returns a map of shader IDs in sorted order and the count of splats using them.

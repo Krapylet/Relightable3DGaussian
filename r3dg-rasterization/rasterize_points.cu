@@ -35,17 +35,17 @@ std::function<char*(size_t N)> resizeFunctional(torch::Tensor& t) {
 
 std::tuple<int, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor>
 RasterizeGaussiansCUDA(
-	const torch::Tensor& shaderIDs,
-	const torch::Tensor& shaderIndexOffset,
 	const torch::Tensor& background,
-	const torch::Tensor& means3D,
+	const torch::Tensor& means3D, 		//
 	const torch::Tensor& features,
     const torch::Tensor& colors,
-    const torch::Tensor& opacity,
-	const torch::Tensor& scales,
-	const torch::Tensor& rotations,
+    const torch::Tensor& opacity, 		//
+	const torch::Tensor& scales, 		//
+	const torch::Tensor& rotations, 	//
 	const float scale_modifier,
 	const torch::Tensor& cov3D_precomp,
+	const torch::Tensor& shShaderAddresses,
+	const torch::Tensor& splatShaderAddresses,
 	const torch::Tensor& viewmatrix,
 	const torch::Tensor& viewmatrix_inv,
 	const torch::Tensor& projmatrix,
@@ -56,98 +56,104 @@ RasterizeGaussiansCUDA(
 	const float cy,
     const int image_height,
     const int image_width,
-	const torch::Tensor& sh,
+	const torch::Tensor& sh, 			//
 	const int degree,
 	const torch::Tensor& campos,
 	const bool prefiltered,
 	const bool computer_pseudo_normal,
 	const bool debug)
 {
-  if (means3D.ndimension() != 2 || means3D.size(1) != 3) {
-    AT_ERROR("means3D must have dimensions (num_points, 3)");
-  }
-  
-  const int P = means3D.size(0);
-  const int S = features.size(1);
-  const int H = image_height;
-  const int W = image_width;
-  const int shaderCount = shaderIDs.size(0);
+	if (means3D.ndimension() != 2 || means3D.size(1) != 3) {
+		AT_ERROR("means3D must have dimensions (num_points, 3)");
+	}
+	
+	const int P = means3D.size(0);
+	const int S = features.size(1);
+	const int H = image_height;
+	const int W = image_width;
 
-  auto int_opts = means3D.options().dtype(torch::kInt32);
-  auto float_opts = means3D.options().dtype(torch::kFloat32);
+	auto int_opts = means3D.options().dtype(torch::kInt32);
+	auto float_opts = means3D.options().dtype(torch::kFloat32);
 
-  torch::Tensor out_color = torch::full({NUM_CHANNELS, H, W}, 0.0, float_opts);
-  torch::Tensor out_opacity = torch::full({1, H, W}, 0.0, float_opts);
-  torch::Tensor out_depth = torch::full({1, H, W}, 0.0, float_opts);
-  torch::Tensor out_feature = torch::full({S, H, W}, 0.0, float_opts);
-  torch::Tensor out_shader_color = torch::full({NUM_CHANNELS, H, W}, 0.0, float_opts);
-  torch::Tensor out_normal = torch::full({3, H, W}, 0.0, float_opts);
-  torch::Tensor out_surface_xyz = torch::full({3, H, W}, 0.0, float_opts);
-  torch::Tensor radii = torch::full({P}, 0, means3D.options().dtype(torch::kInt32));
-  
-  torch::Device device(torch::kCUDA);
-  torch::TensorOptions options(torch::kByte);
-  torch::Tensor geomBuffer = torch::empty({0}, options.device(device));
-  torch::Tensor binningBuffer = torch::empty({0}, options.device(device));
-  torch::Tensor imgBuffer = torch::empty({0}, options.device(device));
-  std::function<char*(size_t)> geomFunc = resizeFunctional(geomBuffer);
-  std::function<char*(size_t)> binningFunc = resizeFunctional(binningBuffer);
-  std::function<char*(size_t)> imgFunc = resizeFunctional(imgBuffer);
-  
-  int rendered = 0;
-  if(P != 0)
-  {
-	  int M = 0;
-	  if(sh.size(0) != 0)
-	  {
-		M = sh.size(1);
-      }
+	torch::Tensor out_color = torch::full({NUM_CHANNELS, H, W}, 0.0, float_opts);
+	torch::Tensor out_opacity = torch::full({1, H, W}, 0.0, float_opts);
+	torch::Tensor out_depth = torch::full({1, H, W}, 0.0, float_opts);
+	torch::Tensor out_feature = torch::full({S, H, W}, 0.0, float_opts);
+	torch::Tensor out_shader_color = torch::full({NUM_CHANNELS, H, W}, 0.0, float_opts);
+	torch::Tensor out_normal = torch::full({3, H, W}, 0.0, float_opts);
+	torch::Tensor out_surface_xyz = torch::full({3, H, W}, 0.0, float_opts);
+	torch::Tensor radii = torch::full({P}, 0, means3D.options().dtype(torch::kInt32));
+	
+	torch::Device device(torch::kCUDA);
+	torch::TensorOptions options(torch::kByte);
+	torch::Tensor geomBuffer = torch::empty({0}, options.device(device));
+	torch::Tensor binningBuffer = torch::empty({0}, options.device(device));
+	torch::Tensor imgBuffer = torch::empty({0}, options.device(device));
+	std::function<char*(size_t)> geomFunc = resizeFunctional(geomBuffer);
+	std::function<char*(size_t)> binningFunc = resizeFunctional(binningBuffer);
+	std::function<char*(size_t)> imgFunc = resizeFunctional(imgBuffer);
 
-	  rendered = CudaRasterizer::Rasterizer::forward(
-		shaderCount,
-		shaderIDs.contiguous().data_ptr<float>(),
-		shaderIndexOffset.contiguous().data_ptr<float>(),
-	    geomFunc,
-		binningFunc,
-		imgFunc,
-	    P, S, degree, M,
-		background.contiguous().data_ptr<float>(),
-		W, H,
-		means3D.contiguous().data_ptr<float>(),
-		sh.contiguous().data_ptr<float>(),
-		colors.contiguous().data_ptr<float>(),
-		features.contiguous().data_ptr<float>(),
-		opacity.contiguous().data_ptr<float>(),
-		scales.contiguous().data_ptr<float>(),
-		scale_modifier,
-		rotations.contiguous().data_ptr<float>(),
-		cov3D_precomp.contiguous().data_ptr<float>(),
-		viewmatrix.contiguous().data_ptr<float>(),
-		viewmatrix_inv.contiguous().data_ptr<float>(),
-		projmatrix.contiguous().data_ptr<float>(),
-		projmatrix_inv.contiguous().data_ptr<float>(),
-		campos.contiguous().data_ptr<float>(),
-		tan_fovx,
-		tan_fovy,
-		cx,
-		cy,
-		prefiltered,
-		computer_pseudo_normal,
-		out_color.contiguous().data_ptr<float>(),
-        out_opacity.contiguous().data_ptr<float>(),
-		out_depth.contiguous().data_ptr<float>(),
-		out_feature.contiguous().data_ptr<float>(),
-		out_shader_color.contiguous().data_ptr<float>(),
-		out_normal.contiguous().data_ptr<float>(),
-		out_surface_xyz.contiguous().data_ptr<float>(),
-		radii.contiguous().data_ptr<int>(),
-		debug);
-  }
-  char* img_ptr = reinterpret_cast<char*>(imgBuffer.contiguous().data_ptr());
-  CudaRasterizer::ImageState imgState = CudaRasterizer::ImageState::fromChunk(img_ptr, H*W);
+	// Since the adresses used for these arrays are the same as used in the python frontend, any changes we make to them will stay permanent.
+	// While this is an interesting feature (that should maybe be toggleable?) we don't want that right now. We therefore have to copy
+	// every array that contains a value we want to be able to change non-persistantly
+	torch::Tensor temp_means3D = means3D.detach().clone();
+	torch::Tensor temp_opacity = opacity.detach().clone();
+	torch::Tensor temp_scales = scales.detach().clone();
+	torch::Tensor temp_rotations = rotations.detach().clone();
+	torch::Tensor temp_sh = sh.detach().clone();
+	
+	int rendered = 0;
+	if(P != 0)
+	{
+		int M = 0;
+		if(sh.size(0) != 0)
+		{
+			M = sh.size(1);
+		}
+		rendered = CudaRasterizer::Rasterizer::forward(
+			geomFunc,
+			binningFunc,
+			imgFunc,
+			P, S, degree, M,
+			background.contiguous().data_ptr<float>(),
+			W, H,
+			temp_means3D.contiguous().data_ptr<float>(),
+			temp_sh.contiguous().data_ptr<float>(),
+			colors.contiguous().data_ptr<float>(),
+			features.contiguous().data_ptr<float>(),
+			temp_opacity.contiguous().data_ptr<float>(),
+			temp_scales.contiguous().data_ptr<float>(),
+			scale_modifier,
+			temp_rotations.contiguous().data_ptr<float>(),
+			cov3D_precomp.contiguous().data_ptr<float>(),
+			shShaderAddresses.contiguous().data_ptr<int64_t>(),	
+			splatShaderAddresses.contiguous().data_ptr<int64_t>(),
+			viewmatrix.contiguous().data_ptr<float>(),
+			viewmatrix_inv.contiguous().data_ptr<float>(),
+			projmatrix.contiguous().data_ptr<float>(),
+			projmatrix_inv.contiguous().data_ptr<float>(),
+			campos.contiguous().data_ptr<float>(),
+			tan_fovx,
+			tan_fovy,
+			cx,
+			cy,
+			prefiltered,
+			computer_pseudo_normal,
+			out_color.contiguous().data_ptr<float>(),
+			out_opacity.contiguous().data_ptr<float>(),
+			out_depth.contiguous().data_ptr<float>(),
+			out_feature.contiguous().data_ptr<float>(),
+			out_shader_color.contiguous().data_ptr<float>(),
+			out_normal.contiguous().data_ptr<float>(),
+			out_surface_xyz.contiguous().data_ptr<float>(),
+			radii.contiguous().data_ptr<int>(),
+			debug);
+	}
+	char* img_ptr = reinterpret_cast<char*>(imgBuffer.contiguous().data_ptr());
+	CudaRasterizer::ImageState imgState = CudaRasterizer::ImageState::fromChunk(img_ptr, H*W);
 
-  torch::Tensor n_contrib = torch::from_blob(imgState.n_contrib, {H, W}, int_opts);
-  return std::make_tuple(rendered, n_contrib, out_color, out_opacity, out_depth, out_feature, out_shader_color, out_normal, out_surface_xyz, radii, geomBuffer, binningBuffer, imgBuffer);
+	torch::Tensor n_contrib = torch::from_blob(imgState.n_contrib, {H, W}, int_opts);
+	return std::make_tuple(rendered, n_contrib, out_color, out_opacity, out_depth, out_feature, out_shader_color, out_normal, out_surface_xyz, radii, geomBuffer, binningBuffer, imgBuffer);
 }
 
 std::tuple<torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor>

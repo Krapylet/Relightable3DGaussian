@@ -136,6 +136,9 @@ def training(dataset: ModelParams, opt: OptimizationParams, pipe: PipelineParams
             pipe.debug = True
 
         pbr_kwargs["iteration"] = iteration - first_iter
+
+        # Use default shaders for all splats during training.
+        gaussians.append_default_shader_addresses()
         render_pkg = render_fn(viewpoint_cam, gaussians, pipe, background,
                                opt=opt, is_training=True, dict_params=pbr_kwargs)
 

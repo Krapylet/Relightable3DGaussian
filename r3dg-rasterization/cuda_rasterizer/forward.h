@@ -23,6 +23,31 @@
 
 namespace FORWARD
 {
+	// Run any user-provided SH shaders prior to preprocessing, allowing users to change positions and such.
+	void RunSHShaders(
+		const int P,
+		int64_t const *const shaderAddresses,
+
+		//input
+		float const scale_modifier,
+		dim3 const grid, // Could maybe be made dynamic?
+		float const *const viewmatrix,
+		float const *const viewmatrix_inv,
+		float const *const projmatrix,
+		float const *const projmatrix_inv,
+		int const W, int const H,
+		float const focal_x, float const focal_y,
+		float const tan_fovx, float const tan_fovy,
+		int deg, int max_coeffs,
+
+		//input/output   -   contains values when the method is called that can be changed.
+		glm::vec3 *const positions,
+		glm::vec3 *const scales,
+		glm::vec4 *const rotations,
+		float *const opacities,
+		float *const shs
+		);
+
 	// Perform initial steps for each Gaussian prior to rasterization.
 	void preprocess(int P, int D, int M,
 		const float* positions,
@@ -51,15 +76,13 @@ namespace FORWARD
 		bool prefiltered);
 
 
-	// Runs after preprocess but before renderer. Allows changing values for individual gaussians.
-	void shade(
-		int const shaderCount,
-		float const *const shaderIDs,			
-		float const *const shaderIndexOffset,
+	// Runs after preprocess but before renderer. Allows changing rgb output for individual splats.
+	void RunSplatShaders(
 		int const W, int const H,	
 		int const P,
 		float const *const positions,  
 		float2 const *const screen_positions,
+		int64_t const *const shaderAddresses,
 		float const *const viewmatrix,
 		float const *const viewmatrix_inv,
 		float const *const projmatrix,

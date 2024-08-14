@@ -1,6 +1,6 @@
 /*
 *  Inspired by lai Mao at https://leimao.github.io/blog/Pass-Function-Pointers-to-Kernels-CUDA/
-*
+*  And the official cuda sample at https://github.com/NVIDIA/cuda-samples/blob/master/Samples/2_Concepts_and_Techniques/FunctionPointers/FunctionPointers_kernels.cu
 *
 *
 */
@@ -9,6 +9,10 @@
 
 #include <cuda.h>
 #include "cuda_runtime.h"
+#include <vector>
+#include <functional>
+#include <string>
+#include <map>
 
 #ifndef GLM_FORCE_CUDA
 	#define GLM_FORCE_CUDA
@@ -16,18 +20,16 @@
 
 #include <glm/glm.hpp>
 
-namespace CudaShader
+namespace SplatShader
 {
 	// Encapsulate shader parameters in a struct so it becomes easy to update during development.
 	// This representation contains data for all the splats packed together.
-	struct PackedShaderParams {
+	struct PackedSplatShaderParams {
 		// Screen information:
         int const W; int const H;			
 
         // shader execution information:
 		int const P;						// Total number of splats.
-		int const splatsInShader;			// Total number of splats to be rendered with this shader.
-		int const shaderStartingOffset;		// Starting index of the splats this shader needs to render.
 
 		// position information
 		glm::vec3 const *const __restrict__ positions;  			
@@ -70,9 +72,9 @@ namespace CudaShader
 	// The reason we don't just create unpacked params from the start, is that it would take too long to do in the host functions.
 	//TODO: Test memory and speed cost of this approach.
 	//TODO: Also pass SHs? Can we do something interesting with them in the code? They function as a low-pass filter on the detail if you reduce the order.
-	struct shaderParams {
+	struct SplatShaderParams {
 		// Constructor
-		__device__ shaderParams(PackedShaderParams params, int idx);
+		__device__ SplatShaderParams(PackedSplatShaderParams params, int idx);
 
 		// Screen information:
         int const W; int const H;							// Sceen width and height
@@ -122,15 +124,15 @@ namespace CudaShader
 	};
 
 	// Define a shared type of fuction pointer that can point to all implemented shaders.
-    typedef void (*shader)(shaderParams params);
+	//typedef std::function<void(SplatShaderParams)> SplatShader;
+    typedef void (*SplatShader)(SplatShaderParams params);
 
-	// Function pointers to the implemented shaders. Has the benefits of also being much more concise.
-	__device__ extern shader defaultShader;
-	__device__ extern shader outlineShader;
-	__device__ extern shader wireframeShader;
+	// Returns a map of shader names and shader device function pointers that can be passed back to the python frontend though pybind.
+	// we cast pointers to int since pure pointers aren't supported by pybind (ideally uint64_t, but pythorch only supports usigned 8-bit ints)
+	std::map<std::string, int64_t> GetSplatShaderAddressMap();
 	
 	// Executes a shader on the GPU with the given parameters.
-	__global__ extern void ExecuteShader(shader shader, PackedShaderParams packedParams);
+	__global__ extern void ExecuteShader(SplatShader*, PackedSplatShaderParams packedParams);
 
 	
 };

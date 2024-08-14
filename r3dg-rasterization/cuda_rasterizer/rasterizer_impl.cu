@@ -198,24 +198,23 @@ CudaRasterizer::BinningState CudaRasterizer::BinningState::fromChunk(char*& chun
 // Forward rendering procedure for differentiable rasterization
 // of Gaussians.
 int CudaRasterizer::Rasterizer::forward(
-	const int shaderCount,
-	const float* shaderIDs,
-	const float* shaderIndexOffset,
 	std::function<char* (size_t)> geometryBuffer,
 	std::function<char* (size_t)> binningBuffer,
 	std::function<char* (size_t)> imageBuffer,
 	const int P, const int S, int D, int M,
 	const float* background,
 	const int width, int height,
-	const float* means3D,
-	const float* shs,
+	float* means3D,
+	float* shs,
 	const float* colors_precomp,
 	const float* features,
-	const float* opacities,
-	const float* scales,
+	float* opacities,
+	float* scales,
 	const float scale_modifier,
-	const float* rotations,
+	float* rotations,
 	const float* cov3D_precomp,
+	const int64_t* shShaderAddresses,
+	const int64_t* splatShaderAddresses,
 	const float* viewmatrix,
 	const float* viewmatrix_inv,
 	const float* projmatrix,
@@ -260,8 +259,30 @@ int CudaRasterizer::Rasterizer::forward(
 		throw std::runtime_error("For non-RGB, provide precomputed Gaussian colors!");
 	}
 
-	// An additional shader step here could be inserted, analogues to a vertex shader, which would let us edit transformations, but also SHs before they're evaluated.
+	CHECK_CUDA(FORWARD::RunSHShaders(
+		P,
+		shShaderAddresses,
 
+		//input
+		scale_modifier,
+		tile_grid,
+		viewmatrix,
+		viewmatrix_inv,
+		projmatrix,
+		projmatrix_inv,
+		width, height,
+		focal_x, focal_y,
+		tan_fovx, tan_fovy,
+		D, M,
+
+		//input/output   -   contains values when the method is called that can be changed.
+		(glm::vec3*) means3D,
+		(glm::vec3*) scales,
+		(glm::vec4*) rotations,
+		opacities,
+		shs
+	), debug)
+	
 	
 	// Run preprocessing per-Gaussian (transformation, bounding, conversion of SHs to RGB)
 	CHECK_CUDA(FORWARD::preprocess(
@@ -291,22 +312,13 @@ int CudaRasterizer::Rasterizer::forward(
 		prefiltered
 	), debug)
 
-
-	// gaussian shader: works on every single gaussian in order.
-	// takes in 2d position, 3d position, camera information, transformation matriexes and features.
-	// Outputs by modifying features.
-
-
-	
-
-	CHECK_CUDA(FORWARD::shade(
-		shaderCount,
-		shaderIDs,
-		shaderIndexOffset,
+	CHECK_CUDA(FORWARD::RunSplatShaders(
+		// input
 		width, height,
 		P,							
 		means3D,  		
-		geomState.means2D,		
+		geomState.means2D,
+		splatShaderAddresses,
 		viewmatrix,
 		viewmatrix_inv,
 		projmatrix,
@@ -318,6 +330,8 @@ int CudaRasterizer::Rasterizer::forward(
 		geomState.conic_opacity,          
 		S,							
 		features,
+
+		// output
 		geomState.shader_rgb
 	), debug);
 	

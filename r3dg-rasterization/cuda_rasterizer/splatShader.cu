@@ -1,4 +1,4 @@
-#include "shader.h"
+#include "splatShader.h"
 #include "config.h"
 #include <cooperative_groups.h>
 #ifndef GLM_FORCE_CUDA
@@ -9,9 +9,9 @@
 
 namespace cg = cooperative_groups;
 
-namespace CudaShader
+namespace SplatShader
 {
-    __device__ shaderParams::shaderParams(PackedShaderParams p, int idx):
+    __device__ SplatShaderParams::SplatShaderParams(PackedSplatShaderParams p, int idx):
         W(p.W),
         H(p.H),
 		position(p.positions[idx]),
@@ -51,13 +51,13 @@ namespace CudaShader
 		// for now we're not actually doing anyting in the constuctior other than initializing the constants.
     }
 
-    __device__ static void DefaultShaderCUDA(shaderParams p)
+    __device__ static void DefaultSplatShaderCUDA(SplatShaderParams p)
     {
         // Set output color
         *p.out_color = (*p.color_SH);
     }
 
-    __device__ static void OutlineShaderCUDA(shaderParams p)
+    __device__ static void OutlineShaderCUDA(SplatShaderParams p)
     {
         // Get angle between splat and camera:
         glm::vec3 directionToCamera = p.camera_position - p.position;
@@ -71,7 +71,7 @@ namespace CudaShader
         *p.out_color = (*p.color_SH) * opacity;
     }
 
-    __device__ static void WireframeShaderCUDA(shaderParams p)
+    __device__ static void WireframeShaderCUDA(SplatShaderParams p)
     {
         // Get angle between splat and camera:
         glm::vec3 directionToCamera = p.camera_position - p.position;
@@ -86,23 +86,51 @@ namespace CudaShader
     }
 
     ///// Assign all the shaders to their short handles.
-    __device__ shader defaultShader = &DefaultShaderCUDA;
-    __device__ shader outlineShader = &OutlineShaderCUDA;
-    __device__ shader wireframeShader = &WireframeShaderCUDA;
+    // we need to keep them in constant device memory for them to stay valid when passed to host.
+    __device__ const SplatShader defaultShader = &DefaultSplatShaderCUDA;
+    __device__ const SplatShader outlineShader = &OutlineShaderCUDA;
+    __device__ const SplatShader wireframeShader = &WireframeShaderCUDA;
 
-    __global__ void ExecuteShader(shader shader, PackedShaderParams packedParams){
+
+    std::map<std::string, int64_t> GetSplatShaderAddressMap(){
+        // we cast pointers to numbers since most pointers aren't supported by pybind
+        // Device function pointers seem to be 8 bytes long (at least on the devlopment machine with a GTX 2080 and when compiling to 64bit mode)
+        // The highest unsigned integer supported by torch, which we use for contigious memory, is 1 byte ints.
+        // This means we can either cut the pointer into 8 small ints when we send them back and forth to the python frontend,
+        // Or we can try to make our own pybind datatype binding.
+        // alternatively, we can try to do our own casting by using bitwise OR to encode the pointer into a signed int64 anyway.
+
+        std::map<std::string, int64_t> shaderMap;
+        size_t shaderMemorySize = sizeof(SplatShader);
+        
+        // Copy device shader pointers to host map
+        SplatShader::SplatShader h_defaultShader;
+        cudaMemcpyFromSymbol(&h_defaultShader, defaultShader, shaderMemorySize);
+        shaderMap["Default"] = (int64_t)h_defaultShader;
+
+        SplatShader::SplatShader h_outlineShader;
+        cudaMemcpyFromSymbol(&h_outlineShader, outlineShader, shaderMemorySize);
+        shaderMap["OutlineShader"] = (int64_t)h_outlineShader;
+
+        SplatShader::SplatShader h_wireframeShader;
+        cudaMemcpyFromSymbol(&h_wireframeShader, wireframeShader, shaderMemorySize);
+        shaderMap["WireframeShader"] = (int64_t)h_wireframeShader;
+
+        return shaderMap;
+    }
+
+    __global__ void ExecuteShader(SplatShader* shaders, PackedSplatShaderParams packedParams){
         // calculate index for the spalt.
         auto idx = cg::this_grid().thread_rank();
-        if (idx >= packedParams.splatsInShader)
+        if (idx >= packedParams.P)
             return;
-        idx += packedParams.shaderStartingOffset;
 
         // Unpack shader parameters into a format that is easier to work with. Increases memory footprint as tradeoff.
         // Could easily be optimized away by only indexing into the params inside the shader, but for now I'm prioritizing ease of use.
-        shaderParams params(packedParams, idx);
+        SplatShaderParams params(packedParams, idx);
 
         // No need to dereference the shader function pointer.
-        shader(params);
+        shaders[idx](params);
     }
 
 }

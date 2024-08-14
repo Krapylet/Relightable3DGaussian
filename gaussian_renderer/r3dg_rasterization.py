@@ -21,7 +21,7 @@ except Exception as e:
             os.path.join(parent_dir, "cuda_rasterizer/backward.cu"),
             os.path.join(parent_dir, "rasterize_points.cu"),
             os.path.join(parent_dir, "render_equation.cu"),
-            os.path.join(parent_dir, "ext.cpp")],
+            os.path.join(parent_dir, "ext.cu")],
         verbose=True)
 
 
@@ -71,11 +71,8 @@ class _RasterizeGaussians(torch.autograd.Function):
             cov3Ds_precomp,
             raster_settings,
     ):
-
         # Restructure arguments the way that the C++ lib expects them
         args = (
-            raster_settings.shaderIDs,
-            raster_settings.shaderIndexOffset,
             raster_settings.bg,
             means3D,
             features,
@@ -85,6 +82,8 @@ class _RasterizeGaussians(torch.autograd.Function):
             rotations,
             raster_settings.scale_modifier,
             cov3Ds_precomp,
+            raster_settings.shShaderAddresses,
+            raster_settings.splatShaderAddresses,
             raster_settings.viewmatrix,
             raster_settings.viewmatrix_inv,
             raster_settings.projmatrix,
@@ -127,7 +126,7 @@ class _RasterizeGaussians(torch.autograd.Function):
 
     @staticmethod
     def backward(ctx, grad_num_rendered, grad_num_contrib, grad_out_color, grad_out_opacity, grad_out_depth,
-                 grad_out_feature, grad_out_normal, grad_out_surface_xyz, grad_out_radii):
+                 grad_out_feature, grad_out_shader, grad_out_normal, grad_out_surface_xyz, grad_out_radii):
         # Restore necessary values from context
         num_rendered = ctx.num_rendered
         raster_settings = ctx.raster_settings
@@ -145,9 +144,7 @@ class _RasterizeGaussians(torch.autograd.Function):
                 raster_settings.scale_modifier,
                 cov3Ds_precomp,
                 raster_settings.viewmatrix,
-                raster_settings.viewmatrix_inv,
                 raster_settings.projmatrix,
-                raster_settings.projmatrix_inv,
                 raster_settings.tanfovx,
                 raster_settings.tanfovy,
                 grad_out_color,
@@ -212,8 +209,8 @@ class GaussianRasterizationSettings(NamedTuple):
     backward_geometry: bool
     computer_pseudo_normal: bool
     debug: bool
-    shaderIndexOffset: torch.Tensor
-    shaderIDs: torch.Tensor
+    shShaderAddresses: torch.Tensor
+    splatShaderAddresses: torch.Tensor
 
 
 class GaussianRasterizer(nn.Module):
