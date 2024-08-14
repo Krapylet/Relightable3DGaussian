@@ -42,8 +42,14 @@ namespace ShShader
 
     __device__ static void ExponentialPositionShaderCUDA(ShShaderParams p)
     {
-        // Set output color
-        *p.position += (*p.position);
+        // multiply sh position and scale by y coordinate
+        float posX = abs((*p.position).x);
+        float posY = abs((*p.position).y);
+        float posZ = abs((*p.position).z);
+        float dist = (*p.position).length();
+        
+        *p.scale = glm::vec3((*p.scale).x * posY, (*p.scale).y * 2, (*p.scale).z) * posY;
+        *p.position = glm::vec3((*p.position).x * posY, (*p.position).y * 2, (*p.position).z) * posY;
     }
 
     ///// Assign all the shaders to their short handles.
