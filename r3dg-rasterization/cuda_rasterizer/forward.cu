@@ -751,10 +751,7 @@ void FORWARD::RunSplatShaders(
 
 	SplatShader::ExecuteShader<<<(P + 255) / 256, 256>>>(d_shaderAddresses, params);
 
-	// Wait for each shader to finish.
-	cudaDeviceSynchronize();
-	cudaFree(d_shaderAddresses);
-	
+	cudaFree(d_shaderAddresses);	
 }
 
 

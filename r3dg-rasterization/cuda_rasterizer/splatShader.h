@@ -130,7 +130,10 @@ namespace SplatShader
 	// Returns a map of shader names and shader device function pointers that can be passed back to the python frontend though pybind.
 	// we cast pointers to int since pure pointers aren't supported by pybind (ideally uint64_t, but pythorch only supports usigned 8-bit ints)
 	std::map<std::string, int64_t> GetSplatShaderAddressMap();
-	
+
+	// Returns shader adresses in an array so they can be used in CUDA.
+	int64_t* GetSplatShaderAddressArray();
+
 	// Executes a shader on the GPU with the given parameters.
 	__global__ extern void ExecuteShader(SplatShader*, PackedSplatShaderParams packedParams);
 

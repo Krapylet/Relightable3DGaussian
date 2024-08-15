@@ -60,11 +60,7 @@ namespace ShShader
     std::map<std::string, int64_t> GetShShaderAddressMap(){
         // we cast pointers to numbers since most pointers aren't supported by pybind
         // Device function pointers seem to be 8 bytes long (at least on the devlopment machine with a GTX 2080 and when compiling to 64bit mode)
-        // The highest unsigned integer supported by torch, which we use for contigious memory, is 1 byte ints.
-        // This means we can either cut the pointer into 8 small ints when we send them back and forth to the python frontend,
-        // Or we can try to make our own pybind datatype binding.
-        // alternatively, we can try to do our own casting by using bitwise OR to encode the pointer into a signed int64 anyway.
-
+        // There doesn't seem to be any problem casting them back and forth though signed int64s.
         std::map<std::string, int64_t> shaderMap;
         size_t shaderMemorySize = sizeof(ShShader);
         
@@ -78,6 +74,26 @@ namespace ShShader
         shaderMap["ExpPos"] = (int64_t)h_exponentialPositionShader;
 
         return shaderMap;
+    }
+
+    // ONETIME USE FUNCTION USED TO DEBUG. ALLOCATES THE RETURN ARRAY. REMEMBER TO FREE AFTER USE.
+    int64_t* GetShShaderAddressArray(){
+        // we cast pointers to numbers since most pointers aren't supported by pybind
+        // Device function pointers seem to be 8 bytes long (at least on the devlopment machine with a GTX 2080 and when compiling to 64bit mode)
+        // There doesn't seem to be any problem casting them back and forth though signed int64s.
+        int64_t* shaderArray = new int64_t[2];
+        size_t shaderMemorySize = sizeof(ShShader);
+        
+        // Copy device shader pointers to host map
+        ShShader::ShShader h_defaultShader;
+        cudaMemcpyFromSymbol(&h_defaultShader, defaultShader, shaderMemorySize);
+        shaderArray[0] = (int64_t)h_defaultShader;
+
+        ShShader::ShShader h_exponentialPositionShader;
+        cudaMemcpyFromSymbol(&h_exponentialPositionShader, expPosShader, shaderMemorySize);
+        shaderArray[1] = (int64_t)h_exponentialPositionShader;
+
+        return shaderArray;
     }
 
     __global__ void ExecuteShader(ShShader* shaders, PackedShShaderParams packedParams){

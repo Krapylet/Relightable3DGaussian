@@ -76,7 +76,7 @@ class GaussianModel:
             self._visibility_dc = torch.empty(0)
             self._visibility_rest = torch.empty(0)
 
-    #Adds an additional tensor to the model, which contians the shader device function pointers for each individual splat. 
+    #Adds additional tensors to the model, which contians the shader device function pointers for each individual splat. 
     def append_shader_addresses(self):
         splatCount = self._opacity.shape[0]
         
@@ -108,6 +108,18 @@ class GaussianModel:
 
             self.sh_shader_addresses[i] = shShaderAddressDictionary[shShaderName]            
             self.splat_shader_addresses[i] = splatShaderAddressDictionary[splatShaderName]
+        print("Done appending adresses")
+
+    # Adds additional tensor to the model, which contians the shader device function pointers for each individual splat.
+    # This fuction passes that work onto a CUDA function to test whether this would speed up initialization.  
+    def append_shader_addresses_gpu_accelerated(self):
+        splatCount = self._opacity.shape[0]
+        print("Appending shader addresses to " + str(splatCount) + " splats")     
+           
+        (shShaderAdresses, splatshaderAdresses) = _C.PreprocessModel(self._xyz)
+
+        self.sh_shader_addresses = shShaderAdresses
+        self.splat_shader_addresses = splatshaderAdresses
         print("Done appending adresses")
 
     #Adds an additional tensor to the model with addresses for default shaders to use. Only used during training.

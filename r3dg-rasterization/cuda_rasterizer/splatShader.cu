@@ -95,10 +95,7 @@ namespace SplatShader
     std::map<std::string, int64_t> GetSplatShaderAddressMap(){
         // we cast pointers to numbers since most pointers aren't supported by pybind
         // Device function pointers seem to be 8 bytes long (at least on the devlopment machine with a GTX 2080 and when compiling to 64bit mode)
-        // The highest unsigned integer supported by torch, which we use for contigious memory, is 1 byte ints.
-        // This means we can either cut the pointer into 8 small ints when we send them back and forth to the python frontend,
-        // Or we can try to make our own pybind datatype binding.
-        // alternatively, we can try to do our own casting by using bitwise OR to encode the pointer into a signed int64 anyway.
+        // there doesn't seem to be a problem casting them to int64's though.
 
         std::map<std::string, int64_t> shaderMap;
         size_t shaderMemorySize = sizeof(SplatShader);
@@ -118,6 +115,32 @@ namespace SplatShader
 
         return shaderMap;
     }
+
+    // ONETIME USE FUNCTION USED TO DEBUG. ALLOCATES THE RETURN ARRAY. REMEMBER TO FREE AFTER USE.
+    int64_t* GetSplatShaderAddressArray(){
+        // we cast pointers to numbers since most pointers aren't supported by pybind
+        // Device function pointers seem to be 8 bytes long (at least on the devlopment machine with a GTX 2080 and when compiling to 64bit mode)
+        // there doesn't seem to be a problem casting them to int64's though.
+        
+        int64_t* shaderArray = new int64_t[3];
+        size_t shaderMemorySize = sizeof(SplatShader);
+        
+        // Copy device shader pointers to host map
+        SplatShader::SplatShader h_defaultShader;
+        cudaMemcpyFromSymbol(&h_defaultShader, defaultShader, shaderMemorySize);
+        shaderArray[0] = (int64_t)h_defaultShader;
+
+        SplatShader::SplatShader h_outlineShader;
+        cudaMemcpyFromSymbol(&h_outlineShader, outlineShader, shaderMemorySize);
+        shaderArray[1] = (int64_t)h_outlineShader;
+
+        SplatShader::SplatShader h_wireframeShader;
+        cudaMemcpyFromSymbol(&h_wireframeShader, wireframeShader, shaderMemorySize);
+        shaderArray[2] = (int64_t)h_wireframeShader;
+
+        return shaderArray;
+    }
+
 
     __global__ void ExecuteShader(SplatShader* shaders, PackedSplatShaderParams packedParams){
         // calculate index for the spalt.
