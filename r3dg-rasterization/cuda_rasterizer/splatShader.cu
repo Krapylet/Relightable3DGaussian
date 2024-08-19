@@ -117,28 +117,32 @@ namespace SplatShader
     }
 
     // ONETIME USE FUNCTION USED TO DEBUG. ALLOCATES THE RETURN ARRAY. REMEMBER TO FREE AFTER USE.
+    // Returns an array in device memory containing addresses to device shader functions.
     int64_t* GetSplatShaderAddressArray(){
-        // we cast pointers to numbers since most pointers aren't supported by pybind
-        // Device function pointers seem to be 8 bytes long (at least on the devlopment machine with a GTX 2080 and when compiling to 64bit mode)
-        // there doesn't seem to be a problem casting them to int64's though.
-        
-        int64_t* shaderArray = new int64_t[3];
+        // Array is assembled on CPU before being sent to device. Addresses themselves are in device space.
+        int64_t* h_shaderArray = new int64_t[3];
         size_t shaderMemorySize = sizeof(SplatShader);
-        
-        // Copy device shader pointers to host map
+ 
         SplatShader::SplatShader h_defaultShader;
         cudaMemcpyFromSymbol(&h_defaultShader, defaultShader, shaderMemorySize);
-        shaderArray[0] = (int64_t)h_defaultShader;
+        h_shaderArray[0] = (int64_t)h_defaultShader;
 
         SplatShader::SplatShader h_outlineShader;
         cudaMemcpyFromSymbol(&h_outlineShader, outlineShader, shaderMemorySize);
-        shaderArray[1] = (int64_t)h_outlineShader;
+        h_shaderArray[1] = (int64_t)h_outlineShader;
 
         SplatShader::SplatShader h_wireframeShader;
         cudaMemcpyFromSymbol(&h_wireframeShader, wireframeShader, shaderMemorySize);
-        shaderArray[2] = (int64_t)h_wireframeShader;
+        h_shaderArray[2] = (int64_t)h_wireframeShader;
 
-        return shaderArray;
+        // copy the host array to device
+        int64_t* d_shaderArray;
+        cudaMalloc(&d_shaderArray, sizeof(int64_t)*3);
+        cudaMemcpy(d_shaderArray, h_shaderArray, shaderMemorySize * 3, cudaMemcpyDefault);
+
+        // Delete temporary host array.
+        delete[] h_shaderArray;
+        return d_shaderArray;
     }
 
 

@@ -93,7 +93,7 @@ RasterizeGaussiansCUDA(
 	std::function<char*(size_t)> binningFunc = resizeFunctional(binningBuffer);
 	std::function<char*(size_t)> imgFunc = resizeFunctional(imgBuffer);
 
-	// Since the adresses used for these arrays are the same as used in the python frontend, any changes we make to them will stay permanent.
+	// Since the addresses used for these arrays are the same as used in the python frontend, any changes we make to them will stay permanent.
 	// While this is an interesting feature (that should maybe be toggleable?) we don't want that right now. We therefore have to copy
 	// every array that contains a value we want to be able to change non-persistantly
 	torch::Tensor temp_means3D = means3D.detach().clone();

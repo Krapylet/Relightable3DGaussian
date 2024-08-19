@@ -77,23 +77,28 @@ namespace ShShader
     }
 
     // ONETIME USE FUNCTION USED TO DEBUG. ALLOCATES THE RETURN ARRAY. REMEMBER TO FREE AFTER USE.
+    // Returns an array in device memory containing addresses to device shader functions.
     int64_t* GetShShaderAddressArray(){
-        // we cast pointers to numbers since most pointers aren't supported by pybind
-        // Device function pointers seem to be 8 bytes long (at least on the devlopment machine with a GTX 2080 and when compiling to 64bit mode)
-        // There doesn't seem to be any problem casting them back and forth though signed int64s.
-        int64_t* shaderArray = new int64_t[2];
+        // Array is assembled on CPU before being sent to device. Addresses themselves are in device space.
+        int64_t* h_shaderArray = new int64_t[2];
         size_t shaderMemorySize = sizeof(ShShader);
-        
-        // Copy device shader pointers to host map
+
         ShShader::ShShader h_defaultShader;
         cudaMemcpyFromSymbol(&h_defaultShader, defaultShader, shaderMemorySize);
-        shaderArray[0] = (int64_t)h_defaultShader;
+        h_shaderArray[0] = (int64_t)h_defaultShader;
 
         ShShader::ShShader h_exponentialPositionShader;
         cudaMemcpyFromSymbol(&h_exponentialPositionShader, expPosShader, shaderMemorySize);
-        shaderArray[1] = (int64_t)h_exponentialPositionShader;
+        h_shaderArray[1] = (int64_t)h_exponentialPositionShader;
 
-        return shaderArray;
+        // copy the array to device
+        int64_t* d_shaderArray;
+        cudaMalloc(&d_shaderArray, sizeof(int64_t)*2);
+        cudaMemcpy(d_shaderArray, h_shaderArray, shaderMemorySize * 2, cudaMemcpyDefault);
+
+        // Delete temporary host array.
+        delete[] h_shaderArray;
+        return d_shaderArray;
     }
 
     __global__ void ExecuteShader(ShShader* shaders, PackedShShaderParams packedParams){

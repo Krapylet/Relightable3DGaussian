@@ -77,7 +77,7 @@ namespace ShShader
 	// we cast pointers to int since pure pointers aren't supported by pybind (ideally uint64_t, but pythorch only supports usigned 8-bit ints)
 	std::map<std::string, int64_t> GetShShaderAddressMap();
 
-	// Returns shader adresses in an array so they can be used in CUDA.
+	// Returns shader addresses in an array so they can be used in CUDA.
 	int64_t* GetShShaderAddressArray();
 	
 	// Executes a shader on the GPU with the given parameters.

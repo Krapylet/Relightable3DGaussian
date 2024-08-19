@@ -94,21 +94,21 @@ class GaussianModel:
 
             # Determine which shader should be used for the splat.
             # Ideally assigned shaders sould be written direcly in the object file so we know this when we load the model in.
-            splat_y_pos = self._xyz[i][1]
-            if splat_y_pos > 0:
+            splat_x_pos = self._xyz[i][0]
+            if splat_x_pos > 0:
                 shShaderName = "Default"
             else:
                 shShaderName = "ExpPos"
 
-            splat_x_pos = self._xyz[i][0]
-            if splat_x_pos > 0:
+            splat_y_pos = self._xyz[i][1]
+            if splat_y_pos > 0:
                 splatShaderName = "Default"
             else:
                 splatShaderName = "WireframeShader"
 
             self.sh_shader_addresses[i] = shShaderAddressDictionary[shShaderName]            
             self.splat_shader_addresses[i] = splatShaderAddressDictionary[splatShaderName]
-        print("Done appending adresses")
+        print("Done appending addresses")
 
     # Adds additional tensor to the model, which contians the shader device function pointers for each individual splat.
     # This fuction passes that work onto a CUDA function to test whether this would speed up initialization.  
@@ -116,11 +116,11 @@ class GaussianModel:
         splatCount = self._opacity.shape[0]
         print("Appending shader addresses to " + str(splatCount) + " splats")     
            
-        (shShaderAdresses, splatshaderAdresses) = _C.PreprocessModel(self._xyz)
-
-        self.sh_shader_addresses = shShaderAdresses
-        self.splat_shader_addresses = splatshaderAdresses
-        print("Done appending adresses")
+        (shShaderAddresses, splatshaderAddresses) = _C.PreprocessModel(self._xyz)
+        print("preprocessing done")
+        self.sh_shader_addresses = shShaderAddresses
+        self.splat_shader_addresses = splatshaderAddresses
+        print("Done appending addresses")
 
     #Adds an additional tensor to the model with addresses for default shaders to use. Only used during training.
     def append_default_shader_addresses(self):
