@@ -10,6 +10,7 @@ import torch.nn.functional as F
 import torchvision
 import relighting
 import sys
+import time
 from gaussian_renderer import render_fn_dict
 from scene import GaussianModel
 from utils.general_utils import safe_state
@@ -117,17 +118,18 @@ class GUI:
         self.render_buffer = np.zeros((self.W, self.H, 3), dtype=np.float32)
         self.resize_fn = torchvision.transforms.Resize((self.H, self.W), antialias=True)
         self.downsample = 1
-        self.start = torch.cuda.Event(enable_timing=True)
-        self.end = torch.cuda.Event(enable_timing=True)
-
+        self.programStart = time.time()
+        self.frameStart = self.programStart
+        self.inferenceStart = torch.cuda.Event(enable_timing=True)
+        self.inferenceEnd = torch.cuda.Event(enable_timing=True)
         
-
         self.menu = None
         self.mode = None
         self.step()
         self.mode = mode if mode in self.menu else self.menu[0]
         dpg.create_context()
         self.register_dpg()
+
 
     def __del__(self):
         dpg.destroy_context()
@@ -179,26 +181,35 @@ class GUI:
         dpg.render_dearpygui_frame()
 
     def step(self):
-        self.start.record()
+        self.inferenceStart.record()
         render_pkg = self.render_fn(viewpoint_camera=self.custom_cam, **self.render_kwargs)
-        self.end.record()
+        self.inferenceEnd.record()
         torch.cuda.synchronize()
-        t = self.start.elapsed_time(self.end)
+        #Record time it took to render the gaussians speficially.
+        inferTime = self.inferenceStart.elapsed_time(self.inferenceEnd)
+
+        frameEnd = time.time()
+        totalTime = (frameEnd - self.programStart) * 1000  #convert time to ms
+        dt = (frameEnd - self.frameStart) * 1000
+        self.render_kwargs["time"] = time
+        self.render_kwargs["dt"] = dt
+        self.frameStart = frameEnd
 
         buffer1 = self.get_buffer(render_pkg, self.mode)
         self.render_buffer = buffer1
 
-        if t == 0:
+        if dt == 0:
             fps = 0
         else:
-            fps = int(1000 / t)
+            fps = int(1000 / dt)
 
         if self.menu is None:
             self.menu = [k for k, v in render_pkg.items() if
                          isinstance(v, torch.Tensor) and np.array(v.shape).prod() % (self.H * self.W) == 0]
         else:
-            dpg.set_value("_log_infer_time", f'{t:.4f}ms ({fps} FPS)')
+            dpg.set_value("_log_time", f'it:{inferTime:.2f}ms, dt:{dt:.4f}ms ({fps} FPS)')
             dpg.set_value("_texture", self.render_buffer)
+
 
     def register_dpg(self):
 
@@ -232,8 +243,8 @@ class GUI:
                     dpg.add_theme_style(dpg.mvStyleVar_FramePadding, 3, 3)
 
             with dpg.group(horizontal=True):
-                dpg.add_text("Infer time: ")
-                dpg.add_text("no data", tag="_log_infer_time")
+                dpg.add_text("Time: ")
+                dpg.add_text("no data", tag="_log_time")
 
             # rendering options
             with dpg.collapsing_header(label="Options", default_open=True):
@@ -458,6 +469,8 @@ if __name__ == '__main__':
         "bg_color": background,
         "is_training": False,
         "dict_params": pbr_kwargs,
+        "time": 0.0,
+        "dt": 0.0
     }
 
     if(renderMultipleModels):
@@ -467,7 +480,7 @@ if __name__ == '__main__':
                   c2w=c2w, center=center,
                   render_fn=render_fn, render_kwargs=render_kwargs,
                   mode='shader', use_hdr2ldr=args.hdr2ldr)
-
+    
     while True:
         windows.render()
 
