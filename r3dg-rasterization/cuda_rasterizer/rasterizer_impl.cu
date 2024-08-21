@@ -201,6 +201,7 @@ int CudaRasterizer::Rasterizer::forward(
 	std::function<char* (size_t)> geometryBuffer,
 	std::function<char* (size_t)> binningBuffer,
 	std::function<char* (size_t)> imageBuffer,
+	const float time, const float dt,
 	const int P, const int S, int D, int M,
 	const float* background,
 	const int width, int height,
@@ -264,6 +265,7 @@ int CudaRasterizer::Rasterizer::forward(
 		shShaderAddresses,
 
 		//input
+		time, dt,
 		scale_modifier,
 		tile_grid,
 		viewmatrix,
@@ -315,7 +317,8 @@ int CudaRasterizer::Rasterizer::forward(
 	CHECK_CUDA(FORWARD::RunSplatShaders(
 		// input
 		width, height,
-		P,							
+		P,
+		time, dt,
 		means3D,  		
 		geomState.means2D,
 		splatShaderAddresses,

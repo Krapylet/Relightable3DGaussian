@@ -31,6 +31,9 @@ namespace SplatShader
         // shader execution information:
 		int const P;						// Total number of splats.
 
+		// Time information
+		float const time; float const dt;
+
 		// position information
 		glm::vec3 const *const __restrict__ positions;  			
 		glm::vec2 const *const __restrict__ screen_positions;		
@@ -80,6 +83,9 @@ namespace SplatShader
         int const W; int const H;							// Sceen width and height
 		// TODO: Collapse depth into a screen texture during the preprocessing (after the SH shader), so we can see the depth of the entire scene during this step.
 		// This woudl be a cheap way to approximate how visible each individual splat is. 
+
+		// Time information:
+		float const time; float const dt;
 
         // position information:
 		glm::vec3 const position;  			// mean 3d position of gaussian in world space.

@@ -646,6 +646,7 @@ void FORWARD::RunSHShaders(
 	int64_t const *const shaderAddresses,
 
 	//input
+	float const time, float const dt,
 	float const scale_modifier,
 	dim3 const grid, // Could maybe be made dynamic?
 	float const *const viewmatrix,
@@ -667,6 +668,7 @@ void FORWARD::RunSHShaders(
 {
 	ShShader::PackedShShaderParams params {
 		P,
+		time, dt,
 		scale_modifier,
 		grid,			
 		viewmatrix,
@@ -703,7 +705,8 @@ void FORWARD::RunSHShaders(
 
 void FORWARD::RunSplatShaders(
 	int const W, int const H,			
-	int const P,					
+	int const P,
+	float const time, float const dt,
 	float const *const __restrict__ positions,
 	float2 const *const __restrict__ screen_positions,
 	int64_t const *const __restrict__ shaderAddresses,
@@ -723,7 +726,8 @@ void FORWARD::RunSplatShaders(
 {
 	SplatShader::PackedSplatShaderParams params {
 		W,H,			
-		P,			
+		P,
+		time, dt,	
 		(glm::vec3*) positions,
 		(glm::vec2*) screen_positions,
 		viewmatrix,

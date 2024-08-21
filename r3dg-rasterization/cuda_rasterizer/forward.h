@@ -29,6 +29,7 @@ namespace FORWARD
 		int64_t const *const shaderAddresses,
 
 		//input
+		float const time, float const dt,
 		float const scale_modifier,
 		dim3 const grid, // Could maybe be made dynamic?
 		float const *const viewmatrix,
@@ -80,6 +81,7 @@ namespace FORWARD
 	void RunSplatShaders(
 		int const W, int const H,	
 		int const P,
+		float const time, float const dt,
 		float const *const positions,  
 		float2 const *const screen_positions,
 		int64_t const *const shaderAddresses,

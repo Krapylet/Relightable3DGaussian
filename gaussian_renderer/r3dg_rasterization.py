@@ -74,6 +74,8 @@ class _RasterizeGaussians(torch.autograd.Function):
         # Restructure arguments the way that the C++ lib expects them
         args = (
             raster_settings.bg,
+            raster_settings.time,
+            raster_settings.dt,
             means3D,
             features,
             colors_precomp,
@@ -211,6 +213,8 @@ class GaussianRasterizationSettings(NamedTuple):
     debug: bool
     shShaderAddresses: torch.Tensor
     splatShaderAddresses: torch.Tensor
+    time: float
+    dt: float
 
 
 class GaussianRasterizer(nn.Module):

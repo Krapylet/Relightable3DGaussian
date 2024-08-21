@@ -26,6 +26,7 @@ namespace ShShader
         const int P;
 
         //input
+		float const time; float const dt;
 		float const scale_modifier;
 		dim3 const grid; 
 		float const *const viewmatrix;
@@ -50,6 +51,7 @@ namespace ShShader
 		__device__ ShShaderParams(PackedShShaderParams params, int idx);
 
         //input
+		float const time; float const dt;
 		float const scale_modifier;
 		dim3 const grid; 
 		float const *const viewmatrix;

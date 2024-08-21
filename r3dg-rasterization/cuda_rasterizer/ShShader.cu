@@ -12,6 +12,7 @@ namespace cg = cooperative_groups;
 namespace ShShader
 {
     __device__ ShShaderParams::ShShaderParams(PackedShShaderParams p, int idx):
+        time(p.time), dt(p.dt),
         scale_modifier(p.scale_modifier),
 		grid(p.grid),
 		viewmatrix(p.viewmatrix),

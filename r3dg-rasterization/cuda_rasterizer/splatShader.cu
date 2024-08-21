@@ -14,7 +14,9 @@ namespace SplatShader
     __device__ SplatShaderParams::SplatShaderParams(PackedSplatShaderParams p, int idx):
         W(p.W),
         H(p.H),
+        time(p.time), dt(p.dt),
 		position(p.positions[idx]),
+
         // world space position = 
         // view space up, right, forward,
         // world space up, right, forward,  		
@@ -81,8 +83,9 @@ namespace SplatShader
             ? 1 - 16 * pow(angle, 5)
             : pow(-2 * angle + 2, 5) / 2;
 
+        float rColor = fmodf(p.time / 5000, 1.0);
         // Set output color
-        *p.out_color = glm::vec3(1 - opacity);
+        *p.out_color = glm::vec3(rColor, 1 - opacity,  1 - opacity);
     }
 
     ///// Assign all the shaders to their short handles.

@@ -191,7 +191,7 @@ class GUI:
         frameEnd = time.time()
         totalTime = (frameEnd - self.programStart) * 1000  #convert time to ms
         dt = (frameEnd - self.frameStart) * 1000
-        self.render_kwargs["time"] = time
+        self.render_kwargs["time"] = totalTime
         self.render_kwargs["dt"] = dt
         self.frameStart = frameEnd
 
