@@ -15,6 +15,7 @@
 #include "cuda_rasterizer/splatShader.h"
 #include "cuda_rasterizer/shShader.h"
 #include "preprocessModel.h"
+#include "texture.h"
 
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   m.def("rasterize_gaussians", &RasterizeGaussiansCUDA);
@@ -26,4 +27,6 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   m.def("GetSplatShaderAddressMap", &SplatShader::GetSplatShaderAddressMap);
   m.def("GetShShaderAddressMap", &ShShader::GetShShaderAddressMap);
   m.def("PreprocessModel", &PreprocessModel);
+  m.def("LoadTexture", &LoadTexture);
+  m.def("PrintFirstPixel", &PrintFirstPixel);
 }

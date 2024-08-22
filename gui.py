@@ -436,6 +436,8 @@ if __name__ == '__main__':
             gaussians.load_ply(
                 os.path.join(args.model_path, "point_cloud", "iteration_" + str(loaded_iter), "point_cloud.ply"))
 
+    gaussians.load_image(r"C:\Users\asvj\Documents\GitHub\Relightable3DGaussian\textures\redTest.png")
+    #gaussians.load_image(r"C:\Users\asvj\Documents\GitHub\Relightable3DGaussian\textures\Cracks 2.png")
     gaussians.append_shader_addresses_gpu_accelerated()
     #gaussians.append_shader_addresses()
 

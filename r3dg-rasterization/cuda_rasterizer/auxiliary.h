@@ -173,3 +173,15 @@ throw std::runtime_error(cudaGetErrorString(ret)); \
 }
 
 #endif
+
+
+// Error checking function taken from nvidia's cuda sample at https://github.com/NVIDIA/cuda-samples/blob/master/Samples/2_Concepts_and_Techniques/boxFilter/boxFilter_kernel.cu
+#define checkCudaErrors(err) __checkCudaErrors(err, __FILE__, __LINE__)
+
+inline void __checkCudaErrors(cudaError err, const char *file, const int line) {
+  if (cudaSuccess != err) {
+    fprintf(stderr, "%s(%i) : CUDA Runtime API error %d: %s.\n", file, line,
+            (int)err, cudaGetErrorString(err));
+    exit(EXIT_FAILURE);
+  }
+}
