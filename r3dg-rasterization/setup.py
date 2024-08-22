@@ -30,11 +30,13 @@ setup(
                 "rasterize_points.cu",
                 "render_equation.cu",
                 "ext.cu",
-                "preprocessModel.cu"],
+                "preprocessModel.cu",
+                "texture.cu"],
             dlink=True,
             extra_compile_args={
                 "nvcc": ["--device-c",
                          "-I" + os.path.join(os.path.dirname(os.path.abspath(__file__)), "third_party/glm/"),
+                         "-I" + os.path.join(os.path.dirname(os.path.abspath(__file__)), "third_party/lodepng/"),
                          "-O3"],
                 "cxx": ["-O3"]})
     ],
