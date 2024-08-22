@@ -1,8 +1,10 @@
+#pragma once
+
+#include "preprocessModel.h"
 #include "cuda_rasterizer/ShShader.h"
 #include "cuda_rasterizer/splatShader.h"
-#include <torch/extension.h>
-#include <cooperative_groups.h>
 #include "cuda_rasterizer/auxiliary.h"
+#include <cooperative_groups.h>
 #include <inttypes.h>
 #ifndef GLM_FORCE_CUDA
 #define GLM_FORCE_CUDA
