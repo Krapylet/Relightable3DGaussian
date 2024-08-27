@@ -110,14 +110,6 @@ class GaussianModel:
             self.splat_shader_addresses[i] = splatShaderAddressDictionary[splatShaderName]
         print("Done appending addresses")
 
-    # Loads a texture into CUDA memory and returns a device memory pointer to it.
-    # Should probably be reloacted to somewhere else
-    def load_image(self, filepath:str):
-        filename = os.path.basename(filepath)
-        print(f"Attempting to load texture: {filename}")
-        imageObj = _C.LoadTexture(filepath)
-        print("Texture loaded sucessfully")
-
     # Adds additional tensor to the model, which contians the shader device function pointers for each individual splat.
     # This fuction passes that work onto a CUDA function to test whether this would speed up initialization.  
     def append_shader_addresses_gpu_accelerated(self):

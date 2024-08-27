@@ -68,7 +68,7 @@ namespace ShShader
         // Copy device shader pointers to host map
         ShShader::ShShader h_defaultShader;
         cudaMemcpyFromSymbol(&h_defaultShader, defaultShader, shaderMemorySize);
-        shaderMap["Default"] = (int64_t)h_defaultShader;
+        shaderMap["ShDefault"] = (int64_t)h_defaultShader;
 
         ShShader::ShShader h_exponentialPositionShader;
         cudaMemcpyFromSymbol(&h_exponentialPositionShader, expPosShader, shaderMemorySize);

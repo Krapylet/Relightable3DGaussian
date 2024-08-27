@@ -22,6 +22,7 @@ from scene.derect_light_sh import DirectLightEnv
 from utils.graphics_utils import focal2fov, hdr2ldr
 from scene.gamma_trans import LearningGammaTransform
 from scene.envmap import EnvLight
+import asset_processing.textureImport as texImport
 
 
 def safe_normalize(x, eps=1e-20):
@@ -407,7 +408,6 @@ if __name__ == '__main__':
                 checkpoint = args.checkpoint
             else:
                 checkpoint = sorted(checkpoints, key=lambda x: int(x.split("chkpnt")[-1].split(".")[0]))[-1]
-            (model_params, first_iter) = torch.load(checkpoint)
             gaussians.create_from_ckpt(checkpoint, restore_optimizer=False)
 
             env_checkpoint = checkpoint.split("chkpnt")[0] + "env_light_chkpnt" + checkpoint.split("chkpnt")[-1]
@@ -436,10 +436,11 @@ if __name__ == '__main__':
             gaussians.load_ply(
                 os.path.join(args.model_path, "point_cloud", "iteration_" + str(loaded_iter), "point_cloud.ply"))
 
-    gaussians.load_image(r"C:\Users\asvj\Documents\GitHub\Relightable3DGaussian\textures\redTest.png")
-    #gaussians.load_image(r"C:\Users\asvj\Documents\GitHub\Relightable3DGaussian\textures\Cracks 2.png")
-    gaussians.append_shader_addresses_gpu_accelerated()
-    #gaussians.append_shader_addresses()
+    shaderTextureBundles = texImport.initialize_all_textures()
+
+    # Tell each splat which shader to use
+    gaussians.append_shader_addresses_gpu_accelerated()   # Faster initialization, but shaders are identified by ints
+    #gaussians.append_shader_addresses()                   # Slower initialization, but shaders are identified by strings
 
     render_fn = render_fn_dict[args.type]
     bg_color = [1, 1, 1] if dataset.white_background else [0, 0, 0]
@@ -472,7 +473,8 @@ if __name__ == '__main__':
         "is_training": False,
         "dict_params": pbr_kwargs,
         "time": 0.0,
-        "dt": 0.0
+        "dt": 0.0,
+        "shaderTextureBundles": shaderTextureBundles,
     }
 
     if(renderMultipleModels):

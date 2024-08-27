@@ -24,6 +24,7 @@
 #include <fstream>
 #include <string>
 #include <functional>
+#include "texture.h"
 
 std::function<char*(size_t N)> resizeFunctional(torch::Tensor& t) {
     auto lambda = [&t](size_t N) {
@@ -58,11 +59,13 @@ RasterizeGaussiansCUDA(
 	const float cy,
     const int image_height,
     const int image_width,
-	const torch::Tensor& sh, 			//
+	const torch::Tensor& sh, 			
 	const int degree,
 	const torch::Tensor& campos,
 	const bool prefiltered,
 	const bool computer_pseudo_normal,
+	// Stored as <ShaderName, <TextureName, <TexturePropertyName, TexturePropertyData>
+	const std::map<std::string, std::map<std::string, std::map<std::string, torch::Tensor>>>& shaderTextureBundles,
 	const bool debug)
 {
 	if (means3D.ndimension() != 2 || means3D.size(1) != 3) {
@@ -94,6 +97,28 @@ RasterizeGaussiansCUDA(
 	std::function<char*(size_t)> geomFunc = resizeFunctional(geomBuffer);
 	std::function<char*(size_t)> binningFunc = resizeFunctional(binningBuffer);
 	std::function<char*(size_t)> imgFunc = resizeFunctional(imgBuffer);
+
+	//std::cout << "At ShDefault Cracks texture: " << rawTextures.at("ShDefault").at("Cracks") ///  should be .at("rawData")  /// .cpu().contiguous().data_ptr<float>()[0] << ", At ShDefault Red texture:" << rawTextures.at("ShDefault").at("Red").cpu().contiguous().data_ptr<float>()[0] << std::endl;
+
+	std::cout << "Rendering started" << std::endl;
+	//TODO: Move texture wrapping into SH and splat shader loops.
+	// generate a texture wrapper around each of the images in the texture map.
+	{
+		// shaderTextureBundles stores data in nested maps on the format: <ShaderName, <TextureName, <TexturePropertyName, TexturePropertyData>
+		using namespace std;
+		for(auto shaderTextureBundle : shaderTextureBundles){
+			string shaderName = shaderTextureBundle.first;
+			map<string, map<string, torch::Tensor>> textureBundle = shaderTextureBundle.second;
+
+			for(auto texture : textureBundle){
+				string textureName = texture.first;
+				map<string, torch::Tensor> textureData = texture.second;
+				cudaTextureObject_t* texObj = Texture::CreateTexture(textureData);
+			}
+		}
+	}
+	std::cout << "Textures imported" << std::endl;
+	
 
 	// Since the addresses used for these arrays are the same as used in the python frontend, any changes we make to them will stay permanent.
 	// While this is an interesting feature (that should maybe be toggleable?) we don't want that right now. We therefore have to copy

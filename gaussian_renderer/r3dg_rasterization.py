@@ -71,6 +71,13 @@ class _RasterizeGaussians(torch.autograd.Function):
             cov3Ds_precomp,
             raster_settings,
     ):
+        
+        shaderATextures = {"Red": torch.tensor([0.2,0.2,0.2], dtype=torch.float32).cuda(),
+             "Green": torch.tensor([0.3,0.3,0.3], dtype=torch.float32).cuda()}
+        shaderBTextures = {"Blue": torch.tensor([0.4,0.4,0.4], dtype=torch.float32).cuda(),
+             "Black": torch.tensor([0.5,0.5,0.5], dtype=torch.float32).cuda()}
+        shaderTextureCollection = { "ShaderATextures": shaderATextures, "ShaderBTextures": shaderBTextures}
+        
         # Restructure arguments the way that the C++ lib expects them
         args = (
             raster_settings.bg,
@@ -101,6 +108,7 @@ class _RasterizeGaussians(torch.autograd.Function):
             raster_settings.campos,
             raster_settings.prefiltered,
             raster_settings.computer_pseudo_normal,
+            raster_settings.shaderTextureBundles,
             raster_settings.debug
         )
         
@@ -215,6 +223,7 @@ class GaussianRasterizationSettings(NamedTuple):
     splatShaderAddresses: torch.Tensor
     time: float
     dt: float
+    shaderTextureBundles: dict[str, dict[str, dict[str, torch.Tensor]]]
 
 
 class GaussianRasterizer(nn.Module):

@@ -106,7 +106,7 @@ namespace SplatShader
         // Copy device shader pointers to host map
         SplatShader::SplatShader h_defaultShader;
         cudaMemcpyFromSymbol(&h_defaultShader, defaultShader, shaderMemorySize);
-        shaderMap["Default"] = (int64_t)h_defaultShader;
+        shaderMap["SplatDefault"] = (int64_t)h_defaultShader;
 
         SplatShader::SplatShader h_outlineShader;
         cudaMemcpyFromSymbol(&h_outlineShader, outlineShader, shaderMemorySize);
