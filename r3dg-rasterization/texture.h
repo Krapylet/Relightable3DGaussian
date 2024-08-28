@@ -4,6 +4,20 @@
 #include <torch/extension.h>
 
 namespace Texture{
+    enum TextureMode {
+        Unknown = -1,
+        One = 0,
+        L = 1,
+        P = 2,
+        RGB = 3,
+        RGBA = 4,
+        CMYK = 5,
+        YCbCr = 6,
+        LAB = 7,
+        HSV = 8,
+        I = 9,
+        F = 10
+    };
 
     __global__ extern void PrintFirstPixel(cudaTextureObject_t texObj);
 
@@ -15,8 +29,4 @@ namespace Texture{
 
     // Encodes the name of a Pillow supported image mode to an int
     int encodeTextureMode(std::string mode);
-    
-    // Decodes the name of a Pillow supported image mode to a string
-    std::string decodeTextureMode(int mode);
-
 };

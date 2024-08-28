@@ -52,67 +52,39 @@ namespace Texture
     */
     int encodeTextureMode(std::string mode){
         if(mode == "1")
-            return 0;
+            return TextureMode::One;
         else if ( mode == "L")
-            return 1;
+            return TextureMode::L;
         else if ( mode == "P")
-            return 2;
+            return TextureMode::P;
         else if ( mode == "RGB")
-            return 3;
+            return TextureMode::RGB;
         else if ( mode == "RGBA")
-            return 4;
+            return TextureMode::RGBA;
         else if ( mode == "CMYK")
-            return 5;
+            return TextureMode::CMYK;
         else if ( mode == "YCbCr")
-            return 6;
+            return TextureMode::YCbCr;
         else if ( mode == "LAB")
-            return 7;
+            return TextureMode::LAB;
         else if ( mode == "HSV")
-            return 8;
+            return TextureMode::HSV;
         else if ( mode == "I")
-            return 9;
+            return TextureMode::I;
         else if ( mode == "F")
-            return 10;
+            return TextureMode::F;
 
-        return -1;
-    }
-
-    std::string decodeTextureMode(int mode){
-        if(mode == 0)
-            return "1";
-        else if ( mode == 1)
-            return "L";
-        else if ( mode == 2)
-            return "P";
-        else if ( mode == 3)
-            return "RGB";
-        else if ( mode == 4)
-            return "RGBA";
-        else if ( mode == 5)
-            return "CMYK";
-        else if ( mode == 6)
-            return "YCbCr";
-        else if ( mode == 7)
-            return "LAB";
-        else if ( mode == 8)
-            return "HSV";
-        else if ( mode == 9)
-            return "I";
-        else if ( mode == 10)
-            return "F";
-
-        return "Error: Unkown texture mode encoding '" + std::to_string(mode) + "'.";
+        return TextureMode::Unknown;
     }
 
     // Creates a textureObject wrapper around the provided texture data
     // Adapted from the lodepng decoding example example at https://github.com/lvandeve/lodepng/blob/master/examples/example_decode.cpp
     // and the cuda example at https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#texture-object-api
     void CreateTexture(cudaTextureObject_t* texObjPtr, std::map<std::string, torch::Tensor> textureData){
-
         // extract all the texture data
         int height = textureData["height"].const_data_ptr<int>()[0];
         int width = textureData["width"].const_data_ptr<int>()[0];
-        std::string mode = decodeTextureMode(textureData["mode"].const_data_ptr<int>()[0]);
+        TextureMode mode = static_cast<TextureMode>(textureData["mode"].const_data_ptr<int>()[0]);
         float* pixelData = textureData["pixelData"].contiguous().cuda().mutable_data_ptr<float>();
         int pixelDataCount = textureData["pixelData"].numel();
 
@@ -139,14 +111,14 @@ namespace Texture
         int channelByteWidth;
         struct cudaTextureDesc texDesc;
         memset(&texDesc, 0, sizeof(texDesc));
-        if(mode == "1" || mode == "L" || mode == "P" || mode == "I" || mode == "F"){
+        if(mode == TextureMode::One || mode == TextureMode::L || mode == TextureMode::P || mode == TextureMode::I || mode == TextureMode::F){
             channelDesc = cudaCreateChannelDesc(32, 0, 0, 0, cudaChannelFormatKindFloat);
             channelByteWidth = width * sizeof(float1);
             paddedDataSize = height * channelByteWidth;
             texDesc.filterMode = cudaFilterModeLinear;
             texDesc.readMode = cudaReadModeElementType;
         }
-        else if ( mode == "RGBA" || mode == "CMYK")
+        else if ( mode == TextureMode::RGBA || mode == TextureMode::CMYK)
         {
             channelDesc = cudaCreateChannelDesc(32, 32, 32, 32, cudaChannelFormatKindFloat);
             channelByteWidth = width * sizeof(float4);
@@ -154,7 +126,7 @@ namespace Texture
             texDesc.filterMode = cudaFilterModeLinear;
             texDesc.readMode = cudaReadModeElementType;
         }
-        else if ( mode == "RGB" || mode == "YCbCr")
+        else if ( mode == TextureMode::RGB || mode == TextureMode::YCbCr)
         {
             channelDesc = cudaCreateChannelDesc(32, 32, 32, 32, cudaChannelFormatKindFloat);
             channelByteWidth = width * sizeof(float4);
@@ -169,7 +141,7 @@ namespace Texture
             cudaDeviceSynchronize();
             pixelData = paddedData; // Overwrite the original data pointer. Remember to free the memory by the end of the function.
         }
-        else if (mode == "LAB" || mode == "HSV")
+        else if (mode == TextureMode::LAB|| mode == TextureMode::HSV)
         {
             channelDesc = cudaCreateChannelDesc(32, 32, 32, 32, cudaChannelFormatKindUnsigned);
             channelByteWidth = width * sizeof(float4);
@@ -206,7 +178,7 @@ namespace Texture
         // Create texture object, which is used as a wrapper to access the cuda Array with the actual image data.
         checkCudaErrors(cudaCreateTextureObject(texObjPtr, &resDesc, &texDesc, NULL));
         
-        if ( mode == "RGB" || mode == "YCbCr" || mode == "LAB" || mode == "HSV")
+        if ( mode == TextureMode::RGB || mode == TextureMode::YCbCr || mode == TextureMode::LAB || mode == TextureMode::HSV)
         {   
             // If we had to copy and pad the data of a 3-value format with a 4th value before the data was copied to a cudaArray,
             // we have to free the memory used to create the temporary padded version. 
