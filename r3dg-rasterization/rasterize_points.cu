@@ -100,8 +100,6 @@ RasterizeGaussiansCUDA(
 
 	//std::cout << "At ShDefault Cracks texture: " << rawTextures.at("ShDefault").at("Cracks") ///  should be .at("rawData")  /// .cpu().contiguous().data_ptr<float>()[0] << ", At ShDefault Red texture:" << rawTextures.at("ShDefault").at("Red").cpu().contiguous().data_ptr<float>()[0] << std::endl;
 
-	std::cout << "Rendering started" << std::endl;
-	//TODO: Move texture wrapping into SH and splat shader loops.
 	// generate a texture wrapper around each of the images in the texture map.
 	{
 		// shaderTextureBundles stores data in nested maps on the format: <ShaderName, <TextureName, <TexturePropertyName, TexturePropertyData>
@@ -113,12 +111,11 @@ RasterizeGaussiansCUDA(
 			for(auto texture : textureBundle){
 				string textureName = texture.first;
 				map<string, torch::Tensor> textureData = texture.second;
-				cudaTextureObject_t* texObj = Texture::CreateTexture(textureData);
+				cudaTextureObject_t texObj;
+				Texture::CreateTexture(&texObj, textureData);
 			}
 		}
 	}
-	std::cout << "Textures imported" << std::endl;
-	
 
 	// Since the addresses used for these arrays are the same as used in the python frontend, any changes we make to them will stay permanent.
 	// While this is an interesting feature (that should maybe be toggleable?) we don't want that right now. We therefore have to copy

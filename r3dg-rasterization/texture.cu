@@ -73,6 +73,8 @@ namespace Texture
             return 9;
         else if ( mode == "F")
             return 10;
+
+        return -1;
     }
 
     std::string decodeTextureMode(int mode){
@@ -98,12 +100,14 @@ namespace Texture
             return "I";
         else if ( mode == 10)
             return "F";
+
+        return "Error: Unkown texture mode encoding '" + std::to_string(mode) + "'.";
     }
 
     // Creates a textureObject wrapper around the provided texture data
     // Adapted from the lodepng decoding example example at https://github.com/lvandeve/lodepng/blob/master/examples/example_decode.cpp
     // and the cuda example at https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#texture-object-api
-    cudaTextureObject_t* CreateTexture(std::map<std::string, torch::Tensor> textureData){
+    void CreateTexture(cudaTextureObject_t* texObjPtr, std::map<std::string, torch::Tensor> textureData){
 
         // extract all the texture data
         int height = textureData["height"].const_data_ptr<int>()[0];
@@ -200,8 +204,7 @@ namespace Texture
         resDesc.res.array.array = cuArray;
         
         // Create texture object, which is used as a wrapper to access the cuda Array with the actual image data.
-        cudaTextureObject_t texObj;
-        checkCudaErrors(cudaCreateTextureObject(&texObj, &resDesc, &texDesc, NULL));
+        checkCudaErrors(cudaCreateTextureObject(texObjPtr, &resDesc, &texDesc, NULL));
         
         if ( mode == "RGB" || mode == "YCbCr" || mode == "LAB" || mode == "HSV")
         {   
@@ -211,9 +214,6 @@ namespace Texture
         }
  
         // TODO: Make sure to keep track of which memory we need clean up at the end of this function, and at the end of this frame.
-        // Also, this is a local pointer. fix that when we get to it.
-        //TODO: Test whether this pointer can be returned to python and used in another c call.
-        return &texObj;
     }
 
     // TODO:unload texture
