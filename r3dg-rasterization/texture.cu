@@ -4,6 +4,7 @@
 #include <iostream>
 #include <stdexcept>
 #include <map>
+#include <cooperative_groups.h>
 
 namespace Texture
 {
@@ -13,22 +14,25 @@ namespace Texture
         printf("Cuda reading RGBA value of first texel: %f,%f,%f,%f\n", cudaTexel.x, cudaTexel.y, cudaTexel.z, cudaTexel.w);
     }
 
+
+
     // Allocates a new array from the input array where every 4th index is a padded value of 1. The input pointer is overwritten with the pointer to the new array.
     // The array is 4/3rds the length of the input array. Remember to delete the allocated array.
-    __global__ void CreatPaddedArrayFromBase(float* src, float* dest, int width, int height){
-        // Increase count by 1/3rd to make room for the 4th channel
-        for (size_t padded_i = 0; padded_i < width*height*4; padded_i++)
+    __global__ void CreatPaddedArrayFromBase(float* src, float* dest, int paddedDataCount){
+        auto padded_i = cooperative_groups::this_grid().thread_rank();
+        if (padded_i >= paddedDataCount)
+            return;
+
+        bool padCurrentIndex = (padded_i + 1) % 4 == 0;
+        if (padCurrentIndex)
         {
-            int i = 0;
-            bool padCurrentIndex = (padded_i + 1) % 4 == 0;
-            if (padCurrentIndex)
-            {
-                dest[padded_i] = 1;
-            }
-            else{
-                dest[padded_i] = src[i];
-                i++;
-            }
+            dest[padded_i] = 1;
+        }
+        else{
+            // paddedDataCount = height * width * 4
+            // srcDataCount = height * width * 3
+            int src_i = ceil(padded_i*0.75);
+            dest[padded_i] = src[src_i];
         }
     }
 
@@ -137,7 +141,8 @@ namespace Texture
             // CUDA only support textures with 1,2 or 4 channels pr. pixel, not 3, so we have to pad it with an additional value. In this case I'm just adding a 4th opaque alpha channel.
             float* paddedData;
             cudaMalloc(&paddedData, paddedDataSize);
-            CreatPaddedArrayFromBase<<<1,1>>>(pixelData, paddedData, width, height);         //TODO: accelerate this kernel with more threads 
+            int paddedDataCount = width*height*4;
+            CreatPaddedArrayFromBase<<<(paddedDataCount + 255) / 256, 256>>>(pixelData, paddedData, paddedDataCount);         //TODO: accelerate this kernel with more threads 
             cudaDeviceSynchronize();
             pixelData = paddedData; // Overwrite the original data pointer. Remember to free the memory by the end of the function.
         }
@@ -152,7 +157,8 @@ namespace Texture
             // CUDA only support textures with 1,2 or 4 channels pr. pixel, not 3m so we have to pad it with an additional value. In this case I'm just adding a 4th opaque alpha channel.
             float* paddedData;
             cudaMalloc(&paddedData, paddedDataSize);
-            CreatPaddedArrayFromBase<<<1,1>>>(pixelData, paddedData, width, height);         //TODO: accelerate this kernel with more threads 
+            int paddedDataCount = width*height*4;
+            CreatPaddedArrayFromBase<<<(paddedDataCount + 255) / 256, 256>>>(pixelData, paddedData, paddedDataCount);         //TODO: accelerate this kernel with more threads 
             cudaDeviceSynchronize();
             pixelData = paddedData; // Overwrite the original data pointer. Remember to free the memory by the end of the function.
         }
