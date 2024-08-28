@@ -9,12 +9,9 @@
 namespace Texture
 {
     __global__ void PrintFirstPixel(cudaTextureObject_t texObj){
-        //TODO: Wrap a class around the texture object that automatically gets the correct type of value from the texture based on the texture mode.
         float4 cudaTexel = tex2D<float4>(texObj, 0, 0);
         printf("Cuda reading RGBA value of first texel: %f,%f,%f,%f\n", cudaTexel.x, cudaTexel.y, cudaTexel.z, cudaTexel.w);
     }
-
-
 
     // Allocates a new array from the input array where every 4th index is a padded value of 1. The input pointer is overwritten with the pointer to the new array.
     // The array is 4/3rds the length of the input array. Remember to delete the allocated array.
@@ -36,25 +33,7 @@ namespace Texture
         }
     }
 
-    /*
-    Create a channel descriptor appropriate to the image mode.
-    Pillow supported channel modes:
-    1 (1-bit pixels, black and white, stored with one pixel per byte)
-    L (8-bit pixels, grayscale)
-    P (8-bit pixels, mapped to any other mode using a color palette)
-    RGB (3x8-bit pixels, true color)
-    RGBA (4x8-bit pixels, true color with transparency mask)
-    CMYK (4x8-bit pixels, color separation)
-    YCbCr (3x8-bit pixels, color video format)
-    Note that this refers to the JPEG, and not the ITU-R BT.2020, standard
-    LAB (3x8-bit pixels, the L*a*b color space)
-    HSV (3x8-bit pixels, Hue, Saturation, Value color space)
-    Hue’s range of 0-255 is a scaled version of 0 degrees <= Hue < 360 degrees
-    I (32-bit signed integer pixels)
-    F (32-bit floating point pixels)
-    https://pillow.readthedocs.io/en/stable/handbook/concepts.html
-    */
-    int encodeTextureMode(std::string mode){
+    int EncodeTextureMode(std::string mode){
         if(mode == "1")
             return TextureMode::One;
         else if ( mode == "L")
@@ -81,6 +60,24 @@ namespace Texture
         return TextureMode::Unknown;
     }
 
+    // Encodes string to cuda enum. Possible modes are:
+    // - "Wrap": UVs outside the range wraps back around from the other side, repeating the texture.
+    // - "Mirror": UBs outside the range wraps back from the same side, repeating the texture, but mirrored.
+    // - "Clamp": UVs outside the range are clamped back into the range of the texture
+    // - "Border": UVs outside the range return 0.
+    int EncodeWrapMode(std::string mode){
+        if(mode == "Border")
+            return cudaAddressModeBorder;
+        if(mode == "Clamp")
+            return cudaAddressModeClamp;
+        if(mode == "Mirror")
+            return cudaAddressModeMirror;
+        if(mode == "Wrap")
+            return cudaAddressModeWrap;
+
+        return -1;
+    }
+
     // Creates a textureObject wrapper around the provided texture data
     // Adapted from the lodepng decoding example example at https://github.com/lvandeve/lodepng/blob/master/examples/example_decode.cpp
     // and the cuda example at https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#texture-object-api
@@ -88,9 +85,10 @@ namespace Texture
         // extract all the texture data
         int height = textureData["height"].const_data_ptr<int>()[0];
         int width = textureData["width"].const_data_ptr<int>()[0];
-        TextureMode mode = static_cast<TextureMode>(textureData["mode"].const_data_ptr<int>()[0]);
+        TextureMode mode = static_cast<TextureMode>(textureData["encoding_mode"].const_data_ptr<int>()[0]);
         float* pixelData = textureData["pixelData"].contiguous().cuda().mutable_data_ptr<float>();
         int pixelDataCount = textureData["pixelData"].numel();
+        const cudaTextureAddressMode* addressModes = (const cudaTextureAddressMode*)textureData["wrap_modes"].const_data_ptr<int>();
 
         /*
         Create a channel descriptor appropriate to the image mode.
@@ -142,7 +140,7 @@ namespace Texture
             float* paddedData;
             cudaMalloc(&paddedData, paddedDataSize);
             int paddedDataCount = width*height*4;
-            CreatPaddedArrayFromBase<<<(paddedDataCount + 255) / 256, 256>>>(pixelData, paddedData, paddedDataCount);         //TODO: accelerate this kernel with more threads 
+            CreatPaddedArrayFromBase<<<(paddedDataCount + 255) / 256, 256>>>(pixelData, paddedData, paddedDataCount);
             cudaDeviceSynchronize();
             pixelData = paddedData; // Overwrite the original data pointer. Remember to free the memory by the end of the function.
         }
@@ -158,13 +156,13 @@ namespace Texture
             float* paddedData;
             cudaMalloc(&paddedData, paddedDataSize);
             int paddedDataCount = width*height*4;
-            CreatPaddedArrayFromBase<<<(paddedDataCount + 255) / 256, 256>>>(pixelData, paddedData, paddedDataCount);         //TODO: accelerate this kernel with more threads 
+            CreatPaddedArrayFromBase<<<(paddedDataCount + 255) / 256, 256>>>(pixelData, paddedData, paddedDataCount);
             cudaDeviceSynchronize();
             pixelData = paddedData; // Overwrite the original data pointer. Remember to free the memory by the end of the function.
         }
         // Specify remaining texture object parameters
-        texDesc.addressMode[0] = cudaAddressModeWrap;
-        texDesc.addressMode[1] = cudaAddressModeWrap;         //TODO: allow the wrap mode to be set based on a texture import setting
+        texDesc.addressMode[0] = addressModes[0];
+        texDesc.addressMode[1] = addressModes[1];
         texDesc.normalizedCoords = 1;                           //TODO: allow the coordinate mode ot be set based on a texture import setting
 
         // Allocate CUDA array in device memory
@@ -194,11 +192,15 @@ namespace Texture
         // TODO: Make sure to keep track of which memory we need clean up at the end of this function, and at the end of this frame.
     }
 
-    // TODO:unload texture
-    // Free device memory at the end of the frame
-    // cudaResourceDesc* resDesc_DeleteThisPart;
-    // cudaGetTextureObjectResourceDesc(resDesc_DeleteThisPart, texObj);
-    //cudaFreeArray(resDesc_DeleteThisPart->res.array.array);
+    // Frees the underlying cudaArray that the textureObject is wrapped around
+    void UnloadTexture(cudaTextureObject_t textureObject){
+        cudaResourceDesc* resDesc;
+        std::cout << "Getting resource desc" << std::endl;
+        checkCudaErrors(cudaGetTextureObjectResourceDesc(resDesc, textureObject));
+        std::cout << "Freeing cudaArray" << std::endl;
+        checkCudaErrors(cudaFreeArray(resDesc->res.array.array));
+        std::cout << "Memory Freed!" << std::endl;
+    }
 }
 
 

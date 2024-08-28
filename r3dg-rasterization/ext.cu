@@ -27,5 +27,6 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   m.def("GetSplatShaderAddressMap", &SplatShader::GetSplatShaderAddressMap);
   m.def("GetShShaderAddressMap", &ShShader::GetShShaderAddressMap);
   m.def("PreprocessModel", &PreprocessModel);
-  m.def("encodeTextureMode", &Texture::encodeTextureMode);
+  m.def("EncodeTextureMode", &Texture::EncodeTextureMode);
+  m.def("EncodeWrapMode", &Texture::EncodeWrapMode);
 }

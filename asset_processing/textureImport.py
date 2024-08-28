@@ -17,13 +17,15 @@ def import_texture(filepath:str) -> dict[str, torch.Tensor]:
     # We have to store all the other data in tensors so they can be passed to c++ through the pybind interface.
     # We don't store the metadata on device, since the c++ host needs it to construct the textureObjects.
     width, height = image.size
-    mode = _C.encodeTextureMode(image.mode) #We have to encode the string as an int. Otherwise we cant read it from the tensor in c++.
+    encodingMode = _C.EncodeTextureMode(image.mode) #We have to encode the string as an int. Otherwise we cant read it from the tensor in c++.
+    wrapMode = _C.EncodeWrapMode("Wrap")
     image = {
         "pixelData" : imageTensor, #Stored on device
         #Other metedata is stored on CPU
         "height" : torch.tensor([height], dtype=torch.int32),
         "width" : torch.tensor([width], dtype=torch.int32),
-        "mode" : torch.tensor([mode], dtype=torch.int32) # Which format the image data is stored in: CMYK, RGBA, RGB, HSV etc.
+        "encoding_mode" : torch.tensor([encodingMode], dtype=torch.int32), # Which format the image data is stored in: CMYK, RGBA, RGB, HSV etc.
+        "wrap_modes" : torch.tensor([wrapMode, wrapMode], dtype=torch.int32)
     }
     return image
 

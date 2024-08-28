@@ -28,5 +28,7 @@ namespace Texture{
     void UnloadTexture(cudaTextureObject_t textureObject);
 
     // Encodes the name of a Pillow supported image mode to an int
-    int encodeTextureMode(std::string mode);
+    int EncodeTextureMode(std::string mode);
+
+    int EncodeWrapMode(std::string mode);
 };

@@ -65,7 +65,7 @@ RasterizeGaussiansCUDA(
 	const bool prefiltered,
 	const bool computer_pseudo_normal,
 	// Stored as <ShaderName, <TextureName, <TexturePropertyName, TexturePropertyData>
-	const std::map<std::string, std::map<std::string, std::map<std::string, torch::Tensor>>>& shaderTextureBundles,
+	const std::map<std::string, std::map<std::string, std::map<std::string, torch::Tensor>>>& shaderTextureTensorBundles,
 	const bool debug)
 {
 	if (means3D.ndimension() != 2 || means3D.size(1) != 3) {
@@ -101,21 +101,23 @@ RasterizeGaussiansCUDA(
 	//std::cout << "At ShDefault Cracks texture: " << rawTextures.at("ShDefault").at("Cracks") ///  should be .at("rawData")  /// .cpu().contiguous().data_ptr<float>()[0] << ", At ShDefault Red texture:" << rawTextures.at("ShDefault").at("Red").cpu().contiguous().data_ptr<float>()[0] << std::endl;
 
 	// generate a texture wrapper around each of the images in the texture map.
-	{
-		// shaderTextureBundles stores data in nested maps on the format: <ShaderName, <TextureName, <TexturePropertyName, TexturePropertyData>
-		using namespace std;
-		for(auto shaderTextureBundle : shaderTextureBundles){
-			string shaderName = shaderTextureBundle.first;
-			map<string, map<string, torch::Tensor>> textureBundle = shaderTextureBundle.second;
+	// shaderTextureTensorBundles stores data in nested maps on the format: <ShaderName, <TextureName, <TexturePropertyName, TexturePropertyData>>>
+	// shaderTextureBundles stores data in nested maps on the format: <ShaderName, <TextureName, TextureObject>>
+	std::map<std::string, std::map<std::string, cudaTextureObject_t>> shaderTextureBundles;
+	for(auto shaderTextureTensorBundle : shaderTextureTensorBundles){
+		std::string shaderName = shaderTextureTensorBundle.first;
+		auto textureTensorBundle = shaderTextureTensorBundle.second;
 
-			for(auto texture : textureBundle){
-				string textureName = texture.first;
-				map<string, torch::Tensor> textureData = texture.second;
-				cudaTextureObject_t texObj;
-				Texture::CreateTexture(&texObj, textureData);
-			}
+		for(auto textureTensor : textureTensorBundle){
+			std::string textureName = textureTensor.first;
+			auto textureData = textureTensor.second;
+			cudaTextureObject_t texObj;
+			Texture::CreateTexture(&texObj, textureData);
+
+			shaderTextureBundles[shaderName][textureName] = texObj;
 		}
 	}
+	
 
 	// Since the addresses used for these arrays are the same as used in the python frontend, any changes we make to them will stay permanent.
 	// While this is an interesting feature (that should maybe be toggleable?) we don't want that right now. We therefore have to copy
@@ -177,6 +179,18 @@ RasterizeGaussiansCUDA(
 	char* img_ptr = reinterpret_cast<char*>(imgBuffer.contiguous().data_ptr());
 	CudaRasterizer::ImageState imgState = CudaRasterizer::ImageState::fromChunk(img_ptr, H*W);
 
+	
+	// For each shader, unload all textures from memory
+	for(auto shaderTextureBundle : shaderTextureBundles){
+		auto textureBundle = shaderTextureBundle.second;
+
+		for(auto texture : textureBundle){
+			cudaTextureObject_t texObj = texture.second;
+			std::cout << "Unloading " << texture.first << std::endl;
+			Texture::UnloadTexture(texObj);
+		}
+	}
+	
 	torch::Tensor n_contrib = torch::from_blob(imgState.n_contrib, {H, W}, int_opts);
 	return std::make_tuple(rendered, n_contrib, out_color, out_opacity, out_depth, out_feature, out_shader_color, out_normal, out_surface_xyz, radii, geomBuffer, binningBuffer, imgBuffer);
 }
