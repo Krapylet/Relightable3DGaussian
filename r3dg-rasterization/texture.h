@@ -25,7 +25,7 @@ namespace Texture{
     //TODO: Test whether this pointer can be returned to python and used in another c call.
     void CreateTexture(cudaTextureObject_t* texObjPtr, std::map<std::string, torch::Tensor> textureData);
 
-    void UnloadTexture(cudaTextureObject_t textureObject);
+    void UnloadTexture(cudaTextureObject_t* textureObject);
 
     // Encodes the name of a Pillow supported image mode to an int
     int EncodeTextureMode(std::string mode);

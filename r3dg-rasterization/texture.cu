@@ -181,25 +181,21 @@ namespace Texture
         
         // Create texture object, which is used as a wrapper to access the cuda Array with the actual image data.
         checkCudaErrors(cudaCreateTextureObject(texObjPtr, &resDesc, &texDesc, NULL));
-        
+
         if ( mode == TextureMode::RGB || mode == TextureMode::YCbCr || mode == TextureMode::LAB || mode == TextureMode::HSV)
         {   
             // If we had to copy and pad the data of a 3-value format with a 4th value before the data was copied to a cudaArray,
             // we have to free the memory used to create the temporary padded version. 
             cudaFree(pixelData);
         }
- 
-        // TODO: Make sure to keep track of which memory we need clean up at the end of this function, and at the end of this frame.
     }
 
-    // Frees the underlying cudaArray that the textureObject is wrapped around
-    void UnloadTexture(cudaTextureObject_t textureObject){
-        cudaResourceDesc* resDesc;
-        std::cout << "Getting resource desc" << std::endl;
-        checkCudaErrors(cudaGetTextureObjectResourceDesc(resDesc, textureObject));
-        std::cout << "Freeing cudaArray" << std::endl;
-        checkCudaErrors(cudaFreeArray(resDesc->res.array.array));
-        std::cout << "Memory Freed!" << std::endl;
+    // Frees the underlying cudaArray that the textureObject is wrapped around as well as the texture object itself
+    void UnloadTexture(cudaTextureObject_t* textureObject){
+        cudaResourceDesc resDesc;
+        checkCudaErrors(cudaGetTextureObjectResourceDesc(&resDesc, (*textureObject)));
+        checkCudaErrors(cudaFreeArray(resDesc.res.array.array));
+        delete(textureObject);
     }
 }
 
