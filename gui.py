@@ -436,7 +436,7 @@ if __name__ == '__main__':
             gaussians.load_ply(
                 os.path.join(args.model_path, "point_cloud", "iteration_" + str(loaded_iter), "point_cloud.ply"))
 
-    shaderTextureBundles = texImport.initialize_all_textures()
+    shaderTextureBundles_ptr = texImport.initialize_all_textures()
 
     # Tell each splat which shader to use
     gaussians.append_shader_addresses_gpu_accelerated()   # Faster initialization, but shaders are identified by ints
@@ -474,7 +474,7 @@ if __name__ == '__main__':
         "dict_params": pbr_kwargs,
         "time": 0.0,
         "dt": 0.0,
-        "shaderTextureBundles": shaderTextureBundles,
+        "shaderTextureBundles_ptr": shaderTextureBundles_ptr,
     }
 
     if(renderMultipleModels):

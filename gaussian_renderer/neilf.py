@@ -15,7 +15,7 @@ from .r3dg_rasterization import GaussianRasterizationSettings, GaussianRasterize
 
 
 def render_view(viewpoint_camera: Camera, pc: GaussianModel, pipe, bg_color: torch.Tensor,
-                scaling_modifier=1.0, override_color=None, is_training=False, dict_params=None, time:float=0.0, dt:float=0.0, shaderTextureBundles=None):
+                scaling_modifier=1.0, override_color=None, is_training=False, dict_params=None, time:float=0.0, dt:float=0.0, shaderTextureBundles_ptr=None):
     direct_light_env_light = dict_params.get("env_light")
     gamma_transform = dict_params.get("gamma")
 
@@ -54,7 +54,7 @@ def render_view(viewpoint_camera: Camera, pc: GaussianModel, pipe, bg_color: tor
         splatShaderAddresses = pc.splat_shader_addresses,
         time = time,
         dt = dt,
-        shaderTextureBundles = shaderTextureBundles,
+        shaderTextureBundles_ptr = shaderTextureBundles_ptr
     )
 
     rasterizer = GaussianRasterizer(raster_settings=raster_settings)
@@ -340,13 +340,13 @@ def calculate_loss(viewpoint_camera, pc, results, opt):
 
 def render_neilf(viewpoint_camera: Camera, pc: GaussianModel, pipe, bg_color: torch.Tensor,
                  scaling_modifier=1.0, override_color=None, opt: OptimizationParams = False,
-                 is_training=False, dict_params=None, time=0.0, dt=0.0, shaderTextureBundles=None):
+                 is_training=False, dict_params=None, time=0.0, dt=0.0, shaderTextureBundles_ptr=None):
     """
     Render the scene.
     Background tensor (bg_color) must be on GPU!
     """
     results = render_view(viewpoint_camera, pc, pipe, bg_color,
-                          scaling_modifier, override_color, is_training, dict_params, time, dt, shaderTextureBundles)
+                          scaling_modifier, override_color, is_training, dict_params, time, dt, shaderTextureBundles_ptr)
 
     if is_training:
         loss, tb_dict = calculate_loss(viewpoint_camera, pc, results, opt)

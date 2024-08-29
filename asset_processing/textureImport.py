@@ -5,7 +5,7 @@ import os
 from r3dg_rasterization import _C
 
 # Loads a texture into CUDA memory and returns a tensor pointing to the image.
-def import_texture(filepath:str) -> dict[str, torch.Tensor]:
+def import_texture(filepath:str):
     # Open image
     filename = os.path.basename(filepath)
     image = Image.open(filepath)
@@ -29,7 +29,7 @@ def import_texture(filepath:str) -> dict[str, torch.Tensor]:
     }
     return image
 
-def initialize_all_textures():# -> dict[str, dict[str, dict[str, torch.Tensor]]]:
+def initialize_all_textures() -> int: # -> dict[str, dict[str, dict[str, torch.Tensor]]]:
     ## Import textures
     # First import textures for each of the shaders
     #TODO: make the paths relative to this directory
@@ -59,4 +59,10 @@ def initialize_all_textures():# -> dict[str, dict[str, dict[str, torch.Tensor]]]
         "OutlineShader": OutlineShaders,
         "WireframeShader": WireframeShader
     }
-    return ShaderTextures
+
+    shaderTextureBundles_ptr = _C.InitializeTextureBundles(ShaderTextures)
+    _C.PrintFromFirstTexture(shaderTextureBundles_ptr)
+    _C.UnloadTextureBundles(shaderTextureBundles_ptr)
+
+
+    return shaderTextureBundles_ptr

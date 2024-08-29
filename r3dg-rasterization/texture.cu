@@ -8,9 +8,32 @@
 
 namespace Texture
 {
-    __global__ void PrintFirstPixel(cudaTextureObject_t texObj){
-        float4 cudaTexel = tex2D<float4>(texObj, 0, 0);
-        printf("Cuda reading RGBA value of first texel: %f,%f,%f,%f\n", cudaTexel.x, cudaTexel.y, cudaTexel.z, cudaTexel.w);
+    // NOTICE: Returns a std::map<std::string, std::map<std::string, cudaTextureObject_t*>>* cast to an int64_t in order to get around the pybind pointer wierdness.
+    // Takes the texture tensor bundles and uses it to create wrapper objects around the texture data, so it can be accessed efficiently in the shaders.
+    // shaderTextureTensorBundles stores data in nested maps on the format: <ShaderName, <TextureName, <TexturePropertyName, TexturePropertyData*>>>
+	// shaderTextureBundles stores data in nested maps on the format: <ShaderName, <TextureName, TextureObject*>>
+    int64_t InitializeTextureBundles(
+        const std::map<std::string, std::map<std::string, std::map<std::string, torch::Tensor>>>& shaderTextureTensorBundles)
+    {
+        auto shaderTextureBundles = new std::map<std::string, std::map<std::string, int64_t>>;
+        // Sigh, sometimes strongly typed languages are a bit much...
+
+        for(auto shaderTextureTensorBundle : shaderTextureTensorBundles){
+            std::string shaderName = shaderTextureTensorBundle.first;
+            auto textureTensorBundle = shaderTextureTensorBundle.second;
+
+            for(auto textureTensor : textureTensorBundle){
+                std::string textureName = textureTensor.first;
+                auto textureData = textureTensor.second;
+
+                cudaTextureObject_t* texObj = (cudaTextureObject_t*) malloc(sizeof(cudaTextureObject_t)); // TODO: Does this actually need to be malloced? 
+                Texture::CreateTexture(texObj, textureData);
+                (*shaderTextureBundles)[shaderName][textureName] = (int64_t)texObj;
+            }
+        }
+
+        //std::cout << "ShaderTextureBundle poiter" << shaderTextureBundles << ". Casting to " << (int64_t)shaderTextureBundles << std::endl;
+        return (int64_t)shaderTextureBundles;
     }
 
     // Allocates a new array from the input array where every 4th index is a padded value of 1. The input pointer is overwritten with the pointer to the new array.
@@ -190,14 +213,74 @@ namespace Texture
         }
     }
 
-    // Frees the underlying cudaArray that the textureObject is wrapped around as well as the texture object itself
+    // NOTICE: Only call if the pointer haven't been passed through python. See InitializeTextureWrappers() comment.
+    // Frees the underlying cudaArray that the textureObject is wrapped around, as well as the texture object pointer that contains it.
     void UnloadTexture(cudaTextureObject_t* textureObject){
         cudaResourceDesc resDesc;
         checkCudaErrors(cudaGetTextureObjectResourceDesc(&resDesc, (*textureObject)));
         checkCudaErrors(cudaFreeArray(resDesc.res.array.array));
         delete(textureObject);
     }
+
+    // NOTICE: takes a std::map<std::string, std::map<std::string, cudaTextureObject_t*>>* that has been cast to an int64_t in order to get around the pybind pointer wierdness.
+    // Unloads all the memory allocated for all the texture bundles, including the input pointer.
+    void UnloadTextureBundles (int64_t shaderTextureBundles_mapPtr){
+        auto shaderTextureBundles = (std::map<std::string, std::map<std::string, int64_t>>*)shaderTextureBundles_mapPtr;
+
+        // For each shader, unload all textures from memory
+        for(auto shaderTextureBundle : (*shaderTextureBundles)){
+            auto textureBundle = shaderTextureBundle.second;
+            
+            for(auto texture : textureBundle){
+                cudaTextureObject_t* texObj = (cudaTextureObject_t*)texture.second;
+                Texture::UnloadTexture(texObj);
+            }
+        }
+
+        delete(shaderTextureBundles);
+    }
+
+    // --------------- Debug methods ---------------
+
+    // Test whether we can do the texture initialization before the call.
+    // Returns an int* cast to an int64_t in order to get around pybind wierdness.
+    int64_t AllocateVariable(){
+        int* allocedPointer = (int*) malloc(sizeof(int)); 
+        (*allocedPointer) = 10;
+        std::cout << "C++ pointer saved at " << allocedPointer << std::endl;
+        return (int64_t)allocedPointer;
+    }
+
+    void PrintVariable (int64_t allocedPointer_intPtr){
+        std::cout << "Reading following value from alloced pointer: " << (*((int*)allocedPointer_intPtr)) << std::endl;
+    }
+
+    void DeleteVariable(int64_t allocatedPointer_intPtr){
+        std::cout << "Deleting allocated pointer" << std::endl;
+        delete (int*)allocatedPointer_intPtr;
+        std::cout << "Deleting done" << std::endl;
+    }
+
+    // NOTICE: takes a std::map<std::string, std::map<std::string, cudaTextureObject_t*>>* cast to an int64_t in order to get around the pybind pointer wierdness.
+    void PrintFromFirstTexture (int64_t shaderTextureBundles_mapPtr){
+        auto shaderTextureBundles = (std::map<std::string, std::map<std::string, int64_t>>*)shaderTextureBundles_mapPtr;
+        //std::cout << "Cast shaderTextureBundle map pointer from" << shaderTextureBundles_mapPtr << " back to " << shaderTextureBundles << std::endl;
+
+        // For each shader, unload all textures from memory
+        for(auto shaderTextureBundle : (*shaderTextureBundles)){
+            auto textureBundle = shaderTextureBundle.second;
+
+            for(auto texture : textureBundle){
+                cudaTextureObject_t* texObj = (cudaTextureObject_t*)texture.second;
+                PrintFirstPixel<<<1,1>>>((*texObj));
+                cudaDeviceSynchronize();
+            }
+        }
+    }
+
+    // Debug Method used for quickly testing whether 
+    __global__ void PrintFirstPixel(cudaTextureObject_t texObj){
+        float4 cudaTexel = tex2D<float4>(texObj, 0, 0);
+        printf("Cuda reading RGBA value of first texel: %f,%f,%f,%f\n", cudaTexel.x, cudaTexel.y, cudaTexel.z, cudaTexel.w);
+    }
 }
-
-
-
