@@ -31,8 +31,7 @@ setup(
                 "render_equation.cu",
                 "ext.cu",
                 "preprocessModel.cu",
-                "texture.cu",
-                "third_party/lodepng/lodepng.cpp"],
+                "texture.cu"],
             dlink=True,
             extra_compile_args={
                 "nvcc": ["--device-c",

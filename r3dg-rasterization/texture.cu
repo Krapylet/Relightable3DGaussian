@@ -1,5 +1,4 @@
 #include "texture.h"
-#include "third_party/lodepng/lodepng.h"
 #include "cuda_rasterizer/auxiliary.h"
 #include <iostream>
 #include <stdexcept>
@@ -75,8 +74,7 @@ namespace Texture
     }
 
     // Creates a textureObject wrapper around the provided texture data
-    // Adapted from the lodepng decoding example example at https://github.com/lvandeve/lodepng/blob/master/examples/example_decode.cpp
-    // and the cuda example at https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#texture-object-api
+    // Adapted from the cuda example at https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#texture-object-api
     void CreateTexture(cudaTextureObject_t* texObjPtr, std::map<std::string, torch::Tensor> textureData){
         // extract all the texture data
         int height = textureData["height"].const_data_ptr<int>()[0];
