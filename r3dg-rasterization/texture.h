@@ -33,11 +33,11 @@ namespace Texture{
     int EncodeWrapMode(std::string mode);
 
 
-    int64_t InitializeTextureBundles(const std::map<std::string, std::map<std::string, std::map<std::string, torch::Tensor>>>& shaderTextureTensorBundles);
-    void UnloadTextureBundles (int64_t shaderTextureBundles_mapPtr);
+    int64_t InitializeTextureMaps(const std::map<std::string, std::map<std::string, std::map<std::string, torch::Tensor>>>& shaderTextureTensorMaps);
+    void UnloadTextureMaps (int64_t shaderTextureMaps_mapPtr);
 
     /// Debug methods. Don't use
-    void PrintFromFirstTexture (int64_t shaderTextureBundles_mapPtr);
+    void PrintFromFirstTexture (int64_t shaderTextureMaps_mapPtr);
     __global__ extern void PrintFirstPixel(cudaTextureObject_t texObj);
 
     int64_t AllocateVariable();

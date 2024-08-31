@@ -60,9 +60,9 @@ def initialize_all_textures() -> int: # -> dict[str, dict[str, dict[str, torch.T
         "WireframeShader": WireframeShader
     }
 
-    shaderTextureBundles_ptr = _C.InitializeTextureBundles(ShaderTextures)
-    _C.PrintFromFirstTexture(shaderTextureBundles_ptr)
-    _C.UnloadTextureBundles(shaderTextureBundles_ptr)
+    shaderTextureMaps_ptr = _C.InitializeTextureMaps(ShaderTextures)
+    _C.PrintFromFirstTexture(shaderTextureMaps_ptr)
+    _C.UnloadTextureMaps(shaderTextureMaps_ptr)
 
 
-    return shaderTextureBundles_ptr
+    return shaderTextureMaps_ptr

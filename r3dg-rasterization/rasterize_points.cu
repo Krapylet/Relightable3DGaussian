@@ -65,10 +65,12 @@ RasterizeGaussiansCUDA(
 	const torch::Tensor& campos,
 	const bool prefiltered,
 	const bool computer_pseudo_normal,
-	const int64_t shaderTextureBundles_ptr, // Actually contains a pointer on the format std::map<std::string std::map<std::string, cudaTextureObject_t*>>*
+	const int64_t shaderTextureMaps_int64_t_ptr, // Actually contains a pointer on the format std::map<std::string std::map<std::string, cudaTextureObject_t*>>*
 	const bool debug)
 {
-	auto shaderTextureBundles = (const std::map<std::string, std::map<std::string, cudaTextureObject_t*>>*) shaderTextureBundles_ptr;
+
+	// Cast the shaderTextureBundle back from an int64_t to it's actual form.
+	auto shaderTextureMaps = (const std::map<std::string, std::map<std::string, cudaTextureObject_t*>>*) shaderTextureMaps_int64_t_ptr;
 
 	if (means3D.ndimension() != 2 || means3D.size(1) != 3) {
 		AT_ERROR("means3D must have dimensions (num_points, 3)");
@@ -101,7 +103,7 @@ RasterizeGaussiansCUDA(
 	std::function<char*(size_t)> imgFunc = resizeFunctional(imgBuffer);
 	//std::cout << "At ShDefault Cracks texture: " << rawTextures.at("ShDefault").at("Cracks") ///  should be .at("rawData")  /// .cpu().contiguous().data_ptr<float>()[0] << ", At ShDefault Red texture:" << rawTextures.at("ShDefault").at("Red").cpu().contiguous().data_ptr<float>()[0] << std::endl;
 
-	// Since the addresses used for these arrays are the same as used in the python frontend, any changes we make to them will stay permanent.
+	// Since the addresses used for these arrays point to the same memory as used in the python frontend, any changes we make to them will stay permanent.
 	// While this is an interesting feature (that should maybe be toggleable?) we don't want that right now. We therefore have to copy
 	// every array that contains a value we want to be able to change non-persistantly
 	torch::Tensor temp_means3D = means3D.detach().clone();
@@ -148,6 +150,7 @@ RasterizeGaussiansCUDA(
 			cy,
 			prefiltered,
 			computer_pseudo_normal,
+			shaderTextureMaps,
 			out_color.contiguous().data_ptr<float>(),
 			out_opacity.contiguous().data_ptr<float>(),
 			out_depth.contiguous().data_ptr<float>(),

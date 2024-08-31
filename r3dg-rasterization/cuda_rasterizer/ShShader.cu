@@ -1,5 +1,6 @@
 #include "shShader.h"
 #include "config.h"
+#include <iostream>
 #include <cooperative_groups.h>
 #ifndef GLM_FORCE_CUDA
 #define GLM_FORCE_CUDA
@@ -11,7 +12,8 @@ namespace cg = cooperative_groups;
 
 namespace ShShader
 {
-    __device__ ShShaderParams::ShShaderParams(PackedShShaderParams p, int idx):
+    //TODO: we can't actually have strings on device, so we have to create enums as aliases for the shader names.
+    __device__ ShShaderParams::ShShaderParams(PackedShShaderParams p, int idx, std::string shaderID):
         time(p.time), dt(p.dt),
         scale_modifier(p.scale_modifier),
 		grid(p.grid),
@@ -24,6 +26,7 @@ namespace ShShader
 		focal_x(p.focal_x), focal_y(p.focal_y),
 		tan_fovx(p.tan_fovx), tan_fovy(tan_fovy),
         deg(p.deg), max_coeffs(p.max_coeffs),
+        shaderTextureMap(&p.shaderTextureMaps->at(shaderID)),
 
 		//input/output   -   contains values when the method is called that can be changed.
 		position(p.positions + idx),
@@ -55,6 +58,7 @@ namespace ShShader
 
     ///// Assign all the shaders to their short handles.
     // we need to keep them in constant device memory for them to stay valid when passed to host.
+    //TODO: Instead of storing shaders in individual variables, store them in a __device__ const map<ShShaderName, ShShader> 
     __device__ const ShShader defaultShader = &DefaultShShaderCUDA;
     __device__ const ShShader expPosShader = &ExponentialPositionShaderCUDA;
 

@@ -225,6 +225,7 @@ int CudaRasterizer::Rasterizer::forward(
 	const float cx, const float cy,
 	const bool prefiltered,
 	const bool computer_pseudo_normal,
+	const std::map<std::string, std::map<std::string, cudaTextureObject_t*>>* shaderTextureMaps,
 	float* out_color,
 	float* out_opacity,
 	float* out_depth,
@@ -276,6 +277,7 @@ int CudaRasterizer::Rasterizer::forward(
 		focal_x, focal_y,
 		tan_fovx, tan_fovy,
 		D, M,
+		shaderTextureMaps,
 
 		//input/output   -   contains values when the method is called that can be changed.
 		(glm::vec3*) means3D,

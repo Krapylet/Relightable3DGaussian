@@ -37,6 +37,7 @@ namespace ShShader
 		float const focal_x; float const focal_y;
 		float const tan_fovx; float const tan_fovy;
         int deg; int max_coeffs;
+		const std::map<std::string, std::map<std::string, cudaTextureObject_t*>>* shaderTextureMaps;
 
 		//input/output   -   contains values when the method is called that can be changed.
 		glm::vec3 *const positions;
@@ -48,7 +49,7 @@ namespace ShShader
 
 	struct ShShaderParams {
 		// Constructor
-		__device__ ShShaderParams(PackedShShaderParams params, int idx);
+		__device__ ShShaderParams(PackedShShaderParams params, int idx, std::string shaderName);
 
         //input
 		float const time; float const dt;
@@ -63,6 +64,7 @@ namespace ShShader
 		float const focal_x; float const focal_y;
 		float const tan_fovx; float const tan_fovy;
         int deg; int max_coeffs;
+		const std::map<std::string, cudaTextureObject_t*>* shaderTextureMap;
 
 		//input/output   -   contains values when the method is called that can be changed.
 		glm::vec3 *const position;
