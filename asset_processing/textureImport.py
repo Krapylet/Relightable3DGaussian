@@ -51,7 +51,7 @@ def initialize_all_textures() -> int: # -> dict[str, dict[str, dict[str, torch.T
     WireframeShader = {
     }
 
-    #Then collect all the shaders into a single map (key by shader address instead?)
+    #Then collect all the texture maps into a single map keyd to the shader they belong to
     ShaderTextures = {
         "ShDefault": ShDefaultTextures,
         "ExpPos": ExpPosTextures,

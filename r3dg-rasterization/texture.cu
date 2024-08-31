@@ -8,34 +8,6 @@
 
 namespace Texture
 {
-    // NOTICE: Returns a std::map<std::string, std::map<std::string, cudaTextureObject_t*>>* cast to an int64_t in order to get around the pybind pointer wierdness.
-    // Takes the texture tensor bundles and uses it to create wrapper objects around the texture data, so it can be accessed efficiently in the shaders.
-    // shaderTextureTensorBundles stores data in nested maps on the format: <ShaderName, <TextureName, <TexturePropertyName, TexturePropertyData*>>>
-	// shaderTextureBundles stores data in nested maps on the format: <ShaderName, <TextureName, TextureObject*>>
-    int64_t InitializeTextureBundles(
-        const std::map<std::string, std::map<std::string, std::map<std::string, torch::Tensor>>>& shaderTextureTensorBundles)
-    {
-        auto shaderTextureBundles = new std::map<std::string, std::map<std::string, int64_t>>;
-        // Sigh, sometimes strongly typed languages are a bit much...
-
-        for(auto shaderTextureTensorBundle : shaderTextureTensorBundles){
-            std::string shaderName = shaderTextureTensorBundle.first;
-            auto textureTensorBundle = shaderTextureTensorBundle.second;
-
-            for(auto textureTensor : textureTensorBundle){
-                std::string textureName = textureTensor.first;
-                auto textureData = textureTensor.second;
-
-                cudaTextureObject_t* texObj = (cudaTextureObject_t*) malloc(sizeof(cudaTextureObject_t)); // TODO: Does this actually need to be malloced? 
-                Texture::CreateTexture(texObj, textureData);
-                (*shaderTextureBundles)[shaderName][textureName] = (int64_t)texObj;
-            }
-        }
-
-        //std::cout << "ShaderTextureBundle poiter" << shaderTextureBundles << ". Casting to " << (int64_t)shaderTextureBundles << std::endl;
-        return (int64_t)shaderTextureBundles;
-    }
-
     // Allocates a new array from the input array where every 4th index is a padded value of 1. The input pointer is overwritten with the pointer to the new array.
     // The array is 4/3rds the length of the input array. Remember to delete the allocated array.
     __global__ void CreatPaddedArrayFromBase(float* src, float* dest, int paddedDataCount){
@@ -213,6 +185,33 @@ namespace Texture
         }
     }
 
+    // NOTICE: Returns a std::map<std::string, std::map<std::string, cudaTextureObject_t*>>* cast to an int64_t in order to get around the pybind pointer wierdness.
+    // Takes the texture tensor bundles and uses it to create wrapper objects around the texture data, so it can be accessed efficiently in the shaders.
+    // shaderTextureTensorBundles stores data in nested maps on the format: <ShaderName, <TextureName, <TexturePropertyName, TexturePropertyData*>>>
+	// shaderTextureBundles stores data in nested maps on the format: <ShaderName, <TextureName, TextureObject*>>
+    int64_t InitializeTextureBundles(
+        const std::map<std::string, std::map<std::string, std::map<std::string, torch::Tensor>>>& shaderTextureTensorBundles)
+    {
+        auto shaderTextureBundles = new std::map<std::string, std::map<std::string, cudaTextureObject_t*>>;
+
+        for(auto shaderTextureTensorBundle : shaderTextureTensorBundles){
+            std::string shaderName = shaderTextureTensorBundle.first;
+            auto textureTensorBundle = shaderTextureTensorBundle.second;
+
+            for(auto textureTensor : textureTensorBundle){
+                std::string textureName = textureTensor.first;
+                auto textureData = textureTensor.second;
+
+                cudaTextureObject_t* texObj = (cudaTextureObject_t*) malloc(sizeof(cudaTextureObject_t)); // TODO: Does this actually need to be malloced? 
+                Texture::CreateTexture(texObj, textureData);
+                (*shaderTextureBundles)[shaderName][textureName] = texObj;
+            }
+        }
+
+        //std::cout << "ShaderTextureBundle poiter" << shaderTextureBundles << ". Casting to " << (int64_t)shaderTextureBundles << std::endl;
+        return (int64_t)shaderTextureBundles;
+    }
+
     // NOTICE: Only call if the pointer haven't been passed through python. See InitializeTextureWrappers() comment.
     // Frees the underlying cudaArray that the textureObject is wrapped around, as well as the texture object pointer that contains it.
     void UnloadTexture(cudaTextureObject_t* textureObject){
@@ -225,14 +224,14 @@ namespace Texture
     // NOTICE: takes a std::map<std::string, std::map<std::string, cudaTextureObject_t*>>* that has been cast to an int64_t in order to get around the pybind pointer wierdness.
     // Unloads all the memory allocated for all the texture bundles, including the input pointer.
     void UnloadTextureBundles (int64_t shaderTextureBundles_mapPtr){
-        auto shaderTextureBundles = (std::map<std::string, std::map<std::string, int64_t>>*)shaderTextureBundles_mapPtr;
+        auto shaderTextureBundles = (std::map<std::string, std::map<std::string, cudaTextureObject_t*>>*)shaderTextureBundles_mapPtr;
 
         // For each shader, unload all textures from memory
         for(auto shaderTextureBundle : (*shaderTextureBundles)){
             auto textureBundle = shaderTextureBundle.second;
             
             for(auto texture : textureBundle){
-                cudaTextureObject_t* texObj = (cudaTextureObject_t*)texture.second;
+                cudaTextureObject_t* texObj = texture.second;
                 Texture::UnloadTexture(texObj);
             }
         }
@@ -263,7 +262,7 @@ namespace Texture
 
     // NOTICE: takes a std::map<std::string, std::map<std::string, cudaTextureObject_t*>>* cast to an int64_t in order to get around the pybind pointer wierdness.
     void PrintFromFirstTexture (int64_t shaderTextureBundles_mapPtr){
-        auto shaderTextureBundles = (std::map<std::string, std::map<std::string, int64_t>>*)shaderTextureBundles_mapPtr;
+        auto shaderTextureBundles = (std::map<std::string, std::map<std::string, cudaTextureObject_t*>>*)shaderTextureBundles_mapPtr;
         //std::cout << "Cast shaderTextureBundle map pointer from" << shaderTextureBundles_mapPtr << " back to " << shaderTextureBundles << std::endl;
 
         // For each shader, unload all textures from memory
@@ -271,7 +270,7 @@ namespace Texture
             auto textureBundle = shaderTextureBundle.second;
 
             for(auto texture : textureBundle){
-                cudaTextureObject_t* texObj = (cudaTextureObject_t*)texture.second;
+                cudaTextureObject_t* texObj = texture.second;
                 PrintFirstPixel<<<1,1>>>((*texObj));
                 cudaDeviceSynchronize();
             }

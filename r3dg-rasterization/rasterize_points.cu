@@ -65,12 +65,10 @@ RasterizeGaussiansCUDA(
 	const torch::Tensor& campos,
 	const bool prefiltered,
 	const bool computer_pseudo_normal,
-	// Stored as <ShaderName, <TextureName, TextureObject>
 	const int64_t shaderTextureBundles_ptr, // Actually contains a pointer on the format std::map<std::string std::map<std::string, cudaTextureObject_t*>>*
 	const bool debug)
 {
 	auto shaderTextureBundles = (const std::map<std::string, std::map<std::string, cudaTextureObject_t*>>*) shaderTextureBundles_ptr;
-	//TODO: Try freeing memory when using & in the parameters to get the object and then the pointer.
 
 	if (means3D.ndimension() != 2 || means3D.size(1) != 3) {
 		AT_ERROR("means3D must have dimensions (num_points, 3)");
