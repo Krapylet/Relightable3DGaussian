@@ -13,7 +13,7 @@ namespace cg = cooperative_groups;
 namespace ShShader
 {
     //TODO: we can't actually have strings on device, so we have to create enums as aliases for the shader names.
-    __device__ ShShaderParams::ShShaderParams(PackedShShaderParams p, int idx, std::string shaderID):
+    __device__ ShShaderParams::ShShaderParams(PackedShShaderParams p, int idx):
         time(p.time), dt(p.dt),
         scale_modifier(p.scale_modifier),
 		grid(p.grid),
@@ -26,7 +26,7 @@ namespace ShShader
 		focal_x(p.focal_x), focal_y(p.focal_y),
 		tan_fovx(p.tan_fovx), tan_fovy(tan_fovy),
         deg(p.deg), max_coeffs(p.max_coeffs),
-        shaderTextureMap(&p.shaderTextureMaps->at(shaderID)),
+        //shaderTextureMap(&p.shaderTextureMaps->at(shaderID)),
 
 		//input/output   -   contains values when the method is called that can be changed.
 		position(p.positions + idx),
@@ -122,4 +122,34 @@ namespace ShShader
         //DefaultShShaderCUDA(params);
     }
 
+
+
+    /// --------------------------- Debug methods ------------------------
+
+    __global__ void TestFunctionPointerMapCUDA(){
+        printf("CUDA - Declaring function pointer map");
+        std::map<ShShader, int> functionPointerMap;
+        printf("CUDA - Assigning values");
+        functionPointerMap[defaultShader] = 1;
+        functionPointerMap[expPosShader] = 2;
+        printf("CUDA - Retriving values");
+        int result = functionPointerMap[defaultShader] + functionPointerMap[expPosShader];
+        printf("CUDA - Retreved values sucessfully");
+    }
+    
+    void TestFunctionPointerMap(){
+        printf("Declaring function pointer map");
+        std::map<ShShader, int> functionPointerMap;
+        printf("Assigning values");
+        functionPointerMap[defaultShader] = 1;
+        functionPointerMap[expPosShader] = 2;
+        printf("Retriving values");
+        int result = functionPointerMap[defaultShader] + functionPointerMap[expPosShader];
+        printf("Retreved values sucessfully");
+
+        printf("Repeating experiment on device");
+        TestFunctionPointerMapCUDA<<<1,1>>>();
+        cudaDeviceSynchronize();
+        printf("Experiment on device done");
+    }
 }

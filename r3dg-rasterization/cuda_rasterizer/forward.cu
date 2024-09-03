@@ -680,7 +680,7 @@ void FORWARD::RunSHShaders(
 		focal_x, focal_y,
 		tan_fovx, tan_fovy,
 		deg, max_coeffs,
-		shaderTextureMaps,
+		//shaderTextureMaps,
 		positions,
 		scales,
 		rotations,
