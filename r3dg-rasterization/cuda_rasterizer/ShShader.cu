@@ -126,6 +126,7 @@ namespace ShShader
 
     /// --------------------------- Debug methods ------------------------
 
+    /*
     __global__ void TestFunctionPointerMapCUDA(){
         printf("CUDA - Declaring function pointer map");
         std::map<ShShader, int> functionPointerMap;
@@ -152,4 +153,5 @@ namespace ShShader
         cudaDeviceSynchronize();
         printf("Experiment on device done");
     }
+    */
 }

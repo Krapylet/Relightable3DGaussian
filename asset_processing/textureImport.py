@@ -30,8 +30,6 @@ def import_texture(filepath:str):
     return image
 
 def initialize_all_textures() -> int: # -> dict[str, dict[str, dict[str, torch.Tensor]]]:
-    print("Testing Function Pointer Map From Python.\n")
-    _C.TestFunctionPointerMap()
 
     ## Import textures
     # First import textures for each of the shaders

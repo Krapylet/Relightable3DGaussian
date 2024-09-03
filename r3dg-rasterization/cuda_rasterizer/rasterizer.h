@@ -56,7 +56,7 @@ namespace CudaRasterizer
 			const float cx, const float cy,
 			const bool prefiltered,
 			const bool computer_pseudo_normal,
-			const std::map<std::string, std::map<std::string, cudaTextureObject_t*>>* shaderTextureMaps,
+			//const std::map<std::string, std::map<std::string, cudaTextureObject_t*>>* shaderTextureMaps,
 			float* out_color,
 			float* out_opacity,
 			float* out_depth,

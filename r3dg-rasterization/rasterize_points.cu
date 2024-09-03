@@ -150,7 +150,7 @@ RasterizeGaussiansCUDA(
 			cy,
 			prefiltered,
 			computer_pseudo_normal,
-			shaderTextureMaps,
+			//shaderTextureMaps,
 			out_color.contiguous().data_ptr<float>(),
 			out_opacity.contiguous().data_ptr<float>(),
 			out_depth.contiguous().data_ptr<float>(),

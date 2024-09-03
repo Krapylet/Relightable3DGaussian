@@ -35,5 +35,5 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   m.def("AllocateVariable",&Texture::AllocateVariable);
   m.def("PrintVariable", &Texture::PrintVariable);
   m.def("DeleteVariable", &Texture::DeleteVariable);
-  m.def("TestFunctionPointerMap", &ShShader::TestFunctionPointerMap);
+  //m.def("TestFunctionPointerMap", &ShShader::TestFunctionPointerMap);
 }
