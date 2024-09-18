@@ -49,7 +49,9 @@ class TextureImporter:
         self.import_texture("Red", r"C:\Users\asvj\Documents\GitHub\Relightable3DGaussian\textures\redTest.png")
 
         #Once all textures have been loaded, create an indirect address lookup table for them on the device:
-        indirectTextureLookupTables = _C.LoadDeviceTextureVectors(self.loadedTextureNames, self.loadedTextureObjects)
+        indirectTextureLookupTables = _C.LoadDeviceTextureLookupTable(self.loadedTextureNames, self.loadedTextureObjects)
+
+        textureCount = self.loadedTextureNames.count()
 
         print("Trying to allocate and print a simple pointer\n")
         ptr = _C.AllocateVariable()
@@ -59,12 +61,9 @@ class TextureImporter:
 
 
         ## Perfrom a sanity test:
-        print("Trying to print a pixel from first imported texture:\n")
-        _C.PrintFromWrappedTexture(firstTex)
+        print("Trying to print a pixel from 'Cracks' texture with an indirect lookup:\n")
+        _C.PrintFromTextureLookuptable(indirectTextureLookupTables, textureCount, "Cracks")
         print("Done printing.\n")
 
-        print("Trying to print a pixel from 'Red' texture with an indirect lookup:\n")
-        _C.PrintFromWrappedTextureIndirect(indirectTextureLookupTables, "Cracks")
-        print("Done printing.\n")
 
-        return indirectTextureLookupTables
+        return indirectTextureLookupTables, textureCount

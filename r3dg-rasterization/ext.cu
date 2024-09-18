@@ -36,7 +36,6 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   m.def("PrintVariable", &Texture::PrintVariable);
   m.def("DeleteVariable", &Texture::DeleteVariable);
   m.def("AllocateTexture", &Texture::AllocateTexture);
-  m.def("LoadDeviceTextureVectors", &Texture::LoadDeviceTextureVectors);
-  m.def("PrintFromWrappedTexture", &Texture::PrintFromWrappedTexture);
-  m.def("PrintFromWrappedTextureIndirect", &Texture::PrintFromWrappedTextureIndirect);
+  m.def("LoadDeviceTextureLookupTable", &Texture::LoadDeviceTextureLookupTable);
+  m.def("PrintFromTextureLookuptable", &Texture::PrintFromTextureLookuptable);
 }
