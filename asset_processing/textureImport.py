@@ -63,4 +63,8 @@ class TextureImporter:
         _C.PrintFromWrappedTexture(firstTex)
         print("Done printing.\n")
 
+        print("Trying to print a pixel from 'Red' texture with an indirect lookup:\n")
+        _C.PrintFromWrappedTextureIndirect(indirectTextureLookupTables, "Cracks")
+        print("Done printing.\n")
+
         return indirectTextureLookupTables

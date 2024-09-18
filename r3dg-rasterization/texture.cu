@@ -6,6 +6,7 @@
 #include <cooperative_groups.h>
 #include <thrust/device_vector.h>
 #include <thrust/host_vector.h>
+#include <thrust/equal.h>
 #include <string>
 
 
@@ -84,6 +85,8 @@ namespace Texture
         cudaTextureObject_t* texObj = (cudaTextureObject_t*) malloc(sizeof(cudaTextureObject_t));
 
         CreateTexture(texObj, textureData);
+
+        printf("C++ pointer saved at %A\n", texObj);
 
         return (int64_t)texObj;
     }
@@ -253,35 +256,34 @@ namespace Texture
         delete(shaderTextureMaps);
     }
 
+
     // initialize device texture vector and device texture name vector (used for indirect addressing of textures)
-    // NOTICE: actually returns a std::pair<thrust::device_vector<char*>*, thrust::device_vector<cudaTextureObject_t*>*> cast to a pair of int64s.
-    std::pair<int64_t, int64_t> LoadDeviceTextureVectors(std::vector<std::string> names, std::vector<cudaTextureObject_t*> textureObjects){
+    // NOTICE: actually returns a std::pair<thrust::device_vector<thrust::device_vector<char>*>*, thrust::device_vector<cudaTextureObject_t*>*> cast to a pair of int64s.
+    std::pair<int64_t, int64_t> LoadDeviceTextureVectors(std::vector<std::string> names, std::vector<int64_t> textureObjects){
     
         // First, move each element into a thrust host vector
-        thrust::host_vector<char*> h_nameVector (names.size());
+        thrust::host_vector<thrust::device_vector<char>*> h_nameVector (names.size());
         thrust::host_vector<cudaTextureObject_t*> h_texObjVector(names.size());
 
         for (size_t i = 0; i < names.size(); i++)
         {
             std::string name = names[i];
-            cudaTextureObject_t* texture = textureObjects[i];
+            cudaTextureObject_t* texture = (cudaTextureObject_t*)textureObjects[i];
+            printf("%s C++ pointer saved at %A\n", name.c_str(), texture);
 
-            // convert each name to a char array located in device memory
+            // convert each name to a thrust char vector located in device memory
             // Texture objects are already in device memory, so we don't need to do anything to them.
-            int stringlength = name.length();
-            char* charName;
-            cudaMalloc(&charName, (stringlength+1)*sizeof(char)); // add 1 to also include the termination character
-            cudaMemcpy(charName, name.c_str(), stringlength+1, cudaMemcpyKind::cudaMemcpyDefault);
+            auto d_charName  = new thrust::device_vector<char>(name.length()+1, *name.c_str());
 
             // Save the pointers to the tempoary host vectors.
-            h_nameVector[i] = charName;
+            h_nameVector[i] = d_charName;
             h_texObjVector[i] = texture;
         }
 
         // Then create a couple of device thrust vectors, and then transfer all data to them.
         // We have to allocate new memory for the device vectors, so that they stay persitant over multiple render loops.
-        thrust::device_vector<char*>* d_nameVector = new thrust::device_vector<char*>(names.size());
-        thrust::device_vector<cudaTextureObject_t*>* d_texObjVector = new thrust::device_vector<cudaTextureObject_t*>(names.size());
+        auto d_nameVector = new thrust::device_vector<thrust::device_vector<char>*>(names.size());
+        auto d_texObjVector = new thrust::device_vector<cudaTextureObject_t*>(names.size());
         (*d_nameVector) = h_nameVector;
         (*d_texObjVector) = h_texObjVector;
 
@@ -338,19 +340,32 @@ namespace Texture
         cudaDeviceSynchronize();
     }
 
-    void PrintFromWrappedTextureIndirect(std::pair<int64_t, int64_t> texLookupTable, std::string targetTexName){
-        auto texNames = (thrust::device_vector<char*>*)texLookupTable.first;
+
+
+    void PrintFromWrappedTextureIndirect(std::pair<int64_t, int64_t> texLookupTable, std::string targetName){
+        auto texNames = (thrust::device_vector<thrust::device_vector<char>*>*)texLookupTable.first;
         auto texObjs = (thrust::device_vector<cudaTextureObject_t*>*)texLookupTable.second;
 
         // Find the target texture name index:
         for (size_t i = 0; i < texNames->size(); i++)
         {
-            bool targetTexnNameFound = targetTexName.c_str() == texNames[i];
+            thrust::device_vector<char>* name = (*texNames)[i];
+
+            // Check if the name in the lookup table is the same as the target name
+            bool targetTexNameFound = thrust::equal(targetName.begin(), targetName.end(), name->begin());
+
+            // if so, print the pixel value and return
+            if(targetTexNameFound){
+                cudaTextureObject_t* texObj = (*texObjs)[i];
+                printf("C++ pointer saved at %A\n", texObj);
+                PrintFirstPixel<<<1,1>>>((*texObj));
+                cudaDeviceSynchronize();
+                return;
+            }
         }
         
-
-        cudaTextureObject_t* texObj = (cudaTextureObject_t*)texObj_int64_t_ptr;
-        PrintFirstPixel<<<1,1>>>((*texObj));
+        // If none of the textures had the correct name, print a warning:
+        printf("Warning: Texture '%s' not found\n", targetName);
         cudaDeviceSynchronize();
     }
 

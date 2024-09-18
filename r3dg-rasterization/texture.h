@@ -26,7 +26,7 @@ namespace Texture{
     int64_t AllocateTexture(std::map<std::string, torch::Tensor> textureData);
 
     // Loads the texture name and texture object vectors onto the GPU.
-    std::pair<int64_t, int64_t> LoadDeviceTextureVectors(std::vector<std::string> names, std::vector<cudaTextureObject_t*> textureObjects);
+    std::pair<int64_t, int64_t> LoadDeviceTextureVectors(std::vector<std::string> names, std::vector<int64_t> textureObjects);
 
     // Creates a textureObject wrapper around the provided texture data and writes it to the texObjPtr
     void CreateTexture(cudaTextureObject_t* texObjPtr, std::map<std::string, torch::Tensor> textureData);
@@ -46,6 +46,7 @@ namespace Texture{
     void PrintFromFirstTexture (int64_t shaderTextureMaps_mapPtr);
     __global__ extern void PrintFirstPixel(cudaTextureObject_t texObj);
     void PrintFromWrappedTexture(int64_t texObj_int64_t_ptr);
+    void PrintFromWrappedTextureIndirect(std::pair<int64_t, int64_t> texLookupTable, std::string targetName);
 
 
     int64_t AllocateVariable();
