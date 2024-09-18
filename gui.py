@@ -436,7 +436,8 @@ if __name__ == '__main__':
             gaussians.load_ply(
                 os.path.join(args.model_path, "point_cloud", "iteration_" + str(loaded_iter), "point_cloud.ply"))
 
-    shaderTextureMaps_ptr = texImport.initialize_all_textures()
+    textureImporter = texImport.TextureImporter()
+    shaderTextureMaps_ptr = textureImporter.initialize_all_textures()
 
     # Tell each splat which shader to use
     gaussians.append_shader_addresses_gpu_accelerated()   # Faster initialization, but shaders are identified by ints

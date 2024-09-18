@@ -2,6 +2,9 @@
 
 #include <string>
 #include <torch/extension.h>
+//#include <thrust/device_vector.h>
+//#include <thrust/host_vector.h>
+//#include <string>
 
 namespace Texture{
     enum TextureMode {
@@ -19,10 +22,13 @@ namespace Texture{
         F = 10
     };
 
+    // Creates a textureObject wrapper around the provided texture data and allocates persistent memory to store it in.
+    int64_t AllocateTexture(std::map<std::string, torch::Tensor> textureData);
 
+    // Loads the texture name and texture object vectors onto the GPU.
+    std::pair<int64_t, int64_t> LoadDeviceTextureVectors(std::vector<std::string> names, std::vector<cudaTextureObject_t*> textureObjects);
 
     // Creates a textureObject wrapper around the provided texture data and writes it to the texObjPtr
-    //TODO: Test whether this pointer can be returned to python and used in another c call.
     void CreateTexture(cudaTextureObject_t* texObjPtr, std::map<std::string, torch::Tensor> textureData);
 
     void UnloadTexture(cudaTextureObject_t* textureObject);
@@ -39,6 +45,8 @@ namespace Texture{
     /// Debug methods. Don't use
     void PrintFromFirstTexture (int64_t shaderTextureMaps_mapPtr);
     __global__ extern void PrintFirstPixel(cudaTextureObject_t texObj);
+    void PrintFromWrappedTexture(int64_t texObj_int64_t_ptr);
+
 
     int64_t AllocateVariable();
     void PrintVariable (int64_t allocedPointer_intPtr);

@@ -4,6 +4,10 @@
 #include <stdexcept>
 #include <map>
 #include <cooperative_groups.h>
+#include <thrust/device_vector.h>
+#include <thrust/host_vector.h>
+#include <string>
+
 
 namespace Texture
 {
@@ -71,6 +75,17 @@ namespace Texture
             return cudaAddressModeWrap;
 
         return -1;
+    }
+
+    // NOTICE: Returns a cudaTextureObject_t* cast to a int64_t
+    // Creates a textureObject wrapper around the provided texture data and allocates it in memory.
+    // Used in order to intialize textures outside of render loop.
+    int64_t AllocateTexture(std::map<std::string, torch::Tensor> textureData){
+        cudaTextureObject_t* texObj = (cudaTextureObject_t*) malloc(sizeof(cudaTextureObject_t));
+
+        CreateTexture(texObj, textureData);
+
+        return (int64_t)texObj;
     }
 
     // Creates a textureObject wrapper around the provided texture data
@@ -238,6 +253,47 @@ namespace Texture
         delete(shaderTextureMaps);
     }
 
+    // initialize device texture vector and device texture name vector (used for indirect addressing of textures)
+    // NOTICE: actually returns a std::pair<thrust::device_vector<char*>*, thrust::device_vector<cudaTextureObject_t*>*> cast to a pair of int64s.
+    std::pair<int64_t, int64_t> LoadDeviceTextureVectors(std::vector<std::string> names, std::vector<cudaTextureObject_t*> textureObjects){
+    
+        // First, move each element into a thrust host vector
+        thrust::host_vector<char*> h_nameVector (names.size());
+        thrust::host_vector<cudaTextureObject_t*> h_texObjVector(names.size());
+
+        for (size_t i = 0; i < names.size(); i++)
+        {
+            std::string name = names[i];
+            cudaTextureObject_t* texture = textureObjects[i];
+
+            // convert each name to a char array located in device memory
+            // Texture objects are already in device memory, so we don't need to do anything to them.
+            int stringlength = name.length();
+            char* charName;
+            cudaMalloc(&charName, (stringlength+1)*sizeof(char)); // add 1 to also include the termination character
+            cudaMemcpy(charName, name.c_str(), stringlength+1, cudaMemcpyKind::cudaMemcpyDefault);
+
+            // Save the pointers to the tempoary host vectors.
+            h_nameVector[i] = charName;
+            h_texObjVector[i] = texture;
+        }
+
+        // Then create a couple of device thrust vectors, and then transfer all data to them.
+        // We have to allocate new memory for the device vectors, so that they stay persitant over multiple render loops.
+        thrust::device_vector<char*>* d_nameVector = new thrust::device_vector<char*>(names.size());
+        thrust::device_vector<cudaTextureObject_t*>* d_texObjVector = new thrust::device_vector<cudaTextureObject_t*>(names.size());
+        (*d_nameVector) = h_nameVector;
+        (*d_texObjVector) = h_texObjVector;
+
+        return std::pair((int64_t)d_nameVector, (int64_t)d_texObjVector);
+
+    }
+
+    void TestFunctionPointerMap(){
+        int N = 100;
+        thrust::device_vector<int> d_a(N);
+    }
+
     // --------------- Debug methods ---------------
 
     // Test whether we can do the texture initialization before the call.
@@ -274,6 +330,28 @@ namespace Texture
                 cudaDeviceSynchronize();
             }
         }
+    }
+
+    void PrintFromWrappedTexture(int64_t texObj_int64_t_ptr){
+        cudaTextureObject_t* texObj = (cudaTextureObject_t*)texObj_int64_t_ptr;
+        PrintFirstPixel<<<1,1>>>((*texObj));
+        cudaDeviceSynchronize();
+    }
+
+    void PrintFromWrappedTextureIndirect(std::pair<int64_t, int64_t> texLookupTable, std::string targetTexName){
+        auto texNames = (thrust::device_vector<char*>*)texLookupTable.first;
+        auto texObjs = (thrust::device_vector<cudaTextureObject_t*>*)texLookupTable.second;
+
+        // Find the target texture name index:
+        for (size_t i = 0; i < texNames->size(); i++)
+        {
+            bool targetTexnNameFound = targetTexName.c_str() == texNames[i];
+        }
+        
+
+        cudaTextureObject_t* texObj = (cudaTextureObject_t*)texObj_int64_t_ptr;
+        PrintFirstPixel<<<1,1>>>((*texObj));
+        cudaDeviceSynchronize();
     }
 
     // Debug Method used for quickly testing whether 
