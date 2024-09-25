@@ -32,12 +32,12 @@ setup(
                 "ext.cu",
                 "preprocessModel.cu",
                 "texture.cu",
-                "charOperations.cu"],
+                "cuda_rasterizer/charOperations.cu"],
             dlink=True,
             extra_compile_args={
                 "nvcc": ["--device-c",
                          "-I" + os.path.join(os.path.dirname(os.path.abspath(__file__)), "third_party/glm/"),
-                         "-O3"],
+                         "-O3", "-arch=compute_61"],
                 "cxx": ["-O3"]})
     ],
     cmdclass={

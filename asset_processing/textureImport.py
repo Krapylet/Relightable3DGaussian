@@ -51,17 +51,17 @@ class TextureImporter:
         #Once all textures have been loaded, create an indirect address lookup table for them on the device:
         indirectTextureLookupTables = _C.LoadDeviceTextureLookupTable(self.loadedTextureNames, self.loadedTextureObjects)
 
-        textureCount = self.loadedTextureNames.count()
+        textureCount = len(self.loadedTextureNames)
 
-        print("Trying to allocate and print a simple pointer\n")
-        ptr = _C.AllocateVariable()
-        _C.PrintVariable(ptr)
-        _C.DeleteVariable(ptr)
-        print("Done with simple example.\n")
+       ## print("Trying to allocate and print a simple pointer\n")
+        #ptr = _C.AllocateVariable()
+       # _C.PrintVariable(ptr)
+       # _C.DeleteVariable(ptr)
+       # print("Done with simple example.\n")
 
 
         ## Perfrom a sanity test:
-        print("Trying to print a pixel from 'Cracks' texture with an indirect lookup:\n")
+        print("####### Trying to print a pixel from Cracks texture with an indirect lookup:\n")
         _C.PrintFromTextureLookuptable(indirectTextureLookupTables, textureCount, "Cracks")
         print("Done printing.\n")
 
