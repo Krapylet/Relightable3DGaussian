@@ -83,8 +83,6 @@ namespace Texture
 
         CreateTexture(texObj, textureData);
 
-        printf("C++ pointer saved at %A\n", texObj);
-
         return (int64_t)texObj;
     }
 
@@ -253,29 +251,9 @@ namespace Texture
         delete(shaderTextureMaps);
     }
 
-    __global__ void printFromCharArray(char** charArray){
-        printf("#### Printing first char:\n");
-        printf("First char of first char string: %c\n", charArray[0][0]);
-    }
-
-    __global__ void printFromCharString(char* charArray){
-        printf("First char of string: %c\n", charArray[0]);
-    }
-
-    __global__ void printTexAddress(cudaTextureObject_t* texObj){
-        printf("Texture pointer saved at: %A\n", texObj);
-    }
-
-    __device__ void printTexAddressDev(cudaTextureObject_t* texObj){
-        printf("Texture pointer saved at: %A\n", texObj);
-    }
-
-
     // initialize device texture vector and device texture name vector (used for indirect addressing of textures)
     // NOTICE: actually returns a std::pair<char**,cudaTextureObject_t*> cast to a pair of int64s.
     std::pair<int64_t, int64_t> LoadDeviceTextureLookupTable(std::vector<std::string> names, std::vector<int64_t> textureObjects){
-    
-
         // First, move each element into a vector on host
         // We use vectors instead of arrays since we don't know the size at compile time, and we don't wanna allocate memory ourselves.
         char* name[5];
@@ -287,7 +265,6 @@ namespace Texture
         {
             std::string name = names[i];
             cudaTextureObject_t texObj = *((cudaTextureObject_t*)textureObjects[i]);
-            printf("%s C++ texture for '%s' saved at %lu\n", names[i], name.c_str(), texObj);
 
             // convert each name to a char array located in device memory
             // Texture objects are already in device memory, so we don't need to do anything to them.
@@ -299,9 +276,6 @@ namespace Texture
             // Save the pointers to the tempoary host vectors.
             h_names[i] = d_charName;
             h_texObjs[i] = texObj;
-            printf("First pixel of '%s' before packing\n", name);
-            PrintFirstPixel<<<1,1>>>(texObj);
-            cudaDeviceSynchronize();
         }
 
         // Then create a couple of device arrays and transfer all data to them.
@@ -314,10 +288,7 @@ namespace Texture
         cudaMalloc(&d_texObjs, h_texObjs.size() * sizeof(cudaTextureObject_t));
         cudaMemcpy(d_texObjs, &h_texObjs[0], h_texObjs.size() * sizeof(cudaTextureObject_t), cudaMemcpyKind::cudaMemcpyDefault);
 
-        auto texPair = std::pair((int64_t)d_names, (int64_t)d_texObjs);
-        PrintFromTextureLookuptable(texPair, 2, "Cracks");
-        cudaDeviceSynchronize();
-        return texPair;
+        return std::pair((int64_t)d_names, (int64_t)d_texObjs);
     }
 
 
@@ -349,38 +320,6 @@ namespace Texture
         printf("Cuda reading RGBA value of first texel: %f,%f,%f,%f\n", cudaTexel.x, cudaTexel.y, cudaTexel.z, cudaTexel.w);
     }
 
-
-    // Debug Method used for quickly testing whether 
-    __device__ void PrintFirstPixelDev(cudaTextureObject_t texObj){
-        float4 cudaTexel = tex2D<float4>(texObj, 0, 0);
-        printf("Cuda reading RGBA value of first texel in tex '%lu': %f,%f,%f,%f\n", texObj, cudaTexel.x, cudaTexel.y, cudaTexel.z, cudaTexel.w);
-    }
-
-    // NOTICE: takes a std::map<std::string, std::map<std::string, cudaTextureObject_t*>>* cast to an int64_t in order to get around the pybind pointer wierdness.
-    void PrintFromFirstTexture (int64_t shaderTextureMaps_Ptr){
-        auto shaderTextureMaps = (std::map<std::string, std::map<std::string, cudaTextureObject_t*>>*)shaderTextureMaps_Ptr;
-        //std::cout << "Cast shaderTextureBundle map pointer from" << shaderTextureMaps_Ptr << " back to " << shaderTextureMaps << std::endl;
-
-        // For each shader, unload all textures from memory
-        for(auto shaderTextureBundle : (*shaderTextureMaps)){
-            auto textureBundle = shaderTextureBundle.second;
-
-            for(auto texture : textureBundle){
-                cudaTextureObject_t* texObj = texture.second;
-                PrintFirstPixel<<<1,1>>>((*texObj));
-                cudaDeviceSynchronize();
-            }
-        }
-    }
-
-
-    void PrintFromWrappedTexture(int64_t texObj_int64_t_ptr){
-        cudaTextureObject_t* texObj = (cudaTextureObject_t*)texObj_int64_t_ptr;
-        PrintFirstPixel<<<1,1>>>((*texObj));
-        cudaDeviceSynchronize();
-    }
-
-
     __global__ void PrintFromTextureLookuptableCUDA(char** texNames, cudaTextureObject_t* texObjs, int texCount, const char* targetName){
         // Find the target texture name index:
         for (size_t i = 0; i < texCount; i++)
@@ -389,8 +328,6 @@ namespace Texture
 
             
             printf("about to compare\n");
-            printf("Compared name:%c\n", name[0]);
-            printf("Target name:%c\n", targetName[0]);
             // Check if the name in the lookup table is the same as the target name
             bool textureHasBeenFound = charsAreEqual(name, targetName);
             printf("Compare done\n");
@@ -399,7 +336,8 @@ namespace Texture
             if(textureHasBeenFound){
                 cudaTextureObject_t texObj = texObjs[i];
                 printf("Printing texture '%lu' from texture array:\n", texObj);
-                PrintFirstPixelDev(texObj);
+                float4 cudaTexel = tex2D<float4>(texObj, 0, 0);
+                printf("Cuda reading RGBA value of first texel in tex '%lu': %f,%f,%f,%f\n", texObj, cudaTexel.x, cudaTexel.y, cudaTexel.z, cudaTexel.w);
                 return;
             }
         }

@@ -53,13 +53,6 @@ class TextureImporter:
 
         textureCount = len(self.loadedTextureNames)
 
-       ## print("Trying to allocate and print a simple pointer\n")
-        #ptr = _C.AllocateVariable()
-       # _C.PrintVariable(ptr)
-       # _C.DeleteVariable(ptr)
-       # print("Done with simple example.\n")
-
-
         ## Perfrom a sanity test:
         print("####### Trying to print a pixel from Cracks texture with an indirect lookup:\n")
         _C.PrintFromTextureLookuptable(indirectTextureLookupTables, textureCount, "Cracks")

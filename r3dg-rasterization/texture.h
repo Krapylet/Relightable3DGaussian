@@ -40,12 +40,9 @@ namespace Texture{
     void UnloadTextureMaps (int64_t shaderTextureMaps_mapPtr);
 
     /// Debug methods. Don't use
-    void PrintFromFirstTexture (int64_t shaderTextureMaps_mapPtr);
-
     __global__ extern void PrintFirstPixel(cudaTextureObject_t texObj);
 
     void PrintFromTextureLookuptable(std::pair<int64_t, int64_t> texLookupTable, int texCount, std::string targetName);
-    __global__ void PrintFromTextureLookuptableCUDA(char** texNames, cudaTextureObject_t* texObjs, int texCount, const char* targetName);
 
     int64_t AllocateVariable();
     void PrintVariable (int64_t allocedPointer_intPtr);

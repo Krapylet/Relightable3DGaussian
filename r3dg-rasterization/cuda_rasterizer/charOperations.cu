@@ -4,7 +4,6 @@ __device__ bool charsAreEqual(const char* strA, const char* strB){
     int maxLength = 256;
     for (size_t i = 0; i < maxLength; i++)
     {
-        printf("comparing '%c' and '%c' at index %i\n", strA[i], strB[i], i);
         bool hasReachedEndOfAString = (strA[i] == 0) || (strB[i] == 0);
         if (hasReachedEndOfAString){
             // If we reach the end of a string without finding a mismacht, the strings are equal of they both have equal length.
