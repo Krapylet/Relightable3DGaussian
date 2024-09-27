@@ -11,3 +11,4 @@ log
 point
 nvdiffrast
 *.dump
+textures/NoiseTextures/**
