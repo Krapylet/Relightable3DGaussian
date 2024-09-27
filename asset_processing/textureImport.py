@@ -49,12 +49,12 @@ class TextureImporter:
         self.import_texture("Red", r"C:\Users\asvj\Documents\GitHub\Relightable3DGaussian\textures\redTest.png")
 
         #Once all textures have been loaded, create an indirect address lookup table for them on the device:
-        d_textureManager = _C.UploadTexturesToDevice(self.loadedTextureNames, self.loadedTextureObjects)
+        d_textureManager_ptr = _C.UploadTexturesToDevice(self.loadedTextureNames, self.loadedTextureObjects)
 
         ## Perfrom a sanity test:
         print("####### Trying to print a pixel from Cracks texture with an indirect lookup:\n")
-        _C.PrintFromTextureManager(d_textureManager, "Cracks")
+        _C.PrintFromTextureManager(d_textureManager_ptr, "Cracks")
         print("Done printing.\n")
 
 
-        return d_textureManager
+        return d_textureManager_ptr

@@ -689,6 +689,7 @@ void FORWARD::RunSHShaders(
 		shs
 	};
 	
+
 	// For some reason the device is not allowed to dereference the function pointers if they're stored on host
 	// But it *is* allowed to derefrence alle the other pointers, such as out_colors?
 	// Anyway, this is fixed by copying all the shader addresses to device before we call them.
@@ -699,6 +700,7 @@ void FORWARD::RunSHShaders(
 	cudaMemcpy(d_shaderAddresses, shaderAddresses, sizeOfAddresses, cudaMemcpyHostToDevice);
 
 	ShShader::ExecuteShader<<<(P + 255) / 256, 256>>>(d_shaderAddresses, params);
+	
 
 	// Wait for each shader to finish.
 	cudaDeviceSynchronize();
