@@ -29,7 +29,7 @@ namespace cg = cooperative_groups;
 #include "auxiliary.h"
 #include "forward.h"
 #include "backward.h"
-#include "texture.h"
+#include "../utils/texture.h"
 
 // Helper function to find the next-highest bit of the MSB
 // on the CPU.

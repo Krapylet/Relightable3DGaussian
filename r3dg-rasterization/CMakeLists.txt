@@ -36,8 +36,12 @@ add_library(CudaRasterizer
 	cuda_rasterizer/splatShader.cu
 	cuda_rasterizer/preprocessModel.h
 	cuda_rasterizer/preprocessModel.cu
-	cuda_rasterizer/texture.h
-	cuda_rasterizer/texture.cu
+	utils/texture.h
+	utils/texture.cu
+	utils/charOperations.h
+	utils/charOperations.cu
+	utils/indirectMap.h
+	utils/indrectMap.cu
 )
 
 set_target_properties(CudaRasterizer PROPERTIES CUDA_ARCHITECTURES "75;86" CUDA_RESOLVE_DEVICE_SYMBOLS ON)

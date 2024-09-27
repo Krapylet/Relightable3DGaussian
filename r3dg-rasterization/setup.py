@@ -31,8 +31,8 @@ setup(
                 "render_equation.cu",
                 "ext.cu",
                 "preprocessModel.cu",
-                "cuda_rasterizer/texture.cu",
-                "cuda_rasterizer/charOperations.cu"],
+                "utils/texture.cu",
+                "utils/charOperations.cu"],
             dlink=True,
             extra_compile_args={
                 "nvcc": ["--device-c",

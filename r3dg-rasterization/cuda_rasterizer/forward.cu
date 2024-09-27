@@ -16,7 +16,7 @@
 #include <cooperative_groups.h>
 #include <cooperative_groups/reduce.h>
 #include <vector>
-#include "texture.h"
+#include "../utils/texture.h"
 namespace cg = cooperative_groups;
 
 // Forward method for converting the input spherical harmonics

@@ -2,7 +2,7 @@
 #include "config.h"
 #include <iostream>
 #include <cooperative_groups.h>
-#include "texture.h"
+#include "../utils/texture.h"
 #ifndef GLM_FORCE_CUDA
 #define GLM_FORCE_CUDA
 #endif
@@ -63,7 +63,7 @@ namespace ShShader
         float opacity = tex2D<float4>(grainyTexture, p.position->x, p.position->y).w;
 
         // Make sure we don't get negative opacity
-        opacity = saturate(opacity);
+        opacity = __saturatef(opacity);
 
         *p.opacity = opacity;
     }

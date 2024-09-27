@@ -15,7 +15,7 @@
 #include "cuda_rasterizer/splatShader.h"
 #include "cuda_rasterizer/shShader.h"
 #include "preprocessModel.h"
-#include "cuda_rasterizer/texture.h"
+#include "utils/texture.h"
 
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   m.def("rasterize_gaussians", &RasterizeGaussiansCUDA);

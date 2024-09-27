@@ -14,7 +14,7 @@
 
 #include <vector>
 #include <functional>
-#include "texture.h"
+#include "../utils/texture.h"
 
 namespace CudaRasterizer
 {

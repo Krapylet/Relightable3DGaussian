@@ -24,7 +24,7 @@
 #include <fstream>
 #include <string>
 #include <functional>
-#include "cuda_rasterizer/texture.h"
+#include "utils/texture.h"
 #include "cuda_rasterizer/auxiliary.h"
 
 std::function<char*(size_t N)> resizeFunctional(torch::Tensor& t) {

@@ -1,5 +1,5 @@
 #include "texture.h"
-#include "auxiliary.h"
+#include "../cuda_rasterizer/auxiliary.h"
 #include <iostream>
 #include <stdexcept>
 #include <map>

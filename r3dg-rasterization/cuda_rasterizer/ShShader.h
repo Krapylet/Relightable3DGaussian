@@ -13,7 +13,7 @@
 #include <functional>
 #include <string>
 #include <map>
-#include "texture.h"
+#include "../utils/texture.h"
 
 #ifndef GLM_FORCE_CUDA
 	#define GLM_FORCE_CUDA
