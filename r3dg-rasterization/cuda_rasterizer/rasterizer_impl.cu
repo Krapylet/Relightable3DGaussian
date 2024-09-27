@@ -226,7 +226,7 @@ int CudaRasterizer::Rasterizer::forward(
 	const float cx, const float cy,
 	const bool prefiltered,
 	const bool computer_pseudo_normal,
-	const Texture::TextureManager* d_textureManager,
+	Texture::TextureManager *const d_textureManager,
 	float* out_color,
 	float* out_opacity,
 	float* out_depth,
@@ -335,6 +335,7 @@ int CudaRasterizer::Rasterizer::forward(
 		geomState.conic_opacity,          
 		S,							
 		features,
+		d_textureManager,
 
 		// output
 		geomState.shader_rgb

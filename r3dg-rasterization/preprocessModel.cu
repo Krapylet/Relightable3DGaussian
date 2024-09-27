@@ -46,6 +46,8 @@ __global__ void AppendShaderIndexesCUDA(
         splatShaderAddressIndex = 2;//"WireframeShader";
     }
 
+    splatShaderAddressIndex = 3; // Texture test.
+
     out_shShaderAddresses[idx] = shShaderAddressArray[shShaderAddressIndex];
     out_splatShadersAddresses[idx] = splatShaderAddressArray[splatShaderAddressIndex];
 }

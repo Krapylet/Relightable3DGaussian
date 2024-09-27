@@ -35,6 +35,7 @@ namespace SplatShader
 		depth (p.depths[idx]),		
 		conic_opacity (p.conic_opacity[idx]), // Todo: split opacity to own variable
         color_SH (p.colors_SH + idx),
+
 		// Precomputed 'texture' information from the neilf pbr decomposition
 		color_brdf ({p.features[idx * p.S + 0], p.features[idx * p.S + 1], p.features[idx * p.S + 2]}),
 		normal ({p.features[idx * p.S + 3], p.features[idx * p.S + 4], p.features[idx * p.S + 5]}),
@@ -45,6 +46,9 @@ namespace SplatShader
 		local_incident_light (p.features[idx * p.S + 12]),
 		global_incident_light (p.features[idx * p.S + 13]),
 		incident_visibility (p.features[idx * p.S + 14]),
+        
+        // Texture information
+        d_textureManager(p.d_textureManager),
 
 		// output
 		// We use pointers to the output instead of return values to make it easy to extend during development.             
@@ -88,11 +92,26 @@ namespace SplatShader
         *p.out_color = glm::vec3(rColor, 1 - opacity,  1 - opacity);
     }
 
+    __device__ static void TextureTestShaderCUDA(SplatShaderParams p)
+    {
+
+        char* texName = "Cracks";
+        cudaTextureObject_t crackTex = p.d_textureManager->GetTexture(texName);
+
+        float4 sampleColor = tex2D<float4>(crackTex, p.position.x, p.position.y);
+        
+        *p.out_color = glm::vec3(sampleColor.x, sampleColor.y, sampleColor.z);
+        
+        //TODO: Make opacity something that can be modified in the shader.
+        //p.conic_opacity.w = 1;
+    }
+
     ///// Assign all the shaders to their short handles.
     // we need to keep them in constant device memory for them to stay valid when passed to host.
     __device__ const SplatShader defaultShader = &DefaultSplatShaderCUDA;
     __device__ const SplatShader outlineShader = &OutlineShaderCUDA;
     __device__ const SplatShader wireframeShader = &WireframeShaderCUDA;
+    __device__ const SplatShader textureTestShader = &TextureTestShaderCUDA;
 
 
     std::map<std::string, int64_t> GetSplatShaderAddressMap(){
@@ -116,14 +135,19 @@ namespace SplatShader
         cudaMemcpyFromSymbol(&h_wireframeShader, wireframeShader, shaderMemorySize);
         shaderMap["WireframeShader"] = (int64_t)h_wireframeShader;
 
+        SplatShader::SplatShader h_textureTestShader;
+        cudaMemcpyFromSymbol(&h_textureTestShader, textureTestShader, shaderMemorySize);
+        shaderMap["TextureTestShader"] = (int64_t)h_textureTestShader;
+
         return shaderMap;
     }
 
-    // ONETIME USE FUNCTION USED TO DEBUG. ALLOCATES THE RETURN ARRAY. REMEMBER TO FREE AFTER USE.
+    // ALLOCATES THE RETURN ARRAY. REMEMBER TO FREE AFTER USE.
     // Returns an array in device memory containing addresses to device shader functions.
     int64_t* GetSplatShaderAddressArray(){
         // Array is assembled on CPU before being sent to device. Addresses themselves are in device space.
-        int64_t* h_shaderArray = new int64_t[3];
+        int shaderCount = 4;
+        int64_t* h_shaderArray = new int64_t[shaderCount];
         size_t shaderMemorySize = sizeof(SplatShader);
  
         SplatShader::SplatShader h_defaultShader;
@@ -138,10 +162,14 @@ namespace SplatShader
         cudaMemcpyFromSymbol(&h_wireframeShader, wireframeShader, shaderMemorySize);
         h_shaderArray[2] = (int64_t)h_wireframeShader;
 
+        SplatShader::SplatShader h_textureTestShader;
+        cudaMemcpyFromSymbol(&h_textureTestShader, textureTestShader, shaderMemorySize);
+        h_shaderArray[3] = (int64_t)h_textureTestShader;
+
         // copy the host array to device
         int64_t* d_shaderArray;
-        cudaMalloc(&d_shaderArray, sizeof(int64_t)*3);
-        cudaMemcpy(d_shaderArray, h_shaderArray, shaderMemorySize * 3, cudaMemcpyDefault);
+        cudaMalloc(&d_shaderArray, sizeof(int64_t)*shaderCount);
+        cudaMemcpy(d_shaderArray, h_shaderArray, shaderMemorySize * shaderCount, cudaMemcpyDefault);
 
         // Delete temporary host array.
         delete[] h_shaderArray;

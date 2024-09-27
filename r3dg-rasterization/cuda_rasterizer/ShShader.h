@@ -38,7 +38,7 @@ namespace ShShader
 		float const focal_x; float const focal_y;
 		float const tan_fovx; float const tan_fovy;
         int deg; int max_coeffs;
-		const Texture::TextureManager* d_textureManager;
+		Texture::TextureManager *const d_textureManager;
 
 		//input/output   -   contains values when the method is called that can be changed.
 		glm::vec3 *const positions;
@@ -65,7 +65,7 @@ namespace ShShader
 		float const focal_x; float const focal_y;
 		float const tan_fovx; float const tan_fovy;
         int deg; int max_coeffs;
-		const Texture::TextureManager* d_textureManager;
+		Texture::TextureManager *const d_textureManager;
 
 		//input/output   -   contains values when the method is called that can be changed.
 		glm::vec3 *const position;

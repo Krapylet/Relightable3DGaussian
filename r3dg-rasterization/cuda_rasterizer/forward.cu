@@ -658,7 +658,7 @@ void FORWARD::RunSHShaders(
 	float const focal_x, float const focal_y,
 	float const tan_fovx, float const tan_fovy,
 	int deg, int max_coeffs,
-	const Texture::TextureManager* d_textureManager,
+	Texture::TextureManager *const d_textureManager,
 
 	//input/output   -   contains values when the method is called that can be changed.
 	glm::vec3 *const positions,
@@ -726,6 +726,7 @@ void FORWARD::RunSplatShaders(
 	float4 const *const __restrict__ conic_opacity, 
 	int const S,					
 	float const *const __restrict__ features,
+	Texture::TextureManager *const d_textureManager,
 	float *const __restrict__ out_colors
 	)
 {
@@ -746,6 +747,7 @@ void FORWARD::RunSplatShaders(
 		(glm::vec4*)conic_opacity, 
 		S,					
 		features,
+		d_textureManager,
 		(glm::vec3*)out_colors
 	};
 	

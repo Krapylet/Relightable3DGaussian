@@ -13,6 +13,7 @@
 #include <functional>
 #include <string>
 #include <map>
+#include "texture.h"
 
 #ifndef GLM_FORCE_CUDA
 	#define GLM_FORCE_CUDA
@@ -63,6 +64,8 @@ namespace SplatShader
                                             // float  local_incident_light
                                             // float  global_incident_light
                                             // float  incident_visibility
+
+		Texture::TextureManager *const d_textureManager;
 
 		// output
 		// In producion code, the colors field should function both as SH color input and as color output though reassignment, but we keep them seperate to make it easy to illustrate the difference.
@@ -123,6 +126,9 @@ namespace SplatShader
 		float const  local_incident_light;
 		float const  global_incident_light;
 		float const  incident_visibility;
+
+		// Class that is used to retrieve textures. Make sure to cache textures once retrieved.
+		Texture::TextureManager *const d_textureManager;
 
 		// output
 		// We use pointers to the output instead of return values to make it easy to extend during development.

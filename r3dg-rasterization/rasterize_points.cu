@@ -69,7 +69,7 @@ RasterizeGaussiansCUDA(
 	const bool debug)
 {
 	// cast the texture manager back into its original class.
-	auto d_textureManager = (Texture::TextureManager*)d_textureManager_ptr;
+	auto d_textureManager = (Texture::TextureManager *const)d_textureManager_ptr;
 
 	if (means3D.ndimension() != 2 || means3D.size(1) != 3) {
 		AT_ERROR("means3D must have dimensions (num_points, 3)");

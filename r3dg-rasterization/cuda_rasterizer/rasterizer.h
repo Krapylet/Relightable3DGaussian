@@ -57,7 +57,7 @@ namespace CudaRasterizer
 			const float cx, const float cy,
 			const bool prefiltered,
 			const bool computer_pseudo_normal,
-			const Texture::TextureManager* d_textureManager,
+			Texture::TextureManager *const d_textureManager,
 			float* out_color,
 			float* out_opacity,
 			float* out_depth,
