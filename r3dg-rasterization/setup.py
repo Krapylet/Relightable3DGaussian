@@ -31,7 +31,7 @@ setup(
                 "render_equation.cu",
                 "ext.cu",
                 "preprocessModel.cu",
-                "texture.cu",
+                "cuda_rasterizer/texture.cu",
                 "cuda_rasterizer/charOperations.cu"],
             dlink=True,
             extra_compile_args={

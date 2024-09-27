@@ -15,7 +15,7 @@
 #include "cuda_rasterizer/splatShader.h"
 #include "cuda_rasterizer/shShader.h"
 #include "preprocessModel.h"
-#include "texture.h"
+#include "cuda_rasterizer/texture.h"
 
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   m.def("rasterize_gaussians", &RasterizeGaussiansCUDA);
@@ -35,6 +35,6 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   m.def("PrintVariable", &Texture::PrintVariable);
   m.def("DeleteVariable", &Texture::DeleteVariable);
   m.def("AllocateTexture", &Texture::AllocateTexture);
-  m.def("LoadDeviceTextureLookupTable", &Texture::LoadDeviceTextureLookupTable);
-  m.def("PrintFromTextureLookuptable", &Texture::PrintFromTextureLookuptable);
+  m.def("UploadTexturesToDevice", &Texture::UploadTexturesToDevice);
+  m.def("PrintFromTextureManager", &Texture::PrintFromTextureManager);
 }

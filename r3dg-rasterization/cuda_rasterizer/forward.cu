@@ -16,6 +16,7 @@
 #include <cooperative_groups.h>
 #include <cooperative_groups/reduce.h>
 #include <vector>
+#include "texture.h"
 namespace cg = cooperative_groups;
 
 // Forward method for converting the input spherical harmonics
@@ -657,7 +658,7 @@ void FORWARD::RunSHShaders(
 	float const focal_x, float const focal_y,
 	float const tan_fovx, float const tan_fovy,
 	int deg, int max_coeffs,
-	//const std::map<std::string, std::map<std::string, cudaTextureObject_t*>>* shaderTextureMaps,
+	const Texture::TextureManager* d_textureManager,
 
 	//input/output   -   contains values when the method is called that can be changed.
 	glm::vec3 *const positions,
@@ -680,7 +681,7 @@ void FORWARD::RunSHShaders(
 		focal_x, focal_y,
 		tan_fovx, tan_fovy,
 		deg, max_coeffs,
-		//shaderTextureMaps,
+		d_textureManager,
 		positions,
 		scales,
 		rotations,

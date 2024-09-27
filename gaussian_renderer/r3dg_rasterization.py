@@ -108,7 +108,7 @@ class _RasterizeGaussians(torch.autograd.Function):
             raster_settings.campos,
             raster_settings.prefiltered,
             raster_settings.computer_pseudo_normal,
-            raster_settings.shaderTextureMaps_ptr,
+            raster_settings.d_textureManager,
             raster_settings.debug
         )
         
@@ -223,7 +223,8 @@ class GaussianRasterizationSettings(NamedTuple):
     splatShaderAddresses: torch.Tensor
     time: float
     dt: float
-    shaderTextureMaps_ptr: int
+    texIndirectLookupTable_ptrs: tuple[int, int]
+    texCount:int
 
 
 class GaussianRasterizer(nn.Module):

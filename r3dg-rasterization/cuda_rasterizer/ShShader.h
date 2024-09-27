@@ -13,6 +13,7 @@
 #include <functional>
 #include <string>
 #include <map>
+#include "texture.h"
 
 #ifndef GLM_FORCE_CUDA
 	#define GLM_FORCE_CUDA
@@ -37,7 +38,7 @@ namespace ShShader
 		float const focal_x; float const focal_y;
 		float const tan_fovx; float const tan_fovy;
         int deg; int max_coeffs;
-		//const std::map<std::string, std::map<std::string, cudaTextureObject_t*>>* shaderTextureMaps;
+		const Texture::TextureManager* d_textureManager;
 
 		//input/output   -   contains values when the method is called that can be changed.
 		glm::vec3 *const positions;
@@ -64,7 +65,7 @@ namespace ShShader
 		float const focal_x; float const focal_y;
 		float const tan_fovx; float const tan_fovy;
         int deg; int max_coeffs;
-		//const std::map<std::string, cudaTextureObject_t*>* shaderTextureMap;
+		const Texture::TextureManager* d_textureManager;
 
 		//input/output   -   contains values when the method is called that can be changed.
 		glm::vec3 *const position;

@@ -24,7 +24,7 @@
 #include <fstream>
 #include <string>
 #include <functional>
-#include "texture.h"
+#include "cuda_rasterizer/texture.h"
 #include "cuda_rasterizer/auxiliary.h"
 
 std::function<char*(size_t N)> resizeFunctional(torch::Tensor& t) {
@@ -65,12 +65,11 @@ RasterizeGaussiansCUDA(
 	const torch::Tensor& campos,
 	const bool prefiltered,
 	const bool computer_pseudo_normal,
-	const int64_t shaderTextureMaps_int64_t_ptr, // Actually contains a pointer on the format std::map<std::string std::map<std::string, cudaTextureObject_t*>>*
+	const int64_t d_textureManager_ptr, // is actually a TextureManager* stored on device.
 	const bool debug)
 {
-
-	// Cast the shaderTextureBundle back from an int64_t to it's actual form.
-	auto shaderTextureMaps = (const std::map<std::string, std::map<std::string, cudaTextureObject_t*>>*) shaderTextureMaps_int64_t_ptr;
+	// cast the texture manager back into its original class.
+	auto d_textureManager = (Texture::TextureManager*)d_textureManager_ptr;
 
 	if (means3D.ndimension() != 2 || means3D.size(1) != 3) {
 		AT_ERROR("means3D must have dimensions (num_points, 3)");
@@ -150,7 +149,7 @@ RasterizeGaussiansCUDA(
 			cy,
 			prefiltered,
 			computer_pseudo_normal,
-			//shaderTextureMaps,
+			d_textureManager,
 			out_color.contiguous().data_ptr<float>(),
 			out_opacity.contiguous().data_ptr<float>(),
 			out_depth.contiguous().data_ptr<float>(),

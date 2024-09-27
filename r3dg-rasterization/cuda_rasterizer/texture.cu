@@ -1,10 +1,10 @@
 #include "texture.h"
-#include "cuda_rasterizer/auxiliary.h"
+#include "auxiliary.h"
 #include <iostream>
 #include <stdexcept>
 #include <map>
 #include <cooperative_groups.h>
-#include "cuda_rasterizer/charOperations.h"
+#include "charOperations.h"
 
 
 namespace Texture
@@ -224,13 +224,18 @@ namespace Texture
         return (int64_t)shaderTextureMaps;
     }
 
-    // NOTICE: Only call if the pointer haven't been passed through python. See InitializeTextureWrappers() comment.
     // Frees the underlying cudaArray that the textureObject is wrapped around, as well as the texture object pointer that contains it.
     void UnloadTexture(cudaTextureObject_t* textureObject){
         cudaResourceDesc resDesc;
         checkCudaErrors(cudaGetTextureObjectResourceDesc(&resDesc, (*textureObject)));
         checkCudaErrors(cudaFreeArray(resDesc.res.array.array));
-        delete(textureObject);
+    }
+
+    // Frees the underlying cudaArray that the textureObject is wrapped around
+    void UnloadTexture(cudaTextureObject_t textureObject){
+        cudaResourceDesc resDesc;
+        checkCudaErrors(cudaGetTextureObjectResourceDesc(&resDesc, textureObject));
+        checkCudaErrors(cudaFreeArray(resDesc.res.array.array));
     }
 
     // NOTICE: takes a std::map<std::string, std::map<std::string, cudaTextureObject_t*>>* that has been cast to an int64_t in order to get around the pybind pointer wierdness.
@@ -252,45 +257,18 @@ namespace Texture
     }
 
     // initialize device texture vector and device texture name vector (used for indirect addressing of textures)
-    // NOTICE: actually returns a std::pair<char**,cudaTextureObject_t*> cast to a pair of int64s.
-    std::pair<int64_t, int64_t> LoadDeviceTextureLookupTable(std::vector<std::string> names, std::vector<int64_t> textureObjects){
-        // First, move each element into a vector on host
-        // We use vectors instead of arrays since we don't know the size at compile time, and we don't wanna allocate memory ourselves.
-        char* name[5];
-        auto test = name[0];
-        std::vector<char*> h_names (names.size());
-        std::vector<cudaTextureObject_t> h_texObjs(names.size());
+    // NOTICE: actually returns a d_TextureManager* cast to an int64.
+    int64_t UploadTexturesToDevice(std::vector<std::string> names, std::vector<int64_t> textureObjects){
+        auto h_texManager = new TextureManager();
+        h_texManager->SetTextures(names, textureObjects);
+        // TODO: Set error textures.
 
-        for (size_t i = 0; i < names.size(); i++)
-        {
-            std::string name = names[i];
-            cudaTextureObject_t texObj = *((cudaTextureObject_t*)textureObjects[i]);
+        TextureManager* d_texManager;
+        cudaMalloc(&d_texManager, sizeof(TextureManager));
+        cudaMemcpy(d_texManager, h_texManager, sizeof(TextureManager), cudaMemcpyHostToDevice);
 
-            // convert each name to a char array located in device memory
-            // Texture objects are already in device memory, so we don't need to do anything to them.
-            int stringlength = name.length();
-            char* d_charName;
-            cudaMalloc(&d_charName, (stringlength+1)*sizeof(char)); // add 1 to also include the termination character
-            cudaMemcpy(d_charName, name.c_str(), stringlength+1, cudaMemcpyKind::cudaMemcpyDefault);
-
-            // Save the pointers to the tempoary host vectors.
-            h_names[i] = d_charName;
-            h_texObjs[i] = texObj;
-        }
-
-        // Then create a couple of device arrays and transfer all data to them.
-        // We have to allocate new memory for the device vectors, so that they stay persitant over multiple render loops.
-        char** d_names;
-        cudaMalloc(&d_names, names.size() * sizeof(char*));
-        cudaMemcpy(d_names, &h_names[0], names.size() *sizeof(char*), cudaMemcpyHostToDevice);
-
-        cudaTextureObject_t* d_texObjs;
-        cudaMalloc(&d_texObjs, h_texObjs.size() * sizeof(cudaTextureObject_t));
-        cudaMemcpy(d_texObjs, &h_texObjs[0], h_texObjs.size() * sizeof(cudaTextureObject_t), cudaMemcpyKind::cudaMemcpyDefault);
-
-        return std::pair((int64_t)d_names, (int64_t)d_texObjs);
+        return (int64_t)d_texManager;
     }
-
 
     // --------------- Debug methods ---------------
 
@@ -313,55 +291,118 @@ namespace Texture
         std::cout << "Deleting done" << std::endl;
     }
 
-
     // Debug Method used for quickly testing whether 
     __global__ void PrintFirstPixel(cudaTextureObject_t texObj){
         float4 cudaTexel = tex2D<float4>(texObj, 0, 0);
         printf("Cuda reading RGBA value of first texel: %f,%f,%f,%f\n", cudaTexel.x, cudaTexel.y, cudaTexel.z, cudaTexel.w);
     }
 
-    __global__ void PrintFromTextureLookuptableCUDA(char** texNames, cudaTextureObject_t* texObjs, int texCount, const char* targetName){
-        // Find the target texture name index:
-        for (size_t i = 0; i < texCount; i++)
-        {
-            char* name = texNames[i];
-
-            
-            printf("about to compare\n");
-            // Check if the name in the lookup table is the same as the target name
-            bool textureHasBeenFound = charsAreEqual(name, targetName);
-            printf("Compare done\n");
-            // if so, print the pixel value and return
-            
-            if(textureHasBeenFound){
-                cudaTextureObject_t texObj = texObjs[i];
-                printf("Printing texture '%lu' from texture array:\n", texObj);
-                float4 cudaTexel = tex2D<float4>(texObj, 0, 0);
-                printf("Cuda reading RGBA value of first texel in tex '%lu': %f,%f,%f,%f\n", texObj, cudaTexel.x, cudaTexel.y, cudaTexel.z, cudaTexel.w);
-                return;
-            }
-        }
-        
-        // If none of the textures had the correct name, print a warning:
-        printf("Warning: Texture '%s' not found\n", targetName);
+    __global__ void PrintFromTextureManagerCUDA(TextureManager *texManager, char* targetName){
+        cudaTextureObject_t texObj = texManager->GetTexture(targetName);
+        float4 cudaTexel = tex2D<float4>(texObj, 0, 0);
+        printf("Cuda reading RGBA value of first texel in tex %lu-'%s': %f,%f,%f,%f\n", texObj, targetName, cudaTexel.x, cudaTexel.y, cudaTexel.z, cudaTexel.w);
     }
 
-    
-    void PrintFromTextureLookuptable(std::pair<int64_t, int64_t> texLookupTable, int texCount, std::string targetName){
-        auto texNames = (char**)texLookupTable.first;
-        auto texObjs = (cudaTextureObject_t*)texLookupTable.second;
+    void PrintFromTextureManager(int64_t texManager_ptr, std::string targetName){
+        auto d_texManager = (TextureManager*)texManager_ptr;
 
-        
+        // transfer name to device
         char* d_targetName;
         cudaMalloc(&d_targetName, (targetName.length()+1)*sizeof(char)); // Add 1 char to have room for termination character added by c_str()
         cudaMemcpy(d_targetName, targetName.c_str(), targetName.length()+1, cudaMemcpyKind::cudaMemcpyHostToDevice);
 
-        PrintFromTextureLookuptableCUDA<<<1,1>>>(texNames, texObjs, texCount, d_targetName);
+        PrintFromTextureManagerCUDA<<<1,1>>>(d_texManager, d_targetName);
 
+        // Delete the name that was transfered to device.
         cudaFree(d_targetName);
         cudaDeviceSynchronize();
     }
-
-
-
 }
+
+/// -----------------------Texture manager class implementation -------------------
+
+    __host__ Texture::TextureManager::TextureManager(){};
+
+    // Allocates and Uploads an array an array of textures onto the GPU so that textures can be looked up by in the shaders.
+    __host__ void Texture::TextureManager::SetTextures(std::vector<std::string> names, std::vector<int64_t> textureObjects){
+        // First, move each element into a vector on host
+        // We use vectors instead of arrays since we don't know the size at compile time, and we don't wanna allocate memory ourselves.
+        int h_texCount = names.size();
+        std::vector<char*> h_names (h_texCount);
+        std::vector<cudaTextureObject_t> h_texObjs(h_texCount);
+
+        for (size_t i = 0; i < h_texCount; i++)
+        {
+            std::string name = names[i];
+            cudaTextureObject_t texObj = *((cudaTextureObject_t*)textureObjects[i]);
+
+            // convert each name to a char array located in device memory
+            // Texture objects are already in device memory, so we don't need to do anything to them.
+            int stringlength = name.length();
+            char* d_charName;
+            cudaMalloc(&d_charName, (stringlength+1)*sizeof(char)); // add 1 to also include the termination character
+            cudaMemcpy(d_charName, name.c_str(), stringlength+1, cudaMemcpyKind::cudaMemcpyDefault);
+
+            // Save the pointers to the tempoary host vectors.
+            h_names[i] = d_charName;
+            h_texObjs[i] = texObj;
+        }
+        // Then allocate all the arrays on the device and transfer the data stored on host to them (and to the texCount variable):
+        printf("Trying to store %i as tex count\n", h_texCount);
+        cudaMalloc(&d_texCount, sizeof(int));
+        cudaMemcpy(d_texCount, &h_texCount, sizeof(int), cudaMemcpyHostToDevice);
+
+        cudaMalloc(&d_textureNames, h_texCount * sizeof(char*));
+        cudaMemcpy(d_textureNames, &h_names[0], h_texCount *sizeof(char*), cudaMemcpyHostToDevice);
+
+        cudaMalloc(&d_textureObjects, h_texObjs.size() * sizeof(cudaTextureObject_t));
+        cudaMemcpy(d_textureObjects, &h_texObjs[0], h_texObjs.size() * sizeof(cudaTextureObject_t), cudaMemcpyKind::cudaMemcpyDefault);
+    }
+            
+    // Deallocates all textures on the device (except the error texture)
+    __host__ void Texture::TextureManager::UnloadTextures(){
+        for (size_t i = 0; i < *d_texCount; i++)
+        {
+            char* name = d_textureNames[i];
+            cudaTextureObject_t texObj = d_textureObjects[i];
+
+            delete(name);
+            UnloadTexture(texObj);
+        }
+    }
+
+    // Allocates and uploads an errot texture to the device.
+    __host__ void Texture::TextureManager::SetErrorTexture(cudaTextureObject_t errorTexture){
+        cudaMalloc(&d_textureObjects, sizeof(cudaTextureObject_t));
+        cudaMemcpy(&d_errorTexture, &errorTexture, sizeof(cudaTextureObject_t), cudaMemcpyHostToDevice);
+    }
+
+    //Deallocates the error texture on the device.
+    __host__ void Texture::TextureManager::UnloadErrorTexture(){
+        UnloadTexture(d_errorTexture);
+    }
+
+    // Returns the error texture.
+    __device__ cudaTextureObject_t Texture::TextureManager::GetErrorTexture(){return *d_errorTexture;}
+            
+    // Loops through each loaded texture name and checks if it matches the given name before returning the associated texture. Is pretty slow, so cache the result.
+    // Returns the error texture if no texture is found.
+    __device__ cudaTextureObject_t Texture::TextureManager::GetTexture(char* targetTextureName){
+        for (size_t i = 0; i < *d_texCount; i++)
+        {
+            // Check if the name in the lookup table is the same as the target name
+            char* currentTexName = d_textureNames[i];
+            bool textureHasBeenFound = charsAreEqual(currentTexName, targetTextureName);
+            
+            if(textureHasBeenFound){
+                cudaTextureObject_t texObj = d_textureObjects[i];
+                return texObj;
+            }
+        }
+
+        // If no texture was found with the given name, return the default error texture
+        printf("Warning: Could not find texture '%s'\n", targetTextureName);
+        return *d_errorTexture;
+        }
+
+    

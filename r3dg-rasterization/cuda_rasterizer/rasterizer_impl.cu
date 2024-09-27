@@ -29,6 +29,7 @@ namespace cg = cooperative_groups;
 #include "auxiliary.h"
 #include "forward.h"
 #include "backward.h"
+#include "texture.h"
 
 // Helper function to find the next-highest bit of the MSB
 // on the CPU.
@@ -225,7 +226,7 @@ int CudaRasterizer::Rasterizer::forward(
 	const float cx, const float cy,
 	const bool prefiltered,
 	const bool computer_pseudo_normal,
-	//const std::map<std::string, std::map<std::string, cudaTextureObject_t*>>* shaderTextureMaps,
+	const Texture::TextureManager* d_textureManager,
 	float* out_color,
 	float* out_opacity,
 	float* out_depth,
@@ -238,7 +239,6 @@ int CudaRasterizer::Rasterizer::forward(
 {
 	const float focal_y = height / (2.0f * tan_fovy);
 	const float focal_x = width / (2.0f * tan_fovx);
-
 	size_t chunk_size = required<GeometryState>(P);
 	char* chunkptr = geometryBuffer(chunk_size);
 	GeometryState geomState = GeometryState::fromChunk(chunkptr, P);
@@ -277,7 +277,7 @@ int CudaRasterizer::Rasterizer::forward(
 		focal_x, focal_y,
 		tan_fovx, tan_fovy,
 		D, M,
-		//shaderTextureMaps,
+		d_textureManager,
 
 		//input/output   -   contains values when the method is called that can be changed.
 		(glm::vec3*) means3D,

@@ -2,6 +2,7 @@
 #include "config.h"
 #include <iostream>
 #include <cooperative_groups.h>
+#include "texture.h"
 #ifndef GLM_FORCE_CUDA
 #define GLM_FORCE_CUDA
 #endif
@@ -26,8 +27,8 @@ namespace ShShader
 		focal_x(p.focal_x), focal_y(p.focal_y),
 		tan_fovx(p.tan_fovx), tan_fovy(tan_fovy),
         deg(p.deg), max_coeffs(p.max_coeffs),
-        //shaderTextureMap(&p.shaderTextureMaps->at(shaderID)),
-
+        d_textureManager(p.d_textureManager),
+        
 		//input/output   -   contains values when the method is called that can be changed.
 		position(p.positions + idx),
 		scale(p.scales + idx),

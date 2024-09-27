@@ -14,6 +14,7 @@
 
 #include <vector>
 #include <functional>
+#include "texture.h"
 
 namespace CudaRasterizer
 {
@@ -56,7 +57,7 @@ namespace CudaRasterizer
 			const float cx, const float cy,
 			const bool prefiltered,
 			const bool computer_pseudo_normal,
-			//const std::map<std::string, std::map<std::string, cudaTextureObject_t*>>* shaderTextureMaps,
+			const Texture::TextureManager* d_textureManager,
 			float* out_color,
 			float* out_opacity,
 			float* out_depth,
