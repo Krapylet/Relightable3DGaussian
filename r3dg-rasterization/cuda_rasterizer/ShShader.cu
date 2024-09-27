@@ -57,11 +57,23 @@ namespace ShShader
         *p.position = glm::vec3((*p.position).x * posY, (*p.position).y * 2, (*p.position).z) * posY;
     }
 
+    __device__ static void DiffuseShader(ShShaderParams p){
+        cudaTextureObject_t grainyTexture = p.d_textureManager->GetTexture("Grainy");
+        
+        float opacity = tex2D<float4>(grainyTexture, p.position->x, p.position->y).w;
+
+        // Make sure we don't get negative opacity
+        opacity = saturate(opacity);
+
+        *p.opacity = opacity;
+    }
+
     ///// Assign all the shaders to their short handles.
     // we need to keep them in constant device memory for them to stay valid when passed to host.
     //TODO: Instead of storing shaders in individual variables, store them in a __device__ const map<ShShaderName, ShShader> 
     __device__ const ShShader defaultShader = &DefaultShShaderCUDA;
     __device__ const ShShader expPosShader = &ExponentialPositionShaderCUDA;
+    __device__ const ShShader diffuseShader = &DiffuseShader;
 
     std::map<std::string, int64_t> GetShShaderAddressMap(){
         // we cast pointers to numbers since most pointers aren't supported by pybind
@@ -79,6 +91,10 @@ namespace ShShader
         cudaMemcpyFromSymbol(&h_exponentialPositionShader, expPosShader, shaderMemorySize);
         shaderMap["ExpPos"] = (int64_t)h_exponentialPositionShader;
 
+        ShShader::ShShader h_diffuseShader;
+        cudaMemcpyFromSymbol(&h_diffuseShader, diffuseShader, shaderMemorySize);
+        shaderMap["Diffuse"] = (int64_t)h_diffuseShader;
+
         return shaderMap;
     }
 
@@ -86,7 +102,8 @@ namespace ShShader
     // Returns an array in device memory containing addresses to device shader functions.
     int64_t* GetShShaderAddressArray(){
         // Array is assembled on CPU before being sent to device. Addresses themselves are in device space.
-        int64_t* h_shaderArray = new int64_t[2];
+        int shaderCount = 3;
+        int64_t* h_shaderArray = new int64_t[shaderCount];
         size_t shaderMemorySize = sizeof(ShShader);
 
         ShShader::ShShader h_defaultShader;
@@ -97,10 +114,15 @@ namespace ShShader
         cudaMemcpyFromSymbol(&h_exponentialPositionShader, expPosShader, shaderMemorySize);
         h_shaderArray[1] = (int64_t)h_exponentialPositionShader;
 
+        ShShader::ShShader h_diffuseShader;
+        cudaMemcpyFromSymbol(&h_diffuseShader, diffuseShader, shaderMemorySize);
+        h_shaderArray[2] = (int64_t)h_diffuseShader;
+
         // copy the array to device
         int64_t* d_shaderArray;
-        cudaMalloc(&d_shaderArray, sizeof(int64_t)*2);
-        cudaMemcpy(d_shaderArray, h_shaderArray, shaderMemorySize * 2, cudaMemcpyDefault);
+        cudaMalloc(&d_shaderArray, sizeof(int64_t)*shaderCount);
+        cudaMemcpy(d_shaderArray, h_shaderArray, shaderMemorySize * shaderCount, cudaMemcpyDefault);
+        
 
         // Delete temporary host array.
         delete[] h_shaderArray;

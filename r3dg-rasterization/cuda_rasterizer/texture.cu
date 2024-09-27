@@ -403,6 +403,6 @@ namespace Texture
         // If no texture was found with the given name, return the default error texture
         printf("Warning: Could not find texture '%s'\n", targetTextureName);
         return *d_errorTexture;
-        }
+    }
 
     

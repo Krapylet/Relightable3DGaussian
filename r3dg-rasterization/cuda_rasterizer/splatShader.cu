@@ -101,7 +101,7 @@ namespace SplatShader
         float4 sampleColor = tex2D<float4>(crackTex, p.position.x, p.position.y);
         
         *p.out_color = glm::vec3(sampleColor.x, sampleColor.y, sampleColor.z);
-        
+
         //TODO: Make opacity something that can be modified in the shader.
         //p.conic_opacity.w = 1;
     }

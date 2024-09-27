@@ -36,17 +36,10 @@ __global__ void AppendShaderIndexesCUDA(
         shShaderAddressIndex = 0; //"Default";
     }
     else{
-        shShaderAddressIndex = 1 ;//"ExpPos";
+        shShaderAddressIndex = 2 ; //"Diffuse";
     }
 
-    if (splatCoordinates[idx].y > 0){
-        splatShaderAddressIndex = 0;// "Default";
-    }
-    else{
-        splatShaderAddressIndex = 2;//"WireframeShader";
-    }
-
-    splatShaderAddressIndex = 3; // Texture test.
+    splatShaderAddressIndex = 0;// "Default";
 
     out_shShaderAddresses[idx] = shShaderAddressArray[shShaderAddressIndex];
     out_splatShadersAddresses[idx] = splatShaderAddressArray[splatShaderAddressIndex];
