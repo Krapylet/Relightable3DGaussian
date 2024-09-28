@@ -32,7 +32,8 @@ setup(
                 "ext.cu",
                 "preprocessModel.cu",
                 "utils/texture.cu",
-                "utils/charOperations.cu"],
+                "utils/charOperations.cu",
+                "utils/indirectMap.cu",],
             dlink=True,
             extra_compile_args={
                 "nvcc": ["--device-c",
