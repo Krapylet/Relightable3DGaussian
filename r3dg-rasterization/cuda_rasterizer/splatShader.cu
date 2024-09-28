@@ -1,6 +1,8 @@
 #include "splatShader.h"
 #include "config.h"
 #include <cooperative_groups.h>
+
+
 #ifndef GLM_FORCE_CUDA
 #define GLM_FORCE_CUDA
 #endif
@@ -114,68 +116,36 @@ namespace SplatShader
     __device__ const SplatShader textureTestShader = &TextureTestShaderCUDA;
 
 
-    std::map<std::string, int64_t> GetSplatShaderAddressMap(){
-        // we cast pointers to numbers since most pointers aren't supported by pybind
-        // Device function pointers seem to be 8 bytes long (at least on the devlopment machine with a GTX 2080 and when compiling to 64bit mode)
-        // there doesn't seem to be a problem casting them to int64's though.
-
-        std::map<std::string, int64_t> shaderMap;
+    IndirectMap<char*, SplatShader>* GetSplatShaderAddressMap(){
+        std::vector<char*> shaderNames;
+        std::vector<SplatShader> shaderFunctionPointers;
         size_t shaderMemorySize = sizeof(SplatShader);
         
-        // Copy device shader pointers to host map
+        // Copy device shader pointers to host, so we can store them in the indirect map.
         SplatShader::SplatShader h_defaultShader;
         cudaMemcpyFromSymbol(&h_defaultShader, defaultShader, shaderMemorySize);
-        shaderMap["SplatDefault"] = (int64_t)h_defaultShader;
+        shaderFunctionPointers.push_back(h_defaultShader);
+        shaderNames.push_back("SplatDefault");
 
         SplatShader::SplatShader h_outlineShader;
         cudaMemcpyFromSymbol(&h_outlineShader, outlineShader, shaderMemorySize);
-        shaderMap["OutlineShader"] = (int64_t)h_outlineShader;
+        shaderFunctionPointers.push_back(h_outlineShader);
+        shaderNames.push_back("OutlineShader");
 
         SplatShader::SplatShader h_wireframeShader;
         cudaMemcpyFromSymbol(&h_wireframeShader, wireframeShader, shaderMemorySize);
-        shaderMap["WireframeShader"] = (int64_t)h_wireframeShader;
+        shaderFunctionPointers.push_back(h_wireframeShader);
+        shaderNames.push_back("WireframeShader");
 
         SplatShader::SplatShader h_textureTestShader;
         cudaMemcpyFromSymbol(&h_textureTestShader, textureTestShader, shaderMemorySize);
-        shaderMap["TextureTestShader"] = (int64_t)h_textureTestShader;
+        shaderFunctionPointers.push_back(h_textureTestShader);
+        shaderNames.push_back("TextureTestShader");
 
-        return shaderMap;
+        IndirectMap<char*, SplatShader>* splatShaderMap = new IndirectMap<char*, SplatShader>(shaderNames, shaderFunctionPointers);
+
+        return splatShaderMap;
     }
-
-    // ALLOCATES THE RETURN ARRAY. REMEMBER TO FREE AFTER USE.
-    // Returns an array in device memory containing addresses to device shader functions.
-    int64_t* GetSplatShaderAddressArray(){
-        // Array is assembled on CPU before being sent to device. Addresses themselves are in device space.
-        int shaderCount = 4;
-        int64_t* h_shaderArray = new int64_t[shaderCount];
-        size_t shaderMemorySize = sizeof(SplatShader);
- 
-        SplatShader::SplatShader h_defaultShader;
-        cudaMemcpyFromSymbol(&h_defaultShader, defaultShader, shaderMemorySize);
-        h_shaderArray[0] = (int64_t)h_defaultShader;
-
-        SplatShader::SplatShader h_outlineShader;
-        cudaMemcpyFromSymbol(&h_outlineShader, outlineShader, shaderMemorySize);
-        h_shaderArray[1] = (int64_t)h_outlineShader;
-
-        SplatShader::SplatShader h_wireframeShader;
-        cudaMemcpyFromSymbol(&h_wireframeShader, wireframeShader, shaderMemorySize);
-        h_shaderArray[2] = (int64_t)h_wireframeShader;
-
-        SplatShader::SplatShader h_textureTestShader;
-        cudaMemcpyFromSymbol(&h_textureTestShader, textureTestShader, shaderMemorySize);
-        h_shaderArray[3] = (int64_t)h_textureTestShader;
-
-        // copy the host array to device
-        int64_t* d_shaderArray;
-        cudaMalloc(&d_shaderArray, sizeof(int64_t)*shaderCount);
-        cudaMemcpy(d_shaderArray, h_shaderArray, shaderMemorySize * shaderCount, cudaMemcpyDefault);
-
-        // Delete temporary host array.
-        delete[] h_shaderArray;
-        return d_shaderArray;
-    }
-
 
     __global__ void ExecuteShader(SplatShader* shaders, PackedSplatShaderParams packedParams){
         // calculate index for the spalt.
