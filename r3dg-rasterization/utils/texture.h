@@ -1,16 +1,7 @@
 #pragma once
 
 #include <string>
-
-// torch/extention.h imports torch/python.h, which completely breaks intellisense, so we have to manually exclude it while editing the code.
-#ifndef EDITMODE
-#include <torch/extension.h>
-#endif
-#ifdef EDITMODE
-#include <vector>
-#include <string>
-#include <torch/all.h>
-#endif
+#include "includeTorch.cu"
 
 // A wrapper class around the indirect lookup table. Mostly just used to retrieve textures.
 namespace Texture

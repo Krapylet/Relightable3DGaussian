@@ -10,7 +10,7 @@
  */
 
 #include <math.h>
-#include <torch/extension.h>
+#include "utils/includeTorch.cu"
 #include <cstdio>
 #include <sstream>
 #include <iostream>

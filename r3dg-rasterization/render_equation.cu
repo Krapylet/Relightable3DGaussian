@@ -1,14 +1,11 @@
+#include "render_equation.h"
 #include <math.h>
-#include <torch/extension.h>
-#include <cstdio>
 #include <sstream>
 #include <iostream>
-#include <tuple>
 #include <stdio.h>
 #include <cuda_runtime_api.h>
 #include <memory>
 #include <fstream>
-#include <string>
 #include <functional>
 #include "cuda_rasterizer/auxiliary.h"
 

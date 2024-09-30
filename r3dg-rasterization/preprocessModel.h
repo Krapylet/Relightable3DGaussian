@@ -1,5 +1,5 @@
 #pragma once
 
-#include <torch/extension.h>
+#include "utils/includeTorch.cu"
 
-std::tuple<torch::Tensor, torch::Tensor> PreprocessModel(torch::Tensor& splatCoordinateTensor);
+std::tuple<int64_t, int64_t> PreprocessModel(torch::Tensor& splatCoordinateTensor);
