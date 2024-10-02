@@ -33,8 +33,7 @@ setup(
                 "preprocessModel.cu",
                 "utils/texture.cu",
                 "utils/charOperations.cu",
-                "utils/indirectMap.cu",
-                "utils/includeTorch.cu",],
+                "utils/includeTorch.cu"],
             dlink=True,
             extra_compile_args={
                 "nvcc": ["--device-c",

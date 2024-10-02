@@ -40,8 +40,6 @@ add_library(CudaRasterizer
 	utils/texture.cu
 	utils/charOperations.h
 	utils/charOperations.cu
-	utils/indirectMap.h
-	utils/indrectMap.cu
 )
 
 set_target_properties(CudaRasterizer PROPERTIES CUDA_ARCHITECTURES "75;86" CUDA_RESOLVE_DEVICE_SYMBOLS ON)

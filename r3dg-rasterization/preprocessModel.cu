@@ -26,20 +26,8 @@ __global__ void AppendShaderIndexesCUDA(
     if (idx >= splatCount)
         return;
 
-    int shShaderAddressIndex = 0;
-    int splatShaderAddressIndex = 0;
-
-    // Determine which shader should be used for the splat.
-    // Ideally assigned shaders sould be written direcly in the object file so we know this when we load the model in.
-    // also, there's no propper naming here unlike in the regular append_shader_addresses() python function, so it's only a placeholder for testing optimized initialization speed.
-    if (splatCoordinates[idx].x > 0){
-        shShaderAddressIndex = 0; //"Default";
-    }
-    else{
-        shShaderAddressIndex = 2 ; //"Diffuse";
-    }
-
-    splatShaderAddressIndex = 0;// "Default";
+    int shShaderAddressIndex = 2;//"Default";
+    int splatShaderAddressIndex = 0; //"Diffuse";
 
     out_shShaderAddresses[idx] = shShaderAddressArray[shShaderAddressIndex];
     out_splatShadersAddresses[idx] = splatShaderAddressArray[splatShaderAddressIndex];

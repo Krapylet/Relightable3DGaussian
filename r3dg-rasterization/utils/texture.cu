@@ -126,6 +126,7 @@ namespace Texture
             paddedDataSize = height * channelByteWidth;
             texDesc.filterMode = cudaFilterModeLinear;
             texDesc.readMode = cudaReadModeElementType;
+            printf("Single\n");
         }
         else if ( mode == TextureMode::RGBA || mode == TextureMode::CMYK)
         {
@@ -134,9 +135,11 @@ namespace Texture
             paddedDataSize = height * channelByteWidth;
             texDesc.filterMode = cudaFilterModeLinear;
             texDesc.readMode = cudaReadModeElementType;
+            printf("RGBA\n");
         }
         else if ( mode == TextureMode::RGB || mode == TextureMode::YCbCr)
         {
+            printf("RGB\n");
             channelDesc = cudaCreateChannelDesc(32, 32, 32, 32, cudaChannelFormatKindFloat);
             channelByteWidth = width * sizeof(float4);
             paddedDataSize = height * channelByteWidth;
@@ -153,6 +156,7 @@ namespace Texture
         }
         else if (mode == TextureMode::LAB|| mode == TextureMode::HSV)
         {
+            printf("HSV\n");
             channelDesc = cudaCreateChannelDesc(32, 32, 32, 32, cudaChannelFormatKindUnsigned);
             channelByteWidth = width * sizeof(float4);
             paddedDataSize = height * channelByteWidth;

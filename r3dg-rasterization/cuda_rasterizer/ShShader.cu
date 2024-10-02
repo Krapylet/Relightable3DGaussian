@@ -57,15 +57,23 @@ namespace ShShader
         *p.position = glm::vec3((*p.position).x * posY, (*p.position).y * 2, (*p.position).z) * posY;
     }
 
-    __device__ static void DiffuseShader(ShShaderParams p){
-        cudaTextureObject_t grainyTexture = p.d_textureManager->GetTexture("Grainy");
-        
-        float opacity = tex2D<float4>(grainyTexture, p.position->x, p.position->y).w;
+    __device__ static void DissolveShader(ShShaderParams p){
+        cudaTextureObject_t grainyTexture = p.d_textureManager->GetTexture("Black");
+
+        float texSample = tex2D<float4>(grainyTexture, 3.0/4.0+0.005, 3.0/4.0+0.005).x;
 
         // Make sure we don't get negative opacity
-        opacity = __saturatef(opacity);
+        // goes back and forth between 0-1
+        float opacityPercent = (cosf(p.time/500) + 1)/2;
 
-        *p.opacity = opacity;
+        float originalOpacity = *p.opacity;
+
+        float opacity = __saturatef((1 + texSample) * opacityPercent * originalOpacity);
+
+        *p.opacity = texSample* originalOpacity;
+
+        // gå fra 1 til 0 over tid med opacity. 
+        // ved 1, gang 
     }
 
     ///// Assign all the shaders to their short handles.
@@ -73,7 +81,7 @@ namespace ShShader
     //TODO: Instead of storing shaders in individual variables, store them in a __device__ const map<ShShaderName, ShShader> 
     __device__ const ShShader defaultShader = &DefaultShShaderCUDA;
     __device__ const ShShader expPosShader = &ExponentialPositionShaderCUDA;
-    __device__ const ShShader diffuseShader = &DiffuseShader;
+    __device__ const ShShader disolveShader = &DissolveShader;
 
     std::map<std::string, int64_t> GetShShaderAddressMap(){
         // we cast pointers to numbers since most pointers aren't supported by pybind
@@ -91,9 +99,9 @@ namespace ShShader
         cudaMemcpyFromSymbol(&h_exponentialPositionShader, expPosShader, shaderMemorySize);
         shaderMap["ExpPos"] = (int64_t)h_exponentialPositionShader;
 
-        ShShader::ShShader h_diffuseShader;
-        cudaMemcpyFromSymbol(&h_diffuseShader, diffuseShader, shaderMemorySize);
-        shaderMap["Diffuse"] = (int64_t)h_diffuseShader;
+        ShShader::ShShader h_disolveShader;
+        cudaMemcpyFromSymbol(&h_disolveShader, disolveShader, shaderMemorySize);
+        shaderMap["Diffuse"] = (int64_t)h_disolveShader;
 
         return shaderMap;
     }
@@ -114,9 +122,9 @@ namespace ShShader
         cudaMemcpyFromSymbol(&h_exponentialPositionShader, expPosShader, shaderMemorySize);
         h_shaderArray[1] = (int64_t)h_exponentialPositionShader;
 
-        ShShader::ShShader h_diffuseShader;
-        cudaMemcpyFromSymbol(&h_diffuseShader, diffuseShader, shaderMemorySize);
-        h_shaderArray[2] = (int64_t)h_diffuseShader;
+        ShShader::ShShader h_disolveShader;
+        cudaMemcpyFromSymbol(&h_disolveShader, disolveShader, shaderMemorySize);
+        h_shaderArray[2] = (int64_t)h_disolveShader;
 
         // copy the array to device
         int64_t* d_shaderArray;
@@ -138,6 +146,9 @@ namespace ShShader
         // Unpack shader parameters into a format that is easier to work with. Increases memory footprint as tradeoff.
         // Could easily be optimized away by only indexing into the params inside the shader, but for now I'm prioritizing ease of use.
         ShShaderParams params(packedParams, idx);
+
+        if (idx == 1)
+            printf("Time: %f, cosTime: %f\n", params.time, (cosf(params.time/1000) + 1)/2);
 
         // No need to dereference the shader function pointer.
         shaders[idx](params);

@@ -45,16 +45,18 @@ class TextureImporter:
     def initialize_all_textures(self):
         ## Import textures
         #TODO: make the paths relative to this directory
-        self.import_texture("Cracks", r"C:\Users\asvj\Documents\GitHub\Relightable3DGaussian\textures\Cracks 2.png")
-        self.import_texture("Grainy", r"C:\Users\asvj\Documents\GitHub\Relightable3DGaussian\textures\Grainy 13.png")
+        #self.import_texture("Cracks", r"C:\Users\asvj\Documents\GitHub\Relightable3DGaussian\textures\Cracks 2.png")
+        #self.import_texture("Grainy", r"C:\Users\asvj\Documents\GitHub\Relightable3DGaussian\textures\Grainy 13.png")
+        #self.import_texture("Gradient", r"C:\Users\asvj\Documents\GitHub\Relightable3DGaussian\textures\Gradient.png")
+        self.import_texture("Black", r"C:\Users\asvj\Documents\GitHub\Relightable3DGaussian\textures\Black.png")
 
         #Once all textures have been loaded, create an indirect address lookup table for them on the device:
         d_textureManager_ptr = _C.UploadTexturesToDevice(self.loadedTextureNames, self.loadedTextureObjects)
 
         ## Perfrom a sanity test:
-        print("####### Trying to print a pixel from Cracks texture with an indirect lookup:\n")
-        _C.PrintFromTextureManager(d_textureManager_ptr, "Cracks")
-        print("Done printing.\n")
+        #print("####### Trying to print a pixel from Cracks texture with an indirect lookup:\n")
+        #_C.PrintFromTextureManager(d_textureManager_ptr, "Cracks")
+        #print("Done printing.\n")
 
 
         return d_textureManager_ptr
