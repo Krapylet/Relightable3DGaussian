@@ -75,33 +75,59 @@ namespace ShShader
     __device__ const ShShader expPosShader = &ExponentialPositionShaderCUDA;
     __device__ const ShShader diffuseShader = &DiffuseShader;
 
-    IndirectMap<char*, ShShader>* GetShShaderAddressMap(){
-        std::vector<char*> shaderNames;
-        std::vector<ShShader> shaderFunctionPointers;
+    std::map<std::string, int64_t> GetShShaderAddressMap(){
+        // we cast pointers to numbers since most pointers aren't supported by pybind
+        // Device function pointers seem to be 8 bytes long (at least on the devlopment machine with a GTX 2080 and when compiling to 64bit mode)
+        // There doesn't seem to be any problem casting them back and forth though signed int64s.
+        std::map<std::string, int64_t> shaderMap;
         size_t shaderMemorySize = sizeof(ShShader);
         
         // Copy device shader pointers to host map
         ShShader::ShShader h_defaultShader;
         cudaMemcpyFromSymbol(&h_defaultShader, defaultShader, shaderMemorySize);
-        shaderNames.push_back("ShDefault");
-        shaderFunctionPointers.push_back(h_defaultShader);
+        shaderMap["ShDefault"] = (int64_t)h_defaultShader;
 
         ShShader::ShShader h_exponentialPositionShader;
         cudaMemcpyFromSymbol(&h_exponentialPositionShader, expPosShader, shaderMemorySize);
-        shaderNames.push_back("ExpPos");
-        shaderFunctionPointers.push_back(h_exponentialPositionShader);
+        shaderMap["ExpPos"] = (int64_t)h_exponentialPositionShader;
 
         ShShader::ShShader h_diffuseShader;
         cudaMemcpyFromSymbol(&h_diffuseShader, diffuseShader, shaderMemorySize);
-        shaderNames.push_back("Diffuse");
-        shaderFunctionPointers.push_back(h_diffuseShader);
+        shaderMap["Diffuse"] = (int64_t)h_diffuseShader;
 
-        IndirectMap<char*, ShShader>* shShaderMap = new IndirectMap<char*, ShShader>(shaderNames, shaderFunctionPointers);
-
-        return shShaderMap;
+        return shaderMap;
     }
 
+    // ONETIME USE FUNCTION USED TO DEBUG. ALLOCATES THE RETURN ARRAY. REMEMBER TO FREE AFTER USE.
+    // Returns an array in device memory containing addresses to device shader functions.
+    int64_t* GetShShaderAddressArray(){
+        // Array is assembled on CPU before being sent to device. Addresses themselves are in device space.
+        int shaderCount = 3;
+        int64_t* h_shaderArray = new int64_t[shaderCount];
+        size_t shaderMemorySize = sizeof(ShShader);
 
+        ShShader::ShShader h_defaultShader;
+        cudaMemcpyFromSymbol(&h_defaultShader, defaultShader, shaderMemorySize);
+        h_shaderArray[0] = (int64_t)h_defaultShader;
+
+        ShShader::ShShader h_exponentialPositionShader;
+        cudaMemcpyFromSymbol(&h_exponentialPositionShader, expPosShader, shaderMemorySize);
+        h_shaderArray[1] = (int64_t)h_exponentialPositionShader;
+
+        ShShader::ShShader h_diffuseShader;
+        cudaMemcpyFromSymbol(&h_diffuseShader, diffuseShader, shaderMemorySize);
+        h_shaderArray[2] = (int64_t)h_diffuseShader;
+
+        // copy the array to device
+        int64_t* d_shaderArray;
+        cudaMalloc(&d_shaderArray, sizeof(int64_t)*shaderCount);
+        cudaMemcpy(d_shaderArray, h_shaderArray, shaderMemorySize * shaderCount, cudaMemcpyDefault);
+        
+
+        // Delete temporary host array.
+        delete[] h_shaderArray;
+        return d_shaderArray;
+    }
 
     __global__ void ExecuteShader(ShShader* shaders, PackedShShaderParams packedParams){
         // calculate index for the spalt.

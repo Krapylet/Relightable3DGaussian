@@ -21,6 +21,7 @@ namespace Texture
         F = 10
     };
 
+    // A Class in a namespace
     class TextureManager
     {
     private:
