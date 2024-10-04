@@ -58,6 +58,7 @@ namespace ShShader
     }
 
     __device__ static void DissolveShader(ShShaderParams p){
+        /*
         cudaTextureObject_t grainyTexture = p.d_textureManager->GetTexture("Black");
 
         float texSample = tex2D<float4>(grainyTexture, 3.0/4.0+0.005, 3.0/4.0+0.005).x;
@@ -74,6 +75,7 @@ namespace ShShader
 
         // gå fra 1 til 0 over tid med opacity. 
         // ved 1, gang 
+        */
     }
 
     ///// Assign all the shaders to their short handles.

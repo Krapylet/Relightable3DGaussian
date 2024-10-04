@@ -16,7 +16,7 @@ class TextureImporter:
         image = Image.open(filepath)
         
         # Create tensor from image with type float and range [0,1]. LAB and HSV images aren't rescaled
-        imageTensor = TF.to_tensor(image).cuda()
+        imageTensor = TF.to_tensor(image).permute(1, 2, 0)
 
         # Store image data in a dictionary along with relevant metadata
         # We have to store all the other data in tensors so they can be passed to c++ through the pybind interface.
@@ -25,7 +25,7 @@ class TextureImporter:
         encodingMode = _C.EncodeTextureMode(image.mode) #We have to encode the string as an int. Otherwise we cant read it from the tensor in c++.
         wrapMode = _C.EncodeWrapMode("Wrap")
         image = {
-            "pixelData" : imageTensor, #Stored on device
+            "pixelData" : imageTensor.cuda(), #Stored on device
             #Other metedata is stored on CPU
             "height" : torch.tensor([height], dtype=torch.int32),
             "width" : torch.tensor([width], dtype=torch.int32),
@@ -48,7 +48,8 @@ class TextureImporter:
         #self.import_texture("Cracks", r"C:\Users\asvj\Documents\GitHub\Relightable3DGaussian\textures\Cracks 2.png")
         #self.import_texture("Grainy", r"C:\Users\asvj\Documents\GitHub\Relightable3DGaussian\textures\Grainy 13.png")
         #self.import_texture("Gradient", r"C:\Users\asvj\Documents\GitHub\Relightable3DGaussian\textures\Gradient.png")
-        self.import_texture("Black", r"C:\Users\asvj\Documents\GitHub\Relightable3DGaussian\textures\Black.png")
+        #self.import_texture("Black", r"C:\Users\asvj\Documents\GitHub\Relightable3DGaussian\textures\Black.png")
+        self.import_texture("ColorBandTest", r"C:\Users\asvj\Documents\GitHub\Relightable3DGaussian\textures\Cracks 2krita.jpg")
 
         #Once all textures have been loaded, create an indirect address lookup table for them on the device:
         d_textureManager_ptr = _C.UploadTexturesToDevice(self.loadedTextureNames, self.loadedTextureObjects)

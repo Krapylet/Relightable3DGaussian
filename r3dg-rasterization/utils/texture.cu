@@ -301,6 +301,11 @@ namespace Texture
         printf("Cuda reading RGBA value of first texel: %f,%f,%f,%f\n", cudaTexel.x, cudaTexel.y, cudaTexel.z, cudaTexel.w);
     }
 
+    __global__ void PrintPixel(cudaTextureObject_t texObj, float u, float v){
+        float4 cudaTexel = tex2D<float4>(texObj, u, v);
+        printf("Cuda reading RGBA value of texel at (%f,%f): %f,%f,%f,%f\n", u, v, cudaTexel.x, cudaTexel.y, cudaTexel.z, cudaTexel.w);
+    }
+
     __global__ void PrintFromTextureManagerCUDA(TextureManager *texManager, char* targetName){
         cudaTextureObject_t texObj = texManager->GetTexture(targetName);
         float4 cudaTexel = tex2D<float4>(texObj, 0, 0);
@@ -327,7 +332,7 @@ namespace Texture
 
     __host__ Texture::TextureManager::TextureManager(){};
 
-    // Allocates and Uploads an array an array of textures onto the GPU so that textures can be looked up by in the shaders.
+    // Allocates and Uploads an array  of textures onto the GPU so that textures can be looked up by the shaders.
     __host__ void Texture::TextureManager::SetTextures(std::vector<std::string> names, std::vector<int64_t> textureObjects){
         // First, move each element into a vector on host
         // We use vectors instead of arrays since we don't know the size at compile time, and we don't wanna allocate memory ourselves.
@@ -352,7 +357,6 @@ namespace Texture
             h_texObjs[i] = texObj;
         }
         // Then allocate all the arrays on the device and transfer the data stored on host to them (and to the texCount variable):
-        printf("Trying to store %i as tex count\n", h_texCount);
         cudaMalloc(&d_texCount, sizeof(int));
         cudaMemcpy(d_texCount, &h_texCount, sizeof(int), cudaMemcpyHostToDevice);
 
