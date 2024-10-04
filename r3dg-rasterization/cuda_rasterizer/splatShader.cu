@@ -59,11 +59,8 @@ namespace SplatShader
 
     __device__ static void DefaultSplatShaderCUDA(SplatShaderParams p)
     {
-        cudaTextureObject_t grainyTexture = p.d_textureManager->GetTexture("ColorBandTest");
-
-        float4 texSample = tex2D<float4>(grainyTexture, p.position.x*2, p.position.y*2);
         // Set output color
-        *p.out_color = glm::vec3(texSample.x, texSample.y, texSample.z);
+        *p.out_color = (*p.color_SH);
     }
 
     __device__ static void OutlineShaderCUDA(SplatShaderParams p)
