@@ -45,7 +45,7 @@ namespace ShShader
 		glm::vec3 *const scales;
 		glm::vec4 *const rotations;
 		float *const opacities;
-		float *const shs;
+		glm::vec3 *const shs;
 	};
 
 	struct ShShaderParams {
@@ -72,7 +72,17 @@ namespace ShShader
 		glm::vec3 *const scale;
 		glm::vec4 *const rotation;
 		float *const opacity;
-		float *const sh;
+		// Contains a lof of spherical harmonics, that are basically progressively finer cubemaps. (yet still extremely coarse)
+		// SHs are combined together based on constant predefined proportions and view direction.
+		// -----------------------------------------------------------------
+		// | SH degree | index          | multiplied by view dir component   |
+		// +-----------+----------------+------------------------------------+
+		// | degree 0  | index: 0       | 1             ("Base color")       |
+		// | degree 1  | indexes: 1-3   | y, z, x                            |
+		// | degree 2  | indexes: 4-8   | xy, yz, 2zz-xx-yy, xz, xx-yy       |
+		// | degree 3  | indexes: 9-15  | (Very complex and not always used) |
+		// +-----------+----------------+------------------------------------+
+		glm::vec3 *const sh;
 	};
 
 	// Define a shared type of fuction pointer that can point to all implemented shaders.

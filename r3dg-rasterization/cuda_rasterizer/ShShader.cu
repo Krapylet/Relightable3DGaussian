@@ -58,7 +58,7 @@ namespace ShShader
     }
 
     __device__ static void DissolveShader(ShShaderParams p){
-        cudaTextureObject_t grainyTexture = p.d_textureManager->GetTexture("Cracks");
+        cudaTextureObject_t grainyTexture = p.d_textureManager->GetTexture("Grid");
 
         // Grab the opacity from a mask texture
         float maskSample_xy = tex2D<float4>(grainyTexture, p.position->x, p.position->y).x;
@@ -69,17 +69,27 @@ namespace ShShader
         float maskSample = maskSample_xy * maskSample_xz * maskSample_yz;
 
         // goes back and forth between 0 and 1 over time
-        float opacityPercent = (cosf(p.time/1000) + 1)/2;
+        float opacityPercent = (cosf(p.time/4000) + 1)/2;
+
+        // Offset the opacity by the mask
+        float opacity = __saturatef((1 + maskSample) * opacityPercent);
+
+        // Ease in and out of transparency with a quint easing.
+        float easedOpacity = opacity < 0.5 ? 16.0 * powf(opacity, 5) : 1 - powf(-2 * opacity + 2, 5) / 2;
 
         float originalOpacity = *p.opacity;
 
-        // Offset the opacity by the mask
-        float opacity = __saturatef((1 + maskSample) * opacityPercent * originalOpacity);
+        // Opacity output
+        *p.opacity = easedOpacity * originalOpacity;
 
-        // Ease in and out of transparency with a quint easing. (inspired by https://easings.net/#easeInOutQuint)
-        opacity = opacity < 0.5 ? 16.0 * powf(opacity, 5) : 1 - powf(-2 * opacity + 2, 5) / 2;
 
-        *p.opacity = opacity;
+        // We want the colors to turn progressively more bright blue as they turn transparen
+        glm::vec3 targetfadeColor = glm::vec3(0.6,0.9,1);
+        float fadeColorPercent = __saturatef(1-opacity -0.3);// ;
+        float fadeColorEasing = fadeColorPercent < 0.5 ? 16.0 * powf(fadeColorPercent + 0.1, 5) : 1 - powf(-2 * fadeColorPercent + 2, 5) / 2;
+
+        // mix degree the fade color into the base color
+        p.sh[0] = glm::mix(p.sh[0], targetfadeColor, fadeColorEasing);
     }
 
     ///// Assign all the shaders to their short handles.

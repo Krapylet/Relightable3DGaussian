@@ -284,7 +284,7 @@ int CudaRasterizer::Rasterizer::forward(
 		(glm::vec3*) scales,
 		(glm::vec4*) rotations,
 		opacities,
-		shs
+		(glm::vec3*) shs
 	), debug)
 	
 	

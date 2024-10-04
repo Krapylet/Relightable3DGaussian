@@ -665,7 +665,7 @@ void FORWARD::RunSHShaders(
 	glm::vec3 *const scales,
 	glm::vec4 *const rotations,
 	float *const opacities,
-	float *const shs
+	glm::vec3 *const shs
 	)
 {
 	ShShader::PackedShShaderParams params {
