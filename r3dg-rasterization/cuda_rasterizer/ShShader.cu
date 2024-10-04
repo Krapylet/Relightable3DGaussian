@@ -58,24 +58,28 @@ namespace ShShader
     }
 
     __device__ static void DissolveShader(ShShaderParams p){
-        /*
-        cudaTextureObject_t grainyTexture = p.d_textureManager->GetTexture("Black");
+        cudaTextureObject_t grainyTexture = p.d_textureManager->GetTexture("Cracks");
 
-        float texSample = tex2D<float4>(grainyTexture, 3.0/4.0+0.005, 3.0/4.0+0.005).x;
+        // Grab the opacity from a mask texture
+        float maskSample_xy = tex2D<float4>(grainyTexture, p.position->x, p.position->y).x;
+        float maskSample_xz = tex2D<float4>(grainyTexture, p.position->x, p.position->z).x;
+        float maskSample_yz = tex2D<float4>(grainyTexture, p.position->y, p.position->z).x;
+        
+        // combine masking from the 3 planes to create a 3d mask.
+        float maskSample = maskSample_xy * maskSample_xz * maskSample_yz;
 
-        // Make sure we don't get negative opacity
-        // goes back and forth between 0-1
-        float opacityPercent = (cosf(p.time/500) + 1)/2;
+        // goes back and forth between 0 and 1 over time
+        float opacityPercent = (cosf(p.time/1000) + 1)/2;
 
         float originalOpacity = *p.opacity;
 
-        float opacity = __saturatef((1 + texSample) * opacityPercent * originalOpacity);
+        // Offset the opacity by the mask
+        float opacity = __saturatef((1 + maskSample) * opacityPercent * originalOpacity);
 
-        *p.opacity = texSample* originalOpacity;
+        // Ease in and out of transparency with a quint easing. (inspired by https://easings.net/#easeInOutQuint)
+        opacity = opacity < 0.5 ? 16.0 * powf(opacity, 5) : 1 - powf(-2 * opacity + 2, 5) / 2;
 
-        // gå fra 1 til 0 over tid med opacity. 
-        // ved 1, gang 
-        */
+        *p.opacity = opacity;
     }
 
     ///// Assign all the shaders to their short handles.
