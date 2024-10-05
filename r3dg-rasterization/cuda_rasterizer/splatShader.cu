@@ -33,7 +33,7 @@ namespace SplatShader
 
 		// pr. frame texture information
 		depth (p.depths[idx]),		
-		conic_opacity (p.conic_opacity[idx]), // Todo: split opacity to own variable
+		conic ((glm::vec3)p.conic_opacity[idx]), 
         color_SH (p.colors_SH + idx),
 
 		// Precomputed 'texture' information from the neilf pbr decomposition
@@ -49,6 +49,10 @@ namespace SplatShader
         
         // Texture information
         d_textureManager(p.d_textureManager),
+
+        // input / output
+		// can be changed, but is already populated when function is called
+		opacity (((float*)p.conic_opacity) + idx * 4 + 3),  // Opacity works a bit funky because how splats are blended. It is better to multiply this paramter by something rather than setting it to specific values.
 
 		// output
 		// We use pointers to the output instead of return values to make it easy to extend during development.             
@@ -92,18 +96,40 @@ namespace SplatShader
         *p.out_color = glm::vec3(rColor, 1 - opacity,  1 - opacity);
     }
 
-    __device__ static void TextureTestShaderCUDA(SplatShaderParams p)
-    {
+    // Makes the object fade in and out.
+    // Written in splat shader because this is where we have best access to colors.
+    __device__ static void DissolveShader(SplatShaderParams p){
+        cudaTextureObject_t grainyTexture = p.d_textureManager->GetTexture("Grid");
 
-        char* texName = "Cracks";
-        cudaTextureObject_t crackTex = p.d_textureManager->GetTexture(texName);
-
-        float4 sampleColor = tex2D<float4>(crackTex, p.position.x, p.position.y);
+        // Grab the opacity from a mask texture
+        float maskSample_xy = tex2D<float4>(grainyTexture, p.position.x, p.position.y).x;
+        float maskSample_xz = tex2D<float4>(grainyTexture, p.position.x, p.position.z).x;
+        float maskSample_yz = tex2D<float4>(grainyTexture, p.position.y, p.position.z).x;
         
-        *p.out_color = glm::vec3(sampleColor.x, sampleColor.y, sampleColor.z);
+        // combine masking from the 3 planes to create a 3d mask.
+        float maskSample = maskSample_xy * maskSample_xz * maskSample_yz;
 
-        //TODO: Make opacity something that can be modified in the shader.
-        //p.conic_opacity.w = 1;
+        // goes back and forth between 0 and 1 over time
+        float opacityPercent = (cosf(p.time/4000) + 1)/2;
+
+        // Offset the opacity by the mask
+        float opacity = __saturatef((1 + maskSample) * opacityPercent);
+
+        // Ease in and out of transparency with a quint easing.
+        float easedOpacity = opacity < 0.5 ? 16.0 * powf(opacity, 5) : 1 - powf(-2 * opacity + 2, 5) / 2;
+
+        float originalOpacity = *p.opacity;
+
+        // Opacity output
+        *p.opacity = easedOpacity * originalOpacity;
+
+        // We want the colors to turn progressively more bright blue as they turn transparen
+        glm::vec3 targetfadeColor = glm::vec3(0.6,0.9,1);
+        float fadeColorPercent = __saturatef(1-opacity -0.3);// ;
+        float fadeColorEasing = fadeColorPercent < 0.5 ? 16.0 * powf(fadeColorPercent + 0.1, 5) : 1 - powf(-2 * fadeColorPercent + 2, 5) / 2;
+
+        // mix degree the fade color into the base color
+        *p.out_color = glm::mix(*p.color_SH, targetfadeColor, fadeColorEasing);
     }
 
     ///// Assign all the shaders to their short handles.
@@ -111,7 +137,7 @@ namespace SplatShader
     __device__ const SplatShader defaultShader = &DefaultSplatShaderCUDA;
     __device__ const SplatShader outlineShader = &OutlineShaderCUDA;
     __device__ const SplatShader wireframeShader = &WireframeShaderCUDA;
-    __device__ const SplatShader textureTestShader = &TextureTestShaderCUDA;
+    __device__ const SplatShader dissolveShader = &DissolveShader;
 
 
     std::map<std::string, int64_t> GetSplatShaderAddressMap(){
@@ -135,9 +161,9 @@ namespace SplatShader
         cudaMemcpyFromSymbol(&h_wireframeShader, wireframeShader, shaderMemorySize);
         shaderMap["WireframeShader"] = (int64_t)h_wireframeShader;
 
-        SplatShader::SplatShader h_textureTestShader;
-        cudaMemcpyFromSymbol(&h_textureTestShader, textureTestShader, shaderMemorySize);
-        shaderMap["TextureTestShader"] = (int64_t)h_textureTestShader;
+        SplatShader::SplatShader h_dissolveShader;
+        cudaMemcpyFromSymbol(&h_dissolveShader, dissolveShader, shaderMemorySize);
+        shaderMap["dissolveShader"] = (int64_t)h_dissolveShader;
 
         return shaderMap;
     }
@@ -162,9 +188,9 @@ namespace SplatShader
         cudaMemcpyFromSymbol(&h_wireframeShader, wireframeShader, shaderMemorySize);
         h_shaderArray[2] = (int64_t)h_wireframeShader;
 
-        SplatShader::SplatShader h_textureTestShader;
-        cudaMemcpyFromSymbol(&h_textureTestShader, textureTestShader, shaderMemorySize);
-        h_shaderArray[3] = (int64_t)h_textureTestShader;
+        SplatShader::SplatShader h_dissolveShader;
+        cudaMemcpyFromSymbol(&h_dissolveShader, dissolveShader, shaderMemorySize);
+        h_shaderArray[3] = (int64_t)h_dissolveShader;
 
         // copy the host array to device
         int64_t* d_shaderArray;

@@ -69,43 +69,9 @@ namespace ShShader
         *p.position = glm::vec3((*p.position).x * posY, (*p.position).y * 2, (*p.position).z) * posY;
     }
 
-    __device__ static void DissolveShader(ShShaderParams p){
-        cudaTextureObject_t grainyTexture = p.d_textureManager->GetTexture("Grid");
-
-        // Grab the opacity from a mask texture
-        float maskSample_xy = tex2D<float4>(grainyTexture, p.position->x, p.position->y).x;
-        float maskSample_xz = tex2D<float4>(grainyTexture, p.position->x, p.position->z).x;
-        float maskSample_yz = tex2D<float4>(grainyTexture, p.position->y, p.position->z).x;
-        
-        // combine masking from the 3 planes to create a 3d mask.
-        float maskSample = maskSample_xy * maskSample_xz * maskSample_yz;
-
-        // goes back and forth between 0 and 1 over time
-        float opacityPercent = (cosf(p.time/4000) + 1)/2;
-
-        // Offset the opacity by the mask
-        float opacity = __saturatef((1 + maskSample) * opacityPercent);
-
-        // Ease in and out of transparency with a quint easing.
-        float easedOpacity = opacity < 0.5 ? 16.0 * powf(opacity, 5) : 1 - powf(-2 * opacity + 2, 5) / 2;
-
-        float originalOpacity = *p.opacity;
-
-        // Opacity output
-        *p.opacity = easedOpacity * originalOpacity;
-
-
-        // We want the colors to turn progressively more bright blue as they turn transparen
-        glm::vec3 targetfadeColor = glm::vec3(0.6,0.9,1);
-        float fadeColorPercent = __saturatef(1-opacity -0.3);// ;
-        float fadeColorEasing = fadeColorPercent < 0.5 ? 16.0 * powf(fadeColorPercent + 0.1, 5) : 1 - powf(-2 * fadeColorPercent + 2, 5) / 2;
-
-        // mix degree the fade color into the base color
-        p.sh[0] = glm::mix(p.sh[0], targetfadeColor, fadeColorEasing);
-    }
-
     // A shader that makes an object pulse with a heartbeat
     // The heart has two concurrent beats that we model here.
+    // Written as SH shader because this is where we can update positions and scales.
     __device__ static void HeartbeatShaderCUDA(ShShaderParams p)
     {
         // Sample the texture contiaing the pattern for growth with the atreal pulse.
@@ -170,7 +136,6 @@ namespace ShShader
     //TODO: Instead of storing shaders in individual variables, store them in a __device__ const map<ShShaderName, ShShader> 
     __device__ const ShShader defaultShader = &DefaultShShaderCUDA;
     __device__ const ShShader expPosShader = &ExponentialPositionShaderCUDA;
-    __device__ const ShShader disolveShader = &DissolveShader;
     __device__ const ShShader heartbeatShader = &HeartbeatShaderCUDA;
 
     std::map<std::string, int64_t> GetShShaderAddressMap(){
@@ -189,10 +154,6 @@ namespace ShShader
         cudaMemcpyFromSymbol(&h_exponentialPositionShader, expPosShader, shaderMemorySize);
         shaderMap["ExpPos"] = (int64_t)h_exponentialPositionShader;
 
-        ShShader::ShShader h_disolveShader;
-        cudaMemcpyFromSymbol(&h_disolveShader, disolveShader, shaderMemorySize);
-        shaderMap["Diffuse"] = (int64_t)h_disolveShader;
-
         ShShader::ShShader h_heartbeatShader;
         cudaMemcpyFromSymbol(&h_heartbeatShader, heartbeatShader, shaderMemorySize);
         shaderMap["Heartbeat"] = (int64_t)h_heartbeatShader;
@@ -204,7 +165,7 @@ namespace ShShader
     // Returns an array in device memory containing addresses to device shader functions.
     int64_t* GetShShaderAddressArray(){
         // Array is assembled on CPU before being sent to device. Addresses themselves are in device space.
-        int shaderCount = 4;
+        int shaderCount = 3;
         int64_t* h_shaderArray = new int64_t[shaderCount];
         size_t shaderMemorySize = sizeof(ShShader);
 
@@ -216,13 +177,9 @@ namespace ShShader
         cudaMemcpyFromSymbol(&h_exponentialPositionShader, expPosShader, shaderMemorySize);
         h_shaderArray[1] = (int64_t)h_exponentialPositionShader;
 
-        ShShader::ShShader h_disolveShader;
-        cudaMemcpyFromSymbol(&h_disolveShader, disolveShader, shaderMemorySize);
-        h_shaderArray[2] = (int64_t)h_disolveShader;
-
         ShShader::ShShader h_heartbeatShader;
         cudaMemcpyFromSymbol(&h_heartbeatShader, heartbeatShader, shaderMemorySize);
-        h_shaderArray[3] = (int64_t)h_heartbeatShader;
+        h_shaderArray[2] = (int64_t)h_heartbeatShader;
 
         // copy the array to device
         int64_t* d_shaderArray;

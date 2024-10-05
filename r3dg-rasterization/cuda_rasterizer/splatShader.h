@@ -113,7 +113,7 @@ namespace SplatShader
 
 		// pr. frame texture information
 		float const depth;					// Mean splat depth in view space.
-		glm::vec4 const conic_opacity;		// ???? Float4 that contains conic something in the first 3 indexes, and opacity in the last. Read up on original splatting paper.
+		glm::vec3 const conic;				// Covariance matrix used to determine how splats should be merged in final rendering step.
 		glm::vec3 const *const __restrict__ color_SH;	// Color from SH evaluation
 
 		// Precomputed 'texture' information from the neilf pbr decomposition
@@ -129,6 +129,10 @@ namespace SplatShader
 
 		// Class that is used to retrieve textures. Make sure to cache textures once retrieved.
 		Texture::TextureManager *const d_textureManager;
+
+		// input / output
+		// can be changed, but is already populated when function is called
+		float *const opacity;
 
 		// output
 		// We use pointers to the output instead of return values to make it easy to extend during development.
