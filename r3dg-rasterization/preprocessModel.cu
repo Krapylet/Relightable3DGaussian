@@ -26,8 +26,8 @@ __global__ void AppendShaderIndexesCUDA(
     if (idx >= splatCount)
         return;
 
-    int shShaderAddressIndex = 2;//"Default";
-    int splatShaderAddressIndex = 0; //"Diffuse";
+    int shShaderAddressIndex = 3;
+    int splatShaderAddressIndex = 0;
 
     out_shShaderAddresses[idx] = shShaderAddressArray[shShaderAddressIndex];
     out_splatShadersAddresses[idx] = splatShaderAddressArray[splatShaderAddressIndex];

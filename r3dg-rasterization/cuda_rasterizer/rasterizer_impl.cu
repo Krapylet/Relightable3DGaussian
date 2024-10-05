@@ -277,6 +277,8 @@ int CudaRasterizer::Rasterizer::forward(
 		focal_x, focal_y,
 		tan_fovx, tan_fovy,
 		D, M,
+		S,
+		features,
 		d_textureManager,
 
 		//input/output   -   contains values when the method is called that can be changed.

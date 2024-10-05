@@ -41,6 +41,8 @@ namespace FORWARD
 		float const focal_x, float const focal_y,
 		float const tan_fovx, float const tan_fovy,
 		int deg, int max_coeffs,
+		int const S,
+		float const *const features,
 		Texture::TextureManager *const d_textureManager,
 
 		//input/output   -   contains values when the method is called that can be changed.

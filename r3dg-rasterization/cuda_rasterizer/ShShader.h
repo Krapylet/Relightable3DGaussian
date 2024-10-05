@@ -38,6 +38,18 @@ namespace ShShader
 		float const focal_x; float const focal_y;
 		float const tan_fovx; float const tan_fovy;
         int deg; int max_coeffs;
+		int const  S;						// Feature channel count.
+		float const *const __restrict__ features;		// Interleaved array of precomputed 'textures' for each individual gaussian. Stored in the following order:
+                                            // float3 brdf_color,
+                                            // float3 normal,	       Object space
+                                            // float3 base_color,
+                                            // float  roughness,
+                                            // float  metallic
+                                            // float  incident_light
+                                            // float  local_incident_light
+                                            // float  global_incident_light
+                                            // float  incident_visibility
+
 		Texture::TextureManager *const d_textureManager;
 
 		//input/output   -   contains values when the method is called that can be changed.
@@ -65,6 +77,17 @@ namespace ShShader
 		float const focal_x; float const focal_y;
 		float const tan_fovx; float const tan_fovy;
         int deg; int max_coeffs;
+		// Precomputed 'texture' information from the neilf pbr decomposition
+		glm::vec3 const color_brdf;			// pbr splat color
+		glm::vec3 const normal;				// Splat normal in object space
+		glm::vec3 const color_base;			// Decomposed splat color without lighting
+		float const  roughness;
+		float const  metallic;
+		float const  incident_light;
+		float const  local_incident_light;
+		float const  global_incident_light;
+		float const  incident_visibility;
+
 		Texture::TextureManager *const d_textureManager;
 
 		//input/output   -   contains values when the method is called that can be changed.
