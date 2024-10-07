@@ -202,8 +202,9 @@ namespace ShShader
         // Could easily be optimized away by only indexing into the params inside the shader, but for now I'm prioritizing ease of use.
         ShShaderParams params(packedParams, idx);
 
-        if (idx == 1)
-            printf("Time: %f, position: (%f,%f,%f), len: %f\n", params.time, params.position->x, params.position->y, params.position->z, params.position->length());
+        // Debug print statement for seeing what's going on inside shader kernels.
+        //if (idx == 1)
+            //printf("Time: %f, position: (%f,%f,%f), len: %f\n", params.time, params.position->x, params.position->y, params.position->z, params.position->length());
 
         // No need to dereference the shader function pointer.
         shaders[idx](params);

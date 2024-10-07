@@ -50,6 +50,7 @@ class TextureImporter:
         self.import_texture("Grid", r"C:\Users\asvj\Documents\GitHub\Relightable3DGaussian\textures\Grid.png")
         self.import_texture("Turbulence", r"C:\Users\asvj\Documents\GitHub\Relightable3DGaussian\textures\Turbulence 2.png")
         self.import_texture("Craters", r"C:\Users\asvj\Documents\GitHub\Relightable3DGaussian\textures\Craters 12.png")
+        self.import_texture("Depth cracks", r"C:\Users\asvj\Documents\GitHub\Relightable3DGaussian\textures\Depth Cracks.png")
 
         #Once all textures have been loaded, create an indirect address lookup table for them on the device:
         d_textureManager_ptr = _C.UploadTexturesToDevice(self.loadedTextureNames, self.loadedTextureObjects)

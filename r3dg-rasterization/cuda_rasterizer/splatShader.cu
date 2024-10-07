@@ -132,12 +132,38 @@ namespace SplatShader
         *p.out_color = glm::mix(*p.color_SH, targetfadeColor, fadeColorEasing);
     }
 
+    __device__ static void CrackShaderCUDA(SplatShaderParams p)
+    {
+        cudaTextureObject_t crackTex = p.d_textureManager->GetTexture("Depth cracks");
+        // Rescale UVs
+        // Currently we just project directly downwards, but the projection can be rotated and pivoted to anywhere around the model.
+        float u = p.position.x/2 - 0.5;
+        float v = p.position.y/2 - 0.5;
+        float crackTexDepth = 1 - tex2D<float4>(crackTex, u, v).x;
+
+        float maxCrackDepth = 2;
+        float projectionHeight = 2;
+        float crackHeight = projectionHeight - crackTexDepth * maxCrackDepth;
+        float splatHeight = p.position.z;
+
+        bool crackReachesSplat = crackHeight < splatHeight;
+        
+        *p.opacity = crackReachesSplat ? 0 : *p.opacity;
+
+        // outline the areas near the cracks. Could be made darker instead to simulate ambient occlusion
+        float CrackColorReach = 0.1f;
+        float crackColorHeight = projectionHeight - (crackTexDepth + CrackColorReach) * maxCrackDepth;
+        float crackColorsPercent = crackColorHeight < splatHeight;
+        *p.out_color = glm::mix(*p.color_SH, glm::vec3(1,1,1), crackColorsPercent * 0.75f);
+    }
+
     ///// Assign all the shaders to their short handles.
     // we need to keep them in constant device memory for them to stay valid when passed to host.
     __device__ const SplatShader defaultShader = &DefaultSplatShaderCUDA;
     __device__ const SplatShader outlineShader = &OutlineShaderCUDA;
     __device__ const SplatShader wireframeShader = &WireframeShaderCUDA;
     __device__ const SplatShader dissolveShader = &DissolveShader;
+    __device__ const SplatShader crackShader = &CrackShaderCUDA;
 
 
     std::map<std::string, int64_t> GetSplatShaderAddressMap(){
@@ -165,6 +191,10 @@ namespace SplatShader
         cudaMemcpyFromSymbol(&h_dissolveShader, dissolveShader, shaderMemorySize);
         shaderMap["dissolveShader"] = (int64_t)h_dissolveShader;
 
+        SplatShader::SplatShader h_crackShader;
+        cudaMemcpyFromSymbol(&h_crackShader, crackShader, shaderMemorySize);
+        shaderMap["Crack"] = (int64_t)h_crackShader;
+
         return shaderMap;
     }
 
@@ -172,7 +202,7 @@ namespace SplatShader
     // Returns an array in device memory containing addresses to device shader functions.
     int64_t* GetSplatShaderAddressArray(){
         // Array is assembled on CPU before being sent to device. Addresses themselves are in device space.
-        int shaderCount = 4;
+        int shaderCount = 5;
         int64_t* h_shaderArray = new int64_t[shaderCount];
         size_t shaderMemorySize = sizeof(SplatShader);
  
@@ -191,6 +221,10 @@ namespace SplatShader
         SplatShader::SplatShader h_dissolveShader;
         cudaMemcpyFromSymbol(&h_dissolveShader, dissolveShader, shaderMemorySize);
         h_shaderArray[3] = (int64_t)h_dissolveShader;
+        
+        SplatShader::SplatShader h_crackShader;
+        cudaMemcpyFromSymbol(&h_crackShader, crackShader, shaderMemorySize);
+        h_shaderArray[4] = (int64_t)h_crackShader;
 
         // copy the host array to device
         int64_t* d_shaderArray;

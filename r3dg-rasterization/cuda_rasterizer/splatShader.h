@@ -91,8 +91,8 @@ namespace SplatShader
 		float const time; float const dt;
 
         // position information:
-		glm::vec3 const position;  			// mean 3d position of gaussian in world space.
-		glm::vec2 const screen_position;		// mean 2d position of gaussian in screen space.
+		glm::vec3 const position;  			// mean 3d position of gaussian in world space. Can't be changed since 2D screen position has already been calculated.
+		glm::vec2 const screen_position;		// mean 2d position of gaussian in screen space. Could technically be made into a input/output, but would be very expensive because tiles touched would have to be updated. That could just be moved out of preprocessing, though, and calcualted after instead.
 
 		// Projection information.
 		float const *const __restrict__ viewmatrix;
