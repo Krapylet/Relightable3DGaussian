@@ -1,6 +1,7 @@
 #include "splatShader.h"
 #include "config.h"
 #include <cooperative_groups.h>
+#include "../utils/shaderUtils.h"
 #ifndef GLM_FORCE_CUDA
 #define GLM_FORCE_CUDA
 #endif
@@ -150,11 +151,15 @@ namespace SplatShader
         
         *p.opacity = crackReachesSplat ? 0 : *p.opacity;
 
-        // outline the areas near the cracks. Could be made darker instead to simulate ambient occlusion
+        // Darken the areas near the cracks to create an outline.
         float CrackColorReach = 0.1f;
         float crackColorHeight = projectionHeight - (crackTexDepth + CrackColorReach) * maxCrackDepth;
-        float crackColorsPercent = crackColorHeight < splatHeight;
-        *p.out_color = glm::mix(*p.color_SH, glm::vec3(1,1,1), crackColorsPercent * 0.75f);
+        float crackColorsPercent =  1-__saturatef((splatHeight - crackColorHeight)/CrackColorReach);
+
+        glm::vec3 hsv = RgbToHsv(*p.color_SH);
+        hsv[1] *= crackColorsPercent;
+        hsv[2] *= crackColorsPercent;
+        *p.out_color = HsvToRgb(hsv);
     }
 
     ///// Assign all the shaders to their short handles.
