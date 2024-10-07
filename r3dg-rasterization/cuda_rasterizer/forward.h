@@ -24,6 +24,7 @@
 
 namespace FORWARD
 {
+
 	// Run any user-provided SH shaders prior to preprocessing, allowing users to change positions and such.
 	void RunSHShaders(
 		const int P,
@@ -80,6 +81,15 @@ namespace FORWARD
 		uint32_t* tiles_touched,
 		bool prefiltered);
 
+	void prerenderDepth(
+		dim3 tile_grid, dim3 block,
+		const uint2* __restrict__ ranges,
+		const uint32_t* __restrict__ point_list,
+		int W, int H,
+		const float2* __restrict__ screen_positions,
+		const float* __restrict__ depths,
+		const float4* __restrict__ conic_opacity,
+		float* __restrict__ out_depth);
 
 	// Runs after preprocess but before renderer. Allows changing rgb output for individual splats.
 	void RunSplatShaders(
@@ -88,6 +98,7 @@ namespace FORWARD
 		float const time, float const dt,
 		float const *const positions,  
 		float2 const *const screen_positions,
+		float const *const prerendered_depth,
 		int64_t const *const shaderAddresses,
 		float const *const viewmatrix,
 		float const *const viewmatrix_inv,

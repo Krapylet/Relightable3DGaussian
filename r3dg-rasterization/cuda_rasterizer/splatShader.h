@@ -37,7 +37,8 @@ namespace SplatShader
 
 		// position information
 		glm::vec3 const *const __restrict__ positions;  			
-		glm::vec2 const *const __restrict__ screen_positions;		
+		glm::vec2 const *const __restrict__ screen_positions;
+		float const * const prerendered_depth_buffer;
 
 		// Projection information.
 		float const *const __restrict__ viewmatrix;
@@ -48,7 +49,7 @@ namespace SplatShader
 		float const tan_fovx; float const tan_fovy;
 
 		// pr. frame texture information
-		float const *const __restrict__ depths;				
+		float const *const __restrict__ splat_depths;				
 		glm::vec3 const *const __restrict__ colors_SH;				
 		glm::vec4 const *const __restrict__ conic_opacity;		
 
@@ -93,6 +94,7 @@ namespace SplatShader
         // position information:
 		glm::vec3 const position;  			// mean 3d position of gaussian in world space. Can't be changed since 2D screen position has already been calculated.
 		glm::vec2 const screen_position;		// mean 2d position of gaussian in screen space. Could technically be made into a input/output, but would be very expensive because tiles touched would have to be updated. That could just be moved out of preprocessing, though, and calcualted after instead.
+		float const * const prerendered_depth_buffer;  	// pr. pixel Prerenderd depth buffer that took changes from SH shaders into account. Will be overwritten by final render.	
 
 		// Projection information.
 		float const *const __restrict__ viewmatrix;
@@ -112,7 +114,7 @@ namespace SplatShader
 		glm::vec3 const camera_position;	// Position of camera in world space
 
 		// pr. frame texture information
-		float const depth;					// Mean splat depth in view space.
+		float const splat_depth;					// Mean splat depth in view space.
 		glm::vec3 const conic;				// Covariance matrix used to determine how splats should be merged in final rendering step.
 		glm::vec3 const *const __restrict__ color_SH;	// Color from SH evaluation
 

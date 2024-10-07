@@ -318,33 +318,6 @@ int CudaRasterizer::Rasterizer::forward(
 		prefiltered
 	), debug)
 
-	CHECK_CUDA(FORWARD::RunSplatShaders(
-		// input
-		width, height,
-		P,
-		time, dt,
-		means3D,  		
-		geomState.means2D,
-		splatShaderAddresses,
-		viewmatrix,
-		viewmatrix_inv,
-		projmatrix,
-		projmatrix_inv,
-		focal_x, focal_y,
-		tan_fovx, tan_fovy,
-		geomState.depths,
-		geomState.rgb,		
-		geomState.conic_opacity,          
-		S,							
-		features,
-		d_textureManager,
-
-		// output
-		geomState.shader_rgb
-	), debug);
-	
-
-
 	// Compute prefix sum over full list of touched tile counts by Gaussians
 	// E.g., [2, 3, 0, 2, 1] -> [2, 5, 5, 7, 8]
 	CHECK_CUDA(cub::DeviceScan::InclusiveSum(geomState.scanning_space, geomState.scan_size, geomState.tiles_touched, geomState.point_offsets, P), debug)
@@ -389,6 +362,44 @@ int CudaRasterizer::Rasterizer::forward(
 			binningState.point_list_keys,
 			imgState.ranges);
 	CHECK_CUDA(, debug)
+
+		// Instead of creating an additional buffer for the prerendered depth, we just use the regular depth buffer and then overwrite it again later.
+	CHECK_CUDA(FORWARD::prerenderDepth(
+		tile_grid, block,
+		imgState.ranges,
+		binningState.point_list,
+		width, height,
+		geomState.means2D,
+		geomState.depths,
+		geomState.conic_opacity,
+		out_depth
+	), debug);
+
+	CHECK_CUDA(FORWARD::RunSplatShaders(
+		// input
+		width, height,
+		P,
+		time, dt,
+		means3D,  		
+		geomState.means2D,
+		out_depth,
+		splatShaderAddresses,
+		viewmatrix,
+		viewmatrix_inv,
+		projmatrix,
+		projmatrix_inv,
+		focal_x, focal_y,
+		tan_fovx, tan_fovy,
+		geomState.depths,
+		geomState.rgb,		
+		geomState.conic_opacity,          
+		S,							
+		features,
+		d_textureManager,
+
+		// output
+		geomState.shader_rgb
+	), debug);
 
 	// Let each tile blend its range of Gaussians independently in parallel
 	const float* colors_ptr = colors_precomp != nullptr ? colors_precomp : geomState.rgb;
