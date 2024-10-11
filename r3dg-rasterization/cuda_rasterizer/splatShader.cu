@@ -33,6 +33,7 @@ namespace SplatShader
 		// pr. frame texture information
 		splat_depth (p.splat_depths[idx]),		
 		conic ((glm::vec3)p.conic_opacity[idx]), 
+        mean_pixel_idx (p.W * floorf(screen_position.y) + floorf(screen_position.x)),
         color_SH (p.colors_SH + idx),
 
 		// Precomputed 'texture' information from the neilf pbr decomposition
@@ -141,57 +142,56 @@ namespace SplatShader
         float v = p.position.y/texScale - 0.5;
         float crackTexDepth = 1 - tex2D<float4>(crackTex, u, v).x;
 
+        // First, delete all splats inside the crack by making them completely transparent. 
         float maxCrackDepth = 2;
         float projectionHeight = 2;
         float crackHeight = projectionHeight - crackTexDepth * maxCrackDepth;
         float splatHeight = p.position.z;
 
         bool crackReachesSplat = crackHeight < splatHeight;
-        
         *p.opacity = crackReachesSplat ? 0 : *p.opacity;
 
-        // Get depth of splat in scene
-        float depthTolerance = 0.1f; // Increasing this value causes more splats to be considered internal.
+        // Figure out which splats are beneath the surface of the model
+        float depthTolerance = 0.2f; // Increasing this value causes more splats to be considered internal.
+        float distToSurface = p.splat_depth - p.prerendered_depth_buffer[p.mean_pixel_idx] - depthTolerance;
+        bool splatIsInsideModel = distToSurface < 0;
+        
+        // Splats that are both close to the deleted splats AND inside the model gets a completely new color.
+        float internalColorReach = 0.1f;
+        float maxPrimaryColorHeight = projectionHeight - (crackTexDepth + internalColorReach) * maxCrackDepth;
+        bool SplatIsInCrackColorReach = splatHeight > maxPrimaryColorHeight;
+        bool shouldUseInternalColor = splatIsInsideModel && SplatIsInCrackColorReach;
+        bool internalColorPercent = __saturatef(distToSurface * 10);
+        glm::vec3 internalColor = glm::mix(p.color_base, glm::vec3(0.5f, 0.5f, 0), internalColorPercent );
 
-        int pixel_idx = p.screen_position.x + p.screen_position.y * p.W;
-        bool splatIsInsideModel = p.splat_depth + depthTolerance > p.prerendered_depth_buffer[pixel_idx];
+        // Splats that are not inside the model get discolored a bit based on their distance ot the crack.
+        float discolorReach = 0.1f;
+        float maxDiscolorHeight = maxPrimaryColorHeight - discolorReach * maxCrackDepth;
+        float discolorPercent =  __saturatef((splatHeight - maxDiscolorHeight) / (discolorReach + internalColorReach));
+        glm::vec3 externalColor = glm::mix(*p.color_SH, internalColor, discolorPercent);
 
         // Sample the texture a couple of times more to calculate the normal of the slope inside the crack
-        //float uvOffset = 0.01f; // in UV coords [0-1]
-        //float resampleDist = uvOffset * texScale;
-        //float crackTexDepth_North = 1 - tex2D<float4>(crackTex, u, v + uvOffset).x;
-        //float crackTexDepth_South = 1 - tex2D<float4>(crackTex, u, v - uvOffset).x;
-        //float crackTexDepth_East = 1 - tex2D<float4>(crackTex, u + uvOffset, v).x;
-        //float crackTexDepth_West = 1 - tex2D<float4>(crackTex, u - uvOffset, v).x;
+        float uvOffset = 0.01f; // in UV coords [0-1]
+        float resampleDist = uvOffset * texScale;
+        float crackTexDepth_North = 1 - tex2D<float4>(crackTex, u, v + uvOffset).x;
+        float crackTexDepth_South = 1 - tex2D<float4>(crackTex, u, v - uvOffset).x;
+        float crackTexDepth_East = 1 - tex2D<float4>(crackTex, u + uvOffset, v).x;
+        float crackTexDepth_West = 1 - tex2D<float4>(crackTex, u - uvOffset, v).x;
 
-        //glm::vec3 tanget = glm::normalize(glm::vec3(0, resampleDist, crackTexDepth_North - crackTexDepth_South));
-        //glm::vec3 bitanget = glm::normalize(glm::vec3(resampleDist, 0, crackTexDepth_East - crackTexDepth_West));
-        //glm::vec3 crackNormal = glm::cross(tanget, bitanget);
+        glm::vec3 tanget = glm::normalize(glm::vec3(0, resampleDist, crackTexDepth_North - crackTexDepth_South));
+        glm::vec3 bitanget = glm::normalize(glm::vec3(resampleDist, 0, crackTexDepth_East - crackTexDepth_West));
+        glm::vec3 crackNormal = glm::cross(tanget, bitanget);
 
-        // Color areas that are inside the crack color range AND inside the model with the internal color
-        glm::vec3 internalColor = glm::vec3(1,0,0);
-
-        // Color all other areas with a gradient that becomes stronger closer to the edge of the crack.
-        float CrackColorReach = 0.3f;
-        float crackColorHeight = projectionHeight - (crackTexDepth + CrackColorReach) * maxCrackDepth;
-        float crackColorsPercent =  1-__saturatef((splatHeight - crackColorHeight)/CrackColorReach);
-        bool SplatIsInCrackColorReach = splatHeight > crackColorHeight;
-
-        glm::vec3 hsv = RgbToHsv(*p.color_SH);
-        hsv[1] = hsv[1] + (1 - hsv[1]) * crackColorsPercent;
-        hsv[2] = hsv[2] - 0.5 * hsv[2] * crackColorsPercent;
-        glm::vec3 externalColor = HsvToRgb(hsv);
-
-
-        bool shouldUseInternalColor = splatIsInsideModel && SplatIsInCrackColorReach;
-        // TODO: Maybe we should also increase opacity of internal splats?
+        // Use the slope inside the crack to apply very simple shadow to the internal color.
+        // Light is shined down directly from above.
+        //glm::vec3 viewDir = glm::vec3(p.viewmatrix[9], p.viewmatrix[10], p.viewmatrix[11]); 
+        glm::vec3 lightDir = glm::vec3(0, 0, -1);
+        float ambientLight = 0.5f;
+        //internalColor *= __saturatef(glm::dot(lightDir, crackNormal)/2 + ambientLight);
 
         glm::vec3 finalColor = internalColor * (float)shouldUseInternalColor + externalColor * (float)!shouldUseInternalColor;
-        //*p.out_color = finalColor;
-
-        //*p.out_color = glm::vec3(p.screen_position.x / p.H, p.screen_position.y / p.W,0);
-        //*p.out_color = glm::vec3(p.splat_depth, p.splat_depth,p.splat_depth);
-        *p.out_color = glm::vec3(p.prerendered_depth_buffer[pixel_idx], p.prerendered_depth_buffer[pixel_idx], p.prerendered_depth_buffer[pixel_idx]);
+        *p.opacity += 0.1f * (float)shouldUseInternalColor * (float)!crackReachesSplat; // Increase opacity of internal splats  
+        *p.out_color = finalColor;
     }
 
     ///// Assign all the shaders to their short handles.
@@ -283,6 +283,10 @@ namespace SplatShader
         // Unpack shader parameters into a format that is easier to work with. Increases memory footprint as tradeoff.
         // Could easily be optimized away by only indexing into the params inside the shader, but for now I'm prioritizing ease of use.
         SplatShaderParams params(packedParams, idx);
+
+        // Debug print statement for seeing what's going on inside shader kernels.
+        if (idx == 1)
+            printf("Position: (%f, %f, %f); Depth:%f; Pixel Coord: (%f, %f)\n", params.position.x, params.position.y, params.position.z, params.prerendered_depth_buffer[0], params.screen_position.x, params.screen_position.y);
 
         // No need to dereference the shader function pointer.
         shaders[idx](params);

@@ -272,7 +272,7 @@ prerenderDepthCUDA(
 	const float2* __restrict__ screen_positions,
 	const float* __restrict__ depths,
 	const float4* __restrict__ conic_opacity,
-	float* __restrict__ out_depth)
+	float* __restrict__ pre_depth)
 {
 	// Identify current tile and associated min/max pixel range.
 	auto block = cg::this_thread_block();
@@ -351,6 +351,8 @@ prerenderDepthCUDA(
 
 			// Eq. (3) from 3D Gaussian splatting paper.
 			Depth += depths[collected_id[j]] * weight;
+
+			T = test_T;
 		}
 	}
 
@@ -358,7 +360,7 @@ prerenderDepthCUDA(
 	// rendering data to the frame and auxiliary buffers.
 	if (inside)
 	{
-		out_depth[pix_id] = Depth;
+		pre_depth[pix_id] = Depth;
 	}
 }
 
@@ -821,7 +823,7 @@ void FORWARD::prerenderDepth(
 	const float2* __restrict__ screen_positions,
 	const float* __restrict__ depths,
 	const float4* __restrict__ conic_opacity,
-	float* __restrict__ out_depth)
+	float* __restrict__ pre_depth)
 {
 	prerenderDepthCUDA<<<tile_grid, block>>>(
 		ranges,
@@ -830,7 +832,7 @@ void FORWARD::prerenderDepth(
 		screen_positions,
 		depths,
 		conic_opacity,
-		out_depth
+		pre_depth
 	);
 }
 

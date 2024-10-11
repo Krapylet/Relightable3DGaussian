@@ -94,7 +94,8 @@ namespace SplatShader
         // position information:
 		glm::vec3 const position;  			// mean 3d position of gaussian in world space. Can't be changed since 2D screen position has already been calculated.
 		glm::vec2 const screen_position;		// mean 2d position of gaussian in screen space. Could technically be made into a input/output, but would be very expensive because tiles touched would have to be updated. That could just be moved out of preprocessing, though, and calcualted after instead.
-		float const * const prerendered_depth_buffer;  	// pr. pixel Prerenderd depth buffer that took changes from SH shaders into account. Will be overwritten by final render.	
+		int const mean_pixel_idx; 						// Index of the mean pixel position of the splat. 
+		float const * const prerendered_depth_buffer;  	// pr. pixel depth buffer. Values stored at index pixel.x + width * pixel.y. Will be overwritten by final render.	
 
 		// Projection information.
 		float const *const __restrict__ viewmatrix;

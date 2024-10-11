@@ -89,7 +89,8 @@ namespace FORWARD
 		const float2* __restrict__ screen_positions,
 		const float* __restrict__ depths,
 		const float4* __restrict__ conic_opacity,
-		float* __restrict__ out_depth);
+		float* __restrict__ pre_depth
+		);
 
 	// Runs after preprocess but before renderer. Allows changing rgb output for individual splats.
 	void RunSplatShaders(
