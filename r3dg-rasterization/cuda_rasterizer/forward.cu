@@ -922,13 +922,12 @@ void FORWARD::RunPostProcessShaders(
 	float const *const __restrict__ out_color,
 	float const *const __restrict__ out_opacity,
 	float const *const __restrict__ out_depth,
-	float const *const __restrict__ out_shader_color,
 	float const *const __restrict__ stencil_tex,
 	int const S,
 	float const *const __restrict__ out_features,
 	Texture::TextureManager *const d_textureManager,
 
-	float * const out_prostProcess
+	float *const __restrict__ out_shader_color
 	)
 {
 	PostProcess::PackedPostProcessShaderParams params {
@@ -942,14 +941,13 @@ void FORWARD::RunPostProcessShaders(
 		tan_fovx, tan_fovy,
 		(glm::vec3*) background,
 		(glm::vec3*) out_color,
-        (glm::vec3*) out_opacity,
+        out_opacity,
 		out_depth,
-		out_shader_color,
 		stencil_tex,
 		S, out_features,
 		d_textureManager,
 
-		out_prostProcess
+		(glm::vec3*) out_shader_color
 	};
 	
 	//PostProcess::PostProcessShader* d_shaderAddresses;

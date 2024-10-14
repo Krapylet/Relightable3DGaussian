@@ -187,13 +187,12 @@ namespace FORWARD
 		float const * const __restrict__ out_color,
 		float const * const __restrict__ out_opacity,
 		float const * const __restrict__ out_depth,
-		float const * const __restrict__ out_shader_color,
 		float const * const __restrict__ stencil_tex,
 		int const S,
 		float const *const __restrict__ out_feature,
 		Texture::TextureManager * const d_textureManager,
 
-		float * const out_prostProcess
+		float * const __restrict__ out_shader_color
 	);
 
 	

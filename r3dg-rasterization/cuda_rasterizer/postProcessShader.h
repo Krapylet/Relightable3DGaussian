@@ -44,7 +44,6 @@ namespace PostProcess
         // Screen texture information. Indexed with floor(screen_pos.x) + floor(screen_pos.y) * screen.width
         glm::vec3 const * const background;         // Background color for the scene.
         glm::vec3 const * const out_color;          // Reglar SH derived color.
-        glm::vec3 const * const out_shader_color;   // Color derived from SH and splat shader.
         float const * const out_opacity;        // Transparrency mask for all rendered objects in the scene.
 		float const * const depth_tex;          // Depth texture for the scene.
 		float const * const stencil_tex;        // Stencil texture derived form SH and splat shaders.
@@ -64,8 +63,8 @@ namespace PostProcess
 
         Texture::TextureManager *const d_textureManager;    // Object used to fetch textures uploaded by user.
 
-        // output
-        float * const out_postprocess_color;
+        // input/output
+        glm::vec3 * const out_shader_color;   // Color derived from SH and splat shader.
 	};
 
 	// Used as input and output interface to the shaders.
@@ -93,11 +92,14 @@ namespace PostProcess
 		float const focal_x; float const focal_y;
 		float const tan_fovx; float const tan_fovy;
 
+        // Custom textures:
+        Texture::TextureManager *const d_textureManager;    // Object used to fetch textures uploaded by user.
+
         // Screen texture information. 
         //// Color textures:
         glm::vec3 const * const background;         // Background color for the scene.
-        glm::vec3 const * const out_color;          // Pure SH derived color.
-        glm::vec3 const * const out_shader_color;   // Color derived from SH and splat shader.
+        glm::vec3 const * const SH_color;          // Pure SH derived color.
+        
         glm::vec3 const * const base_color;         // Base color of object without light. PBR decomposition derived.   
         glm::vec3 const * const brdf_color;         // Color of the object with lighting. PBR decomposition derived.
 
@@ -113,15 +115,12 @@ namespace PostProcess
         float const * const metallic;               // metallicness of objects in scene. PBR decomposition derived.
 
         //// Scene textures:
-        float const * const out_opacity;        // Transparrency mask for all rendered objects in the scene.
+        float const * const opacity;        // Transparrency mask for all rendered objects in the scene.
 		float const * const depth_tex;          // Depth texture for the scene.
 		float const * const stencil_tex;        // Stencil texture. Derived form SH and splat shaders.
 
-        // Custom textures:
-        Texture::TextureManager *const d_textureManager;    // Object used to fetch textures uploaded by user.
-
-        // output
-        glm::vec3 * const out_postprocess_color;
+        // input/output
+        glm::vec3 * const out_shader_color;   // Color derived from SH and splat shader. Also works as output.
 	};
 
 	// Define a shared type of fuction pointer that can point to all implemented shaders.

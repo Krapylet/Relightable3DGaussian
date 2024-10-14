@@ -477,12 +477,6 @@ int CudaRasterizer::Rasterizer::forward(
             ), debug)
     }
 
-	// create a placeholder buffer for the postProcess output
-	float* out_prostProcess;
-	int pixelCount = height * width;
-	cudaMalloc(&out_prostProcess, sizeof(float) * pixelCount);
-	cudaMemset(out_prostProcess, 0, pixelCount);
-
 	FORWARD::RunPostProcessShaders(
 		width, height,
 		time, dt,
@@ -496,12 +490,11 @@ int CudaRasterizer::Rasterizer::forward(
 		out_color,
         out_opacity,
 		out_depth,
-		out_shader_color,
 		out_stencil,
 		S, out_feature,
 		d_textureManager,
 
-		out_prostProcess
+		out_shader_color
 	);
 
 	return num_rendered;
