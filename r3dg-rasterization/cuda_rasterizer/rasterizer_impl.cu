@@ -231,6 +231,7 @@ int CudaRasterizer::Rasterizer::forward(
 	float* out_color,
 	float* out_opacity,
 	float* out_depth,
+	float* out_stencil,
 	float* out_feature,
 	float* out_shader_color,
 	float* out_normal,
@@ -367,13 +368,6 @@ int CudaRasterizer::Rasterizer::forward(
 	CHECK_CUDA(, debug)
 
 	const float* colors_ptr = colors_precomp != nullptr ? colors_precomp : geomState.rgb;
-
-	// Create append an empty stencil for this frame. Indexed with pixelID floor(pix.x) + floor(pix.y) * w
-	// TODO: Move this to the python frontend.
-	float* stencilTex;
-	int pixelCount = height * width;
-	cudaMalloc(&stencilTex, sizeof(float) * pixelCount);
-	cudaMemset(stencilTex, 0, pixelCount);  // memory isn't initalized to 0, so we have to do that ourselves to make sure the stencil starts clean.
 	
 	CHECK_CUDA(FORWARD::RenderIntermediateTextures(
 		tile_grid, block,
@@ -385,7 +379,7 @@ int CudaRasterizer::Rasterizer::forward(
 		geomState.stencils,
 		geomState.conic_opacity,
 		out_depth,
-		stencilTex
+		out_stencil
 	), debug);
 
 
@@ -399,7 +393,7 @@ int CudaRasterizer::Rasterizer::forward(
 		means3D,  		
 		geomState.means2D,
 		out_depth,
-		stencilTex,
+		out_stencil,
 		viewmatrix,
 		viewmatrix_inv,
 		projmatrix,
@@ -418,6 +412,19 @@ int CudaRasterizer::Rasterizer::forward(
 
 		// output
 		geomState.shader_rgb
+	), debug);
+
+	CHECK_CUDA(FORWARD::RenderIntermediateTextures(
+		tile_grid, block,
+		imgState.ranges,
+		binningState.point_list,
+		width, height,
+		geomState.means2D,
+		geomState.depths,
+		geomState.stencils,
+		geomState.conic_opacity,
+		out_depth,
+		out_stencil
 	), debug);
 
 	// Let each tile blend its range of Gaussians independently in parallel

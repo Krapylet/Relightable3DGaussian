@@ -117,7 +117,7 @@ def render_view(viewpoint_camera: Camera, pc: GaussianModel, pipe, bg_color: tor
                               extra_results["incident_visibility"].mean(-2)], dim=-1)
 
     # Rasterize visible Gaussians to image, obtain their radii (on screen).
-    (num_rendered, num_contrib, rendered_image, rendered_opacity, rendered_depth,
+    (num_rendered, num_contrib, rendered_image, rendered_opacity, rendered_depth, rendered_stencil,
      rendered_feature, rendered_shader, rendered_pseudo_normal, rendered_surface_xyz, radii) = rasterizer(
         means3D=means3D,
         means2D=means2D,
@@ -171,6 +171,7 @@ def render_view(viewpoint_camera: Camera, pc: GaussianModel, pipe, bg_color: tor
                "surface_xyz": rendered_surface_xyz,
                "opacity": rendered_opacity,
                "depth": rendered_depth,
+               "stencil": rendered_stencil,
                "viewspace_points": screenspace_points,
                "visibility_filter": radii > 0,
                "radii": radii,

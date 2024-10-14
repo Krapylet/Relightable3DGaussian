@@ -61,6 +61,7 @@ namespace CudaRasterizer
 			float* out_color,
 			float* out_opacity,
 			float* out_depth,
+			float* out_stencil,
 			float* out_feature,
 			float* out_shader_color,
 			float* out_normal,
