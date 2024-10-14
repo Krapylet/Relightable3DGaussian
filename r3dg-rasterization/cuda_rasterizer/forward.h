@@ -84,26 +84,31 @@ namespace FORWARD
 		uint32_t* tiles_touched,
 		bool prefiltered);
 
-	void prerenderDepth(
+	void RenderIntermediateTextures(
 		dim3 tile_grid, dim3 block,
 		const uint2* __restrict__ ranges,
 		const uint32_t* __restrict__ point_list,
 		int W, int H,
 		const float2* __restrict__ screen_positions,
 		const float* __restrict__ depths,
+		const float* __restrict__ stencils,
 		const float4* __restrict__ conic_opacity,
-		float* __restrict__ pre_depth
+		float* __restrict__ out_depth,
+		float* __restrict__ out_stencil
 		);
 
 	// Runs after preprocess but before renderer. Allows changing rgb output for individual splats.
 	void RunSplatShaders(
-		int const W, int const H,	
 		int const P,
+		int64_t const *const shaderAddresses,
+
+		// intput
+		int const W, int const H,
 		float const time, float const dt,
 		float const *const positions,  
 		float2 const *const screen_positions,
-		float const *const prerendered_depth,
-		int64_t const *const shaderAddresses,
+		float const *const depth_tex,
+		float const *const stencil_tex,
 		float const *const viewmatrix,
 		float const *const viewmatrix_inv,
 		float const *const projmatrix,
@@ -115,7 +120,11 @@ namespace FORWARD
 		float4 const *const conic_opacity,        
 		int const S,						
 		float const *const features,
-		Texture::TextureManager *const d_textureManager,	
+		Texture::TextureManager *const d_textureManager,
+
+		// input/output
+		float *const stencils,
+
 		// output
 		float *const out_colors
 	);

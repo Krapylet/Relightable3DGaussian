@@ -30,6 +30,7 @@ namespace CudaRasterizer
 	{
 		size_t scan_size;
 		float* depths;
+		float* stencils;
 		char* scanning_space;
 		bool* clamped;
 		int* internal_radii;
@@ -39,7 +40,6 @@ namespace CudaRasterizer
 		float4* conic_opacity;
 		float* rgb;
 		float* shader_rgb;
-		float* stencil_vals;
 		uint32_t* point_offsets;
 		uint32_t* tiles_touched;
 

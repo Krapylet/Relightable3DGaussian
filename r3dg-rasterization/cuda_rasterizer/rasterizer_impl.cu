@@ -157,6 +157,7 @@ CudaRasterizer::GeometryState CudaRasterizer::GeometryState::fromChunk(char*& ch
 {
 	GeometryState geom;
 	obtain(chunk, geom.depths, P, 128);
+	obtain(chunk, geom.stencils, P, 128);
 	obtain(chunk, geom.clamped, P * 3, 128);
 	obtain(chunk, geom.internal_radii, P, 128);
 	obtain(chunk, geom.means2D, P, 128);
@@ -165,7 +166,6 @@ CudaRasterizer::GeometryState CudaRasterizer::GeometryState::fromChunk(char*& ch
 	obtain(chunk, geom.conic_opacity, P, 128);
 	obtain(chunk, geom.rgb, P * 3, 128);
 	obtain(chunk, geom.shader_rgb, P * 3, 128);
-	obtain(chunk, geom.stencil_vals, P, 128);
 	obtain(chunk, geom.tiles_touched, P, 128);
 	cub::DeviceScan::InclusiveSum(nullptr, geom.scan_size, geom.tiles_touched, geom.tiles_touched, P);
 	obtain(chunk, geom.scanning_space, geom.scan_size, 128);
@@ -290,7 +290,7 @@ int CudaRasterizer::Rasterizer::forward(
 		(glm::vec3*) shs,
 
 		// output
-		geomState.stencil_vals
+		geomState.stencils
 	), debug)
 
 	// Run preprocessing per-Gaussian (transformation, bounding, conversion of SHs to RGB)
@@ -370,33 +370,36 @@ int CudaRasterizer::Rasterizer::forward(
 
 	// Create append an empty stencil for this frame. Indexed with pixelID floor(pix.x) + floor(pix.y) * w
 	// TODO: Move this to the python frontend.
-	float* stencil;
+	float* stencilTex;
 	int pixelCount = height * width;
-	cudaMalloc(&stencil, sizeof(float) * pixelCount);
-	cudaMemset(stencil, 0, pixelCount);  // memory isn't initalized to 0, so we have to do that ourselves to make sure the stencil starts clean.
+	cudaMalloc(&stencilTex, sizeof(float) * pixelCount);
+	cudaMemset(stencilTex, 0, pixelCount);  // memory isn't initalized to 0, so we have to do that ourselves to make sure the stencil starts clean.
 	
-	// Rename to renderIntermediateTextures
-	CHECK_CUDA(FORWARD::prerenderDepth(
+	CHECK_CUDA(FORWARD::RenderIntermediateTextures(
 		tile_grid, block,
 		imgState.ranges,
 		binningState.point_list,
 		width, height,
 		geomState.means2D,
 		geomState.depths,
+		geomState.stencils,
 		geomState.conic_opacity,
-		out_depth
+		out_depth,
+		stencilTex
 	), debug);
 
 
 	CHECK_CUDA(FORWARD::RunSplatShaders(
+		P,
+		splatShaderAddresses,
+
 		// input
 		width, height,
-		P,
 		time, dt,
 		means3D,  		
 		geomState.means2D,
 		out_depth,
-		splatShaderAddresses,
+		stencilTex,
 		viewmatrix,
 		viewmatrix_inv,
 		projmatrix,
@@ -409,6 +412,9 @@ int CudaRasterizer::Rasterizer::forward(
 		S,							
 		features,
 		d_textureManager,
+
+		// input/output
+		geomState.stencils,
 
 		// output
 		geomState.shader_rgb

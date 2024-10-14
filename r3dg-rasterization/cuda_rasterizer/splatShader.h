@@ -26,11 +26,11 @@ namespace SplatShader
 	// Encapsulate shader parameters in a struct so it becomes easy to update during development.
 	// This representation contains data for all the splats packed together.
 	struct PackedSplatShaderParams {
+		// shader execution information:
+		int const P;						// Total number of splats.
+
 		// Screen information:
         int const W; int const H;			
-
-        // shader execution information:
-		int const P;						// Total number of splats.
 
 		// Time information
 		float const time; float const dt;
@@ -38,7 +38,10 @@ namespace SplatShader
 		// position information
 		glm::vec3 const *const __restrict__ positions;  			
 		glm::vec2 const *const __restrict__ screen_positions;
-		float const * const prerendered_depth_buffer;
+
+		// Screen texture information. Indexed with floor(screen_pos.x) + floor(screen_pos.y) * screen.width
+		float const * const depth_tex;
+		float const * const stencil_tex;
 
 		// Projection information.
 		float const *const __restrict__ viewmatrix;
@@ -68,6 +71,9 @@ namespace SplatShader
 
 		Texture::TextureManager *const d_textureManager;
 
+		// input / output
+		float *const __restrict__ stencils;			//The stencil value of the individual splat
+
 		// output
 		// In producion code, the colors field should function both as SH color input and as color output though reassignment, but we keep them seperate to make it easy to illustrate the difference.
 		glm::vec3 *const __restrict__ out_colors;			// shader color output.
@@ -75,27 +81,25 @@ namespace SplatShader
 
 	// Used as input and output interface to the shaders.
 	// Only contains information relevant to each individual splat.
-	// Acts as an interface layer that hides complexities, calculate commonly used values, thereby reducing boiler-plate code and human error.
-	// The reason we don't just create unpacked params from the start, is that it would take too long to do in the host functions.
-	//TODO: Test memory and speed cost of this approach.
-	//TODO: Also pass SHs? Can we do something interesting with them in the code? They function as a low-pass filter on the detail if you reduce the order.
+	// Acts as an interface layer that hides complexities and calculates commonly used values, thereby reducing boiler-plate code and human error.
 	struct SplatShaderParams {
 		// Constructor
 		__device__ SplatShaderParams(PackedSplatShaderParams params, int idx);
 
 		// Screen information:
         int const W; int const H;							// Sceen width and height
-		// TODO: Collapse depth into a screen texture during the preprocessing (after the SH shader), so we can see the depth of the entire scene during this step.
-		// This woudl be a cheap way to approximate how visible each individual splat is. 
 
 		// Time information:
 		float const time; float const dt;
 
         // position information:
-		glm::vec3 const position;  			// mean 3d position of gaussian in world space. Can't be changed since 2D screen position has already been calculated.
+		glm::vec3 const position;  				// mean 3d position of gaussian in world space. Can't be changed since 2D screen position has already been calculated.
 		glm::vec2 const screen_position;		// mean 2d position of gaussian in screen space. Could technically be made into a input/output, but would be very expensive because tiles touched would have to be updated. That could just be moved out of preprocessing, though, and calcualted after instead.
-		int const mean_pixel_idx; 						// Index of the mean pixel position of the splat. 
-		float const * const prerendered_depth_buffer;  	// pr. pixel depth buffer. Values stored at index pixel.x + width * pixel.y. Will be overwritten by final render.	
+		int const mean_pixel_idx; 				// Index of the mean pixel position of the splat.
+
+		// Screen texture information. Indexed with mean_pixel_idx
+		float const * const depth_tex;
+		float const * const stencil_tex;
 
 		// Projection information.
 		float const *const __restrict__ viewmatrix;
@@ -133,9 +137,10 @@ namespace SplatShader
 		// Class that is used to retrieve textures. Make sure to cache textures once retrieved.
 		Texture::TextureManager *const d_textureManager;
 
-		// input / output
+		// input / output 
 		// can be changed, but is already populated when function is called
-		float *const opacity;
+		float *const __restrict__ opacity;						//The opacity of the splat. Opacity works a bit funky because how splats are blended. It is better to multiply this paramter by something rather than setting it to specific values.
+		float *const __restrict__ stencil_val;			//The stencil value of the splat.
 
 		// output
 		// We use pointers to the output instead of return values to make it easy to extend during development.

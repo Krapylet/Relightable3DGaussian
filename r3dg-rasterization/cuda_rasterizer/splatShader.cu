@@ -19,7 +19,8 @@ namespace SplatShader
         time(p.time), dt(p.dt),
 		position(p.positions[idx]),	
 		screen_position(p.screen_positions[idx]),
-        prerendered_depth_buffer(p.prerendered_depth_buffer),
+        depth_tex(p.depth_tex),
+        stencil_tex(p.stencil_tex),
 		viewmatrix(p.viewmatrix),
 		viewmatrix_inv(p.viewmatrix_inv),
 		projmatrix (p.projmatrix),
@@ -53,7 +54,7 @@ namespace SplatShader
         // input / output
 		// can be changed, but is already populated when function is called
 		opacity (((float*)p.conic_opacity) + idx * 4 + 3),  // Opacity works a bit funky because how splats are blended. It is better to multiply this paramter by something rather than setting it to specific values.
-
+        stencil_val (p.stencils + idx),
 		// output
 		// We use pointers to the output instead of return values to make it easy to extend during development.             
 		out_color (p.out_colors + idx)
@@ -153,7 +154,7 @@ namespace SplatShader
 
         // Figure out which splats are beneath the surface of the model
         float depthTolerance = 0.2f; // Increasing this value causes more splats to be considered internal.
-        float distToSurface = p.splat_depth - p.prerendered_depth_buffer[p.mean_pixel_idx] - depthTolerance;
+        float distToSurface = p.splat_depth - p.depth_tex[p.mean_pixel_idx] - depthTolerance;
         bool splatIsInsideModel = distToSurface < 0;
         
         // Splats that are both close to the deleted splats AND inside the model gets a completely new color.
@@ -285,8 +286,8 @@ namespace SplatShader
         SplatShaderParams params(packedParams, idx);
 
         // Debug print statement for seeing what's going on inside shader kernels.
-        if (idx == 1)
-            printf("Position: (%f, %f, %f); Depth:%f; Pixel Coord: (%f, %f)\n", params.position.x, params.position.y, params.position.z, params.prerendered_depth_buffer[0], params.screen_position.x, params.screen_position.y);
+        //if (idx == 1)
+            //printf("Position: (%f, %f, %f); Depth:%f; Pixel Coord: (%f, %f)\n", params.position.x, params.position.y, params.position.z, params.prerendered_depth_buffer[0], params.screen_position.x, params.screen_position.y);
 
         // No need to dereference the shader function pointer.
         shaders[idx](params);

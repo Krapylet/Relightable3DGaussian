@@ -261,18 +261,19 @@ __global__ void preprocessCUDA(int P, int D, int M,
 	tiles_touched[idx] = (rect_max.y - rect_min.y) * (rect_max.x - rect_min.x);
 }
 
-// Prerenders depth texture ahead of time, so it can be used during splat shader phase.
-// is not run before SH shader stage, since that would require us to sort all splats again, which is expensive.
-// Is just a stripped down version of renderCUDA();
+// Renders textures that needs to be calculated between each step in the rendering pipeline.
+// Is just a stripped down and modified version of renderCUDA();
 __global__ void __launch_bounds__(BLOCK_X * BLOCK_Y)
-prerenderDepthCUDA(
+RenderIntermediateTexturesCUDA(
 	const uint2* __restrict__ ranges,
 	const uint32_t* __restrict__ point_list,
 	int W, int H,
 	const float2* __restrict__ screen_positions,
 	const float* __restrict__ depths,
+	const float* __restrict__ stencils,
 	const float4* __restrict__ conic_opacity,
-	float* __restrict__ pre_depth)
+	float* __restrict__ out_depth,
+	float* __restrict__ out_stencil)
 {
 	// Identify current tile and associated min/max pixel range.
 	auto block = cg::this_thread_block();
@@ -300,7 +301,7 @@ prerenderDepthCUDA(
 
 	// Initialize helper variables
 	float T = 1.0f;
-	float Depth = 0;
+	float Stencil, Depth = 0;
 
 	// Iterate over batches until all done or range is complete
 	for (int i = 0; i < rounds; i++, toDo -= BLOCK_SIZE)
@@ -351,6 +352,7 @@ prerenderDepthCUDA(
 
 			// Eq. (3) from 3D Gaussian splatting paper.
 			Depth += depths[collected_id[j]] * weight;
+			Stencil += stencils[collected_id[j]] * weight;
 
 			T = test_T;
 		}
@@ -360,7 +362,8 @@ prerenderDepthCUDA(
 	// rendering data to the frame and auxiliary buffers.
 	if (inside)
 	{
-		pre_depth[pix_id] = Depth;
+		out_depth[pix_id] = Depth;
+		out_stencil[pix_id] = Stencil;
 	}
 }
 
@@ -778,6 +781,7 @@ void FORWARD::RunSHShaders(
 {
 	ShShader::PackedShShaderParams params {
 		P,
+		
 		time, dt,
 		scale_modifier,
 		grid,			
@@ -792,6 +796,7 @@ void FORWARD::RunSHShaders(
 		S,
 		features,
 		d_textureManager,
+
 		positions,
 		scales,
 		rotations,
@@ -819,35 +824,42 @@ void FORWARD::RunSHShaders(
 	cudaFree(d_shaderAddresses);
 }
 
-void FORWARD::prerenderDepth(
+void FORWARD::RenderIntermediateTextures(
 	dim3 tile_grid, dim3 block,
 	const uint2* __restrict__ ranges,
 	const uint32_t* __restrict__ point_list,
 	int W, int H,
 	const float2* __restrict__ screen_positions,
 	const float* __restrict__ depths,
+	const float* __restrict__ stencils,
 	const float4* __restrict__ conic_opacity,
-	float* __restrict__ pre_depth)
+	float* __restrict__ out_depth,
+	float* __restrict__ out_stencil
+	)
 {
-	prerenderDepthCUDA<<<tile_grid, block>>>(
+	RenderIntermediateTexturesCUDA<<<tile_grid, block>>>(
 		ranges,
 		point_list,
 		W, H,
 		screen_positions,
 		depths,
+		stencils,
 		conic_opacity,
-		pre_depth
+		out_depth,
+		out_stencil
 	);
 }
 
 void FORWARD::RunSplatShaders(
-	int const W, int const H,			
 	int const P,
+	int64_t const *const __restrict__ shaderAddresses,
+	
+	int const W, int const H,			
 	float const time, float const dt,
 	float const *const __restrict__ positions,
 	float2 const *const __restrict__ screen_positions,
-	float const *const prerendered_depth,
-	int64_t const *const __restrict__ shaderAddresses,
+	float const *const depth_tex,
+	float const *const stencil_tex,
 	float const *const __restrict__ viewmatrix,
 	float const *const __restrict__ viewmatrix_inv,
 	float const *const __restrict__ projmatrix,
@@ -860,16 +872,19 @@ void FORWARD::RunSplatShaders(
 	int const S,					
 	float const *const __restrict__ features,
 	Texture::TextureManager *const d_textureManager,
+	float *const __restrict__ stencils,
 	float *const __restrict__ out_colors
 	)
 {
 	SplatShader::PackedSplatShaderParams params {
-		W,H,			
 		P,
+
+		W,H,
 		time, dt,	
 		(glm::vec3*) positions,
 		(glm::vec2*) screen_positions,
-		prerendered_depth,
+		depth_tex,
+		stencil_tex,
 		viewmatrix,
 		viewmatrix_inv,
 		projmatrix,
@@ -882,6 +897,9 @@ void FORWARD::RunSplatShaders(
 		S,					
 		features,
 		d_textureManager,
+		
+		stencils,
+
 		(glm::vec3*)out_colors
 	};
 	
