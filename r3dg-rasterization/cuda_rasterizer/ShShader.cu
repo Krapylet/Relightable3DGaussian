@@ -14,7 +14,6 @@ namespace cg = cooperative_groups;
 
 namespace ShShader
 {
-    //TODO: we can't actually have strings on device, so we have to create enums as aliases for the shader names.
     __device__ ShShaderParams::ShShaderParams(PackedShShaderParams p, int idx):
         time(p.time), dt(p.dt),
         scale_modifier(p.scale_modifier),
@@ -46,15 +45,17 @@ namespace ShShader
 		scale(p.scales + idx),
 		rotation(p.rotations + idx),
 		opacity(p.opacities + idx),
-		sh(p.shs + idx * p.max_coeffs) // could also be calculated as idx + (p.deg + 1)^2
+		sh(p.shs + idx * p.max_coeffs), // could also be calculated as idx + (p.deg + 1)^2
+        
+        // output
+        stencil_val(p.stencil_vals + idx)
         {
 		// for now we're not actually doing anyting in the constuctior other than initializing the constants.
     }
 
     __device__ static void DefaultShShaderCUDA(ShShaderParams p)
     {
-        // Set output color
-        //*p.out_color = (*p.color_SH);
+        // Default shader doesn't need to set any values.
     }
 
     __device__ static void ExponentialPositionShaderCUDA(ShShaderParams p)

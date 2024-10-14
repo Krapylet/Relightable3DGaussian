@@ -165,6 +165,7 @@ CudaRasterizer::GeometryState CudaRasterizer::GeometryState::fromChunk(char*& ch
 	obtain(chunk, geom.conic_opacity, P, 128);
 	obtain(chunk, geom.rgb, P * 3, 128);
 	obtain(chunk, geom.shader_rgb, P * 3, 128);
+	obtain(chunk, geom.stencil_vals, P, 128);
 	obtain(chunk, geom.tiles_touched, P, 128);
 	cub::DeviceScan::InclusiveSum(nullptr, geom.scan_size, geom.tiles_touched, geom.tiles_touched, P);
 	obtain(chunk, geom.scanning_space, geom.scan_size, 128);
@@ -286,10 +287,12 @@ int CudaRasterizer::Rasterizer::forward(
 		(glm::vec3*) scales,
 		(glm::vec4*) rotations,
 		opacities,
-		(glm::vec3*) shs
+		(glm::vec3*) shs,
+
+		// output
+		geomState.stencil_vals
 	), debug)
-	
-	
+
 	// Run preprocessing per-Gaussian (transformation, bounding, conversion of SHs to RGB)
 	CHECK_CUDA(FORWARD::preprocess(
 		P, D, M,
@@ -364,29 +367,15 @@ int CudaRasterizer::Rasterizer::forward(
 	CHECK_CUDA(, debug)
 
 	const float* colors_ptr = colors_precomp != nullptr ? colors_precomp : geomState.rgb;
-/*
-	CHECK_CUDA(FORWARD::render(
-		tile_grid, block,
-		imgState.ranges,
-		binningState.point_list,
-		S, width, height,
-		geomState.means2D,
-		geomState.depths,
-        features,
-		geomState.shader_rgb,
-		colors_ptr,
-		geomState.conic_opacity,
-		imgState.accum_alpha,
-		imgState.n_contrib,
-		background,
-		out_color,
-        out_opacity,
-		out_depth,
-		out_feature,
-		out_shader_color
-		), debug)
-*/
 
+	// Create append an empty stencil for this frame. Indexed with pixelID floor(pix.x) + floor(pix.y) * w
+	// TODO: Move this to the python frontend.
+	float* stencil;
+	int pixelCount = height * width;
+	cudaMalloc(&stencil, sizeof(float) * pixelCount);
+	cudaMemset(stencil, 0, pixelCount);  // memory isn't initalized to 0, so we have to do that ourselves to make sure the stencil starts clean.
+	
+	// Rename to renderIntermediateTextures
 	CHECK_CUDA(FORWARD::prerenderDepth(
 		tile_grid, block,
 		imgState.ranges,

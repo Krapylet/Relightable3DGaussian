@@ -58,6 +58,9 @@ namespace ShShader
 		glm::vec4 *const rotations;
 		float *const opacities;
 		glm::vec3 *const shs;
+
+		//output
+		float *const stencil_vals;
 	};
 
 	struct ShShaderParams {
@@ -106,6 +109,9 @@ namespace ShShader
 		// | degree 3  | indexes: 9-15  | (Very complex and not always used) |
 		// +-----------+----------------+------------------------------------+
 		glm::vec3 *const sh;
+
+		// output
+		float *const stencil_val; //The stencil value of the individual splat
 	};
 
 	// Define a shared type of fuction pointer that can point to all implemented shaders.

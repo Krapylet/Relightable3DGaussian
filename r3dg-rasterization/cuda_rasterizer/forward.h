@@ -51,7 +51,10 @@ namespace FORWARD
 		glm::vec3 *const scales,
 		glm::vec4 *const rotations,
 		float *const opacities,
-		glm::vec3 *const shs
+		glm::vec3 *const shs,
+
+		// output
+		float *const stencil_vals
 		);
 
 	// Perform initial steps for each Gaussian prior to rasterization.

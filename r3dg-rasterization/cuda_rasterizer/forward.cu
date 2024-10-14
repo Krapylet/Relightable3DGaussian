@@ -770,7 +770,10 @@ void FORWARD::RunSHShaders(
 	glm::vec3 *const scales,
 	glm::vec4 *const rotations,
 	float *const opacities,
-	glm::vec3 *const shs
+	glm::vec3 *const shs,
+
+	// output
+	float *const stencil_vals
 	)
 {
 	ShShader::PackedShShaderParams params {
@@ -793,7 +796,8 @@ void FORWARD::RunSHShaders(
 		scales,
 		rotations,
 		opacities,
-		shs
+		shs,
+		stencil_vals
 	};
 	
 
