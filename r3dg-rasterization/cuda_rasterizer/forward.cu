@@ -13,6 +13,7 @@
 #include "auxiliary.h"
 #include "splatShader.h"
 #include "shShader.h"
+#include "postProcessShader.h"
 #include <cooperative_groups.h>
 #include <cooperative_groups/reduce.h>
 #include <vector>
@@ -646,7 +647,7 @@ void FORWARD::render(
 		out_shader_color);
 }
 
-void FORWARD::preprocess(int P, int D, int M,
+void FORWARD::PreProcess(int P, int D, int M,
 	const float* means3D,
 	const glm::vec3* scales,
 	const float scale_modifier,
@@ -781,7 +782,7 @@ void FORWARD::RunSHShaders(
 {
 	ShShader::PackedShShaderParams params {
 		P,
-		
+
 		time, dt,
 		scale_modifier,
 		grid,			
@@ -805,11 +806,6 @@ void FORWARD::RunSHShaders(
 		stencil_vals
 	};
 	
-
-	// For some reason the device is not allowed to dereference the function pointers if they're stored on host
-	// But it *is* allowed to derefrence alle the other pointers, such as out_colors?
-	// Anyway, this is fixed by copying all the shader addresses to device before we call them.
-	// (The addresses are stoerd as int64_ts, so there's also an implicit cast to SplatShader here.)
 	ShShader::ShShader* d_shaderAddresses;
 	size_t sizeOfAddresses = P * sizeof(ShShader::ShShader);
 	cudaMalloc(&d_shaderAddresses, sizeOfAddresses);
@@ -903,10 +899,6 @@ void FORWARD::RunSplatShaders(
 		(glm::vec3*)out_colors
 	};
 	
-	// For some reason the device is not allowed to dereference the function pointers if they're stored on host
-	// But it *is* allowed to derefrence alle the other pointers, such as out_colors?
-	// Anyway, this is fixed by copying all the shader addresses to device before we call them.
-	// (The addresses are stoerd as int64_ts, so there's also an implicit cast to SplatShader here.)
 	SplatShader::SplatShader* d_shaderAddresses;
 	size_t sizeOfAddresses = P * sizeof(SplatShader::SplatShader);
 	cudaMalloc(&d_shaderAddresses, sizeOfAddresses);
@@ -915,6 +907,60 @@ void FORWARD::RunSplatShaders(
 	SplatShader::ExecuteShader<<<(P + 255) / 256, 256>>>(d_shaderAddresses, params);
 
 	cudaFree(d_shaderAddresses);	
+}
+
+void FORWARD::RunPostProcessShaders(
+	int const width, int const height,
+	float const time, float const dt,
+	const float *const __restrict__ viewmatrix,
+	const float *const __restrict__ viewmatrix_inv,
+	const float *const __restrict__ projmatrix,
+	const float *const __restrict__ projmatrix_inv,
+	const float focal_x, float focal_y,
+	const float tan_fovx, float tan_fovy,
+	float const *const __restrict__ background,
+	float const *const __restrict__ out_color,
+	float const *const __restrict__ out_opacity,
+	float const *const __restrict__ out_depth,
+	float const *const __restrict__ out_shader_color,
+	float const *const __restrict__ stencil_tex,
+	int const S,
+	float const *const __restrict__ out_features,
+	Texture::TextureManager *const d_textureManager,
+
+	float * const out_prostProcess
+	)
+{
+	PostProcess::PackedPostProcessShaderParams params {
+		width, height,
+		time, dt,
+		viewmatrix,
+		viewmatrix_inv,
+		projmatrix,
+		projmatrix_inv,
+		focal_x, focal_y,
+		tan_fovx, tan_fovy,
+		(glm::vec3*) background,
+		(glm::vec3*) out_color,
+        (glm::vec3*) out_opacity,
+		out_depth,
+		out_shader_color,
+		stencil_tex,
+		S, out_features,
+		d_textureManager,
+
+		out_prostProcess
+	};
+	
+	//PostProcess::PostProcessShader* d_shaderAddresses;
+	//size_t sizeOfAddresses = sizeof(PostProcess::PostProcessShader);
+	//cudaMalloc(&d_shaderAddresses, sizeOfAddresses);
+	//cudaMemcpy(d_shaderAddresses, shaderAddresses, sizeOfAddresses, cudaMemcpyHostToDevice);
+
+	int pixels = height * width;
+	PostProcess::ExecuteShader<<<(pixels + 255) / 256, 256>>>(params);
+
+	//cudaFree(d_shaderAddresses);	
 }
 
 

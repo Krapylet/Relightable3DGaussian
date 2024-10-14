@@ -45,9 +45,9 @@ namespace ShShader
                                             // float3 base_color,
                                             // float  roughness,
                                             // float  metallic
-                                            // float  incident_light
-                                            // float  local_incident_light
-                                            // float  global_incident_light
+                                            // float3  incident_light
+                                            // float3  local_incident_light
+                                            // float3  global_incident_light
                                             // float  incident_visibility
 
 		Texture::TextureManager *const d_textureManager;
@@ -80,16 +80,17 @@ namespace ShShader
 		float const focal_x; float const focal_y;
 		float const tan_fovx; float const tan_fovy;
         int deg; int max_coeffs;
+
 		// Precomputed 'texture' information from the neilf pbr decomposition
 		glm::vec3 const color_brdf;			// pbr splat color
 		glm::vec3 const normal;				// Splat normal in object space
 		glm::vec3 const color_base;			// Decomposed splat color without lighting
-		float const  roughness;
-		float const  metallic;
-		float const  incident_light;
-		float const  local_incident_light;
-		float const  global_incident_light;
-		float const  incident_visibility;
+		float const roughness;
+		float const metallic;
+		glm::vec3 const incident_light;
+		glm::vec3 const local_incident_light;
+		glm::vec3 const global_incident_light;
+		float const incident_visibility;
 
 		Texture::TextureManager *const d_textureManager;
 
@@ -125,7 +126,7 @@ namespace ShShader
 	int64_t* GetShShaderAddressArray();
 	
 	// Executes a shader on the GPU with the given parameters.
-	__global__ extern void ExecuteShader(ShShader*, PackedShShaderParams packedParams);
+	__global__ extern void ExecuteShader(ShShader* shaders, PackedShShaderParams packedParams);
 
 
 	/// -------------------- Debug --------------------------

@@ -64,9 +64,9 @@ namespace SplatShader
                                             // float3 base_color,
                                             // float  roughness,
                                             // float  metallic
-                                            // float  incident_light
-                                            // float  local_incident_light
-                                            // float  global_incident_light
+                                            // float3  incident_light
+                                            // float3  local_incident_light
+                                            // float3  global_incident_light
                                             // float  incident_visibility
 
 		Texture::TextureManager *const d_textureManager;
@@ -118,7 +118,7 @@ namespace SplatShader
 		float const tan_fovx; float const tan_fovy;
 		glm::vec3 const camera_position;	// Position of camera in world space
 
-		// pr. frame texture information
+		// pr. frame splat information
 		float const splat_depth;					// Mean splat depth in view space.
 		glm::vec3 const conic;				// Covariance matrix used to determine how splats should be merged in final rendering step.
 		glm::vec3 const *const __restrict__ color_SH;	// Color from SH evaluation
@@ -129,9 +129,9 @@ namespace SplatShader
 		glm::vec3 const color_base;			// Decomposed splat color without lighting
 		float const  roughness;
 		float const  metallic;
-		float const  incident_light;
-		float const  local_incident_light;
-		float const  global_incident_light;
+		glm::vec3 const  incident_light;
+		glm::vec3 const  local_incident_light;
+		glm::vec3 const  global_incident_light;
 		float const  incident_visibility;
 
 		// Class that is used to retrieve textures. Make sure to cache textures once retrieved.
@@ -148,7 +148,6 @@ namespace SplatShader
 	};
 
 	// Define a shared type of fuction pointer that can point to all implemented shaders.
-	//typedef std::function<void(SplatShaderParams)> SplatShader;
     typedef void (*SplatShader)(SplatShaderParams params);
 
 	// Returns a map of shader names and shader device function pointers that can be passed back to the python frontend though pybind.
@@ -159,7 +158,7 @@ namespace SplatShader
 	int64_t* GetSplatShaderAddressArray();
 
 	// Executes a shader on the GPU with the given parameters.
-	__global__ extern void ExecuteShader(SplatShader*, PackedSplatShaderParams packedParams);
+	__global__ extern void ExecuteShader(SplatShader* shaders, PackedSplatShaderParams packedParams);
 
 	
 };

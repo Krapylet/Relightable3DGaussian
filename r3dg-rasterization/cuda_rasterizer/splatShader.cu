@@ -3,10 +3,6 @@
 #include <cooperative_groups.h>
 #include "../utils/shaderUtils.h"
 #include "auxiliary.h"
-#ifndef GLM_FORCE_CUDA
-#define GLM_FORCE_CUDA
-#endif
-#include <glm/glm.hpp>
 
 
 namespace cg = cooperative_groups;
@@ -38,15 +34,15 @@ namespace SplatShader
         color_SH (p.colors_SH + idx),
 
 		// Precomputed 'texture' information from the neilf pbr decomposition
-		color_brdf ({p.features[idx * p.S + 0], p.features[idx * p.S + 1], p.features[idx * p.S + 2]}),
+        color_brdf ({p.features[idx * p.S + 0], p.features[idx * p.S + 1], p.features[idx * p.S + 2]}),
 		normal ({p.features[idx * p.S + 3], p.features[idx * p.S + 4], p.features[idx * p.S + 5]}),
 		color_base ({p.features[idx * p.S + 6], p.features[idx * p.S + 7], p.features[idx * p.S + 8]}),
 		roughness (p.features[idx * p.S + 9]),
 		metallic (p.features[idx * p.S + 10]),
-		incident_light (p.features[idx * p.S + 11]),
-		local_incident_light (p.features[idx * p.S + 12]),
-		global_incident_light (p.features[idx * p.S + 13]),
-		incident_visibility (p.features[idx * p.S + 14]),
+		incident_light ({p.features[idx * p.S + 11], p.features[idx * p.S + 12], p.features[idx * p.S + 13]}),
+		local_incident_light ({p.features[idx * p.S + 14], p.features[idx * p.S + 15], p.features[idx * p.S + 16]}),
+		global_incident_light ({p.features[idx * p.S + 17], p.features[idx * p.S + 18], p.features[idx * p.S + 19]}),
+		incident_visibility (p.features[idx * p.S + 20]),
         
         // Texture information
         d_textureManager(p.d_textureManager),

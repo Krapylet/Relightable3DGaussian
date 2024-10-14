@@ -58,7 +58,7 @@ namespace FORWARD
 		);
 
 	// Perform initial steps for each Gaussian prior to rasterization.
-	void preprocess(int P, int D, int M,
+	void PreProcess(int P, int D, int M,
 		const float* positions,
 		const glm::vec3* scales,
 		const float scale_modifier,
@@ -173,6 +173,28 @@ namespace FORWARD
 		const float* depths,
 		float* normals,
 		float* surface_xyz);
+
+	void RunPostProcessShaders(
+		int const width, int const height,
+		float const time, float const dt,
+		const float * const __restrict__ viewmatrix,
+		const float * const __restrict__ viewmatrix_inv,
+		const float * const __restrict__ projmatrix,
+		const float * const __restrict__ projmatrix_inv,
+		const float focal_x, float focal_y,
+		const float tan_fovx, float tan_fovy,
+		float const * const __restrict__ background,
+		float const * const __restrict__ out_color,
+		float const * const __restrict__ out_opacity,
+		float const * const __restrict__ out_depth,
+		float const * const __restrict__ out_shader_color,
+		float const * const __restrict__ stencil_tex,
+		int const S,
+		float const *const __restrict__ out_feature,
+		Texture::TextureManager * const d_textureManager,
+
+		float * const out_prostProcess
+	);
 
 	
 }

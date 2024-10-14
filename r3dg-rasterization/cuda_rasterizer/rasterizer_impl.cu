@@ -295,7 +295,7 @@ int CudaRasterizer::Rasterizer::forward(
 	), debug)
 
 	// Run preprocessing per-Gaussian (transformation, bounding, conversion of SHs to RGB)
-	CHECK_CUDA(FORWARD::preprocess(
+	CHECK_CUDA(FORWARD::PreProcess(
 		P, D, M,
 		means3D,
 		(glm::vec3*)scales,
@@ -476,6 +476,33 @@ int CudaRasterizer::Rasterizer::forward(
             out_surface_xyz
             ), debug)
     }
+
+	// create a placeholder buffer for the postProcess output
+	float* out_prostProcess;
+	int pixelCount = height * width;
+	cudaMalloc(&out_prostProcess, sizeof(float) * pixelCount);
+	cudaMemset(out_prostProcess, 0, pixelCount);
+
+	FORWARD::RunPostProcessShaders(
+		width, height,
+		time, dt,
+		viewmatrix,
+		viewmatrix_inv,
+		projmatrix,
+		projmatrix_inv,
+		focal_x, focal_y,
+		tan_fovx, tan_fovy,
+		background,
+		out_color,
+        out_opacity,
+		out_depth,
+		out_shader_color,
+		out_stencil,
+		S, out_feature,
+		d_textureManager,
+
+		out_prostProcess
+	);
 
 	return num_rendered;
 }
