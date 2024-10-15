@@ -13,7 +13,7 @@
 #include "auxiliary.h"
 #include "splatShader.h"
 #include "shShader.h"
-#include "postProcessShader.h"
+
 #include <cooperative_groups.h>
 #include <cooperative_groups/reduce.h>
 #include <vector>
@@ -910,6 +910,8 @@ void FORWARD::RunSplatShaders(
 }
 
 void FORWARD::RunPostProcessShaders(
+	std::vector<PostProcess::PostProcessShader> postProcessPasses,
+
 	int const width, int const height,
 	float const time, float const dt,
 	const float *const __restrict__ viewmatrix,
@@ -956,7 +958,11 @@ void FORWARD::RunPostProcessShaders(
 	//cudaMemcpy(d_shaderAddresses, shaderAddresses, sizeOfAddresses, cudaMemcpyHostToDevice);
 
 	int pixels = height * width;
-	PostProcess::ExecuteShader<<<(pixels + 255) / 256, 256>>>(params);
+
+	for (PostProcess::PostProcessShader shader : postProcessPasses)
+	{
+			PostProcess::ExecuteShader<<<(pixels + 255) / 256, 256>>>(shader, params);		
+	}
 
 	//cudaFree(d_shaderAddresses);	
 }

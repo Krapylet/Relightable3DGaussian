@@ -14,6 +14,7 @@
 #include "render_equation.h"
 #include "cuda_rasterizer/splatShader.h"
 #include "cuda_rasterizer/shShader.h"
+#include "cuda_rasterizer/postProcessShader.h"
 #include "preprocessModel.h"
 #include "utils/texture.h"
 
@@ -26,6 +27,7 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   m.def("mark_visible", &markVisible);
   m.def("GetSplatShaderAddressMap", &SplatShader::GetSplatShaderAddressMap);
   m.def("GetShShaderAddressMap", &ShShader::GetShShaderAddressMap);
+  m.def("GetPostProcessShaderAddressMap", &PostProcess::GetPostProcessShaderAddressMap);
   m.def("PreprocessModel", &PreprocessModel);
   m.def("EncodeTextureMode", &Texture::EncodeTextureMode);
   m.def("EncodeWrapMode", &Texture::EncodeWrapMode);

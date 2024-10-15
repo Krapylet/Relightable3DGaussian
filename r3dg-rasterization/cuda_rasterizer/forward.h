@@ -16,6 +16,7 @@
 #include "cuda_runtime.h"
 #include "device_launch_parameters.h"
 #include "../utils/texture.h"
+#include "postProcessShader.h"
 
 #ifndef GLM_FORCE_CUDA
 #define GLM_FORCE_CUDA
@@ -175,6 +176,8 @@ namespace FORWARD
 		float* surface_xyz);
 
 	void RunPostProcessShaders(
+		std::vector<PostProcess::PostProcessShader> postProcessPasses,
+
 		int const width, int const height,
 		float const time, float const dt,
 		const float * const __restrict__ viewmatrix,

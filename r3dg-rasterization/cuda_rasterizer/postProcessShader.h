@@ -134,7 +134,7 @@ namespace PostProcess
 	int64_t* GetPostProcessShaderAddressArray();
 
 	// Executes a shader on the GPU with the given parameters.
-	__global__ extern void ExecuteShader(PackedPostProcessShaderParams packedParams);
+	__global__ extern void ExecuteShader(PostProcessShader shader, PackedPostProcessShaderParams packedParams);
 
 	
 };

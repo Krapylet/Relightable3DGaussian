@@ -66,15 +66,33 @@ namespace PostProcess
     __device__ const PostProcessShader defaultShader = &DefaultPostProcess;
     __device__ const PostProcessShader invertShader = &InvertColorsShader;
 
-	// Returns a map of shader names and shader device function pointers that can be passed back to the python frontend though pybind.
-	// we cast pointers to int since pure pointers aren't supported by pybind (ideally uint64_t, but pythorch only supports usigned 8-bit ints)
-	//std::map<std::string, int64_t> GetPostProcessShaderAddressMap();
+	std::map<std::string, int64_t> GetPostProcessShaderAddressMap(){
+        // we cast pointers to numbers since most pointers aren't supported by pybind
+        // Device function pointers seem to be 8 bytes long (at least on the devlopment machine with a GTX 2080 and when compiling to 64bit mode)
+        // there doesn't seem to be a problem casting them to int64's though.
+
+        std::map<std::string, int64_t> shaderMap;
+        size_t shaderMemorySize = sizeof(PostProcessShader);
+        
+        // Copy device shader pointers to host map
+        PostProcessShader h_defaultShader;
+        cudaMemcpyFromSymbol(&h_defaultShader, defaultShader, shaderMemorySize);
+        shaderMap["SplatDefault"] = (int64_t)h_defaultShader;
+
+        PostProcessShader h_invertShader;
+        cudaMemcpyFromSymbol(&h_invertShader, invertShader, shaderMemorySize);
+        shaderMap["Invert"] = (int64_t)h_invertShader;
+
+        printf("Post proces address collector called\n");
+
+        return shaderMap;
+    }
 
 	// Returns shader addresses in an array so they can be used in CUDA.
 	//int64_t* GetPostProcessShaderAddressArray();
 
 	// Executes a shader on the GPU with the given parameters.
-	__global__ extern void ExecuteShader(PackedPostProcessShaderParams packedParams){
+	__global__ extern void ExecuteShader(PostProcessShader shader, PackedPostProcessShaderParams packedParams){
         // calculate index for the spalt.
         auto idx = cg::this_grid().thread_rank();
         int pixelCount = packedParams.width * packedParams.height;
@@ -92,9 +110,7 @@ namespace PostProcess
         //if (idx == 1)
             //printf("Post process running for pixel (%i, %i)\n", x, y);
 
-        // No need to dereference the shader function pointer.
-        //shader(params);
-        invertShader(params);
+        shader(params);        
     }
 
 	

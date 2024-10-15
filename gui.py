@@ -23,6 +23,7 @@ from utils.graphics_utils import focal2fov, hdr2ldr
 from scene.gamma_trans import LearningGammaTransform
 from scene.envmap import EnvLight
 import asset_processing.textureImport as texImport
+import asset_processing.PostProcess as PostProcess
 
 
 def safe_normalize(x, eps=1e-20):
@@ -436,12 +437,18 @@ if __name__ == '__main__':
             gaussians.load_ply(
                 os.path.join(args.model_path, "point_cloud", "iteration_" + str(loaded_iter), "point_cloud.ply"))
 
+    # Import textures used in shaders
     textureImporter = texImport.TextureImporter()
     d_textureManager_ptr= textureImporter.initialize_all_textures()
 
     # Tell each splat which shader to use
     gaussians.append_shader_addresses_gpu_accelerated()   # Faster initialization, but shaders are identified by ints
     #gaussians.append_shader_addresses()                   # Slower initialization, but shaders are identified by strings
+
+    #Select which post processing passes.
+    postProcessManager = PostProcess.PostProcessManager()
+    postProcessManager.AddPostProcessingPass("Invert")
+    
 
     render_fn = render_fn_dict[args.type]
     bg_color = [1, 1, 1] if dataset.white_background else [0, 0, 0]
@@ -476,6 +483,7 @@ if __name__ == '__main__':
         "time": 0.0,
         "dt": 0.0,
         "d_textureManager_ptr": d_textureManager_ptr,
+        "postProcessingPasses" : postProcessManager.activePostProcessingPasses,
     }
 
     if(renderMultipleModels):

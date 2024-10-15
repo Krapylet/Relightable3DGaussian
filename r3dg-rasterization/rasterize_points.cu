@@ -26,6 +26,7 @@
 #include <functional>
 #include "utils/texture.h"
 #include "cuda_rasterizer/auxiliary.h"
+#include "cuda_rasterizer/postProcessShader.h"
 
 std::function<char*(size_t N)> resizeFunctional(torch::Tensor& t) {
     auto lambda = [&t](size_t N) {
@@ -66,10 +67,15 @@ RasterizeGaussiansCUDA(
 	const bool prefiltered,
 	const bool computer_pseudo_normal,
 	const int64_t d_textureManager_ptr, // is actually a TextureManager* stored on device.
+	const std::vector<int64_t> postProcessingPasses_ptr, // is actually a vector of PostProcessShaders
 	const bool debug)
 {
 	// cast the texture manager back into its original class.
 	auto d_textureManager = (Texture::TextureManager *const)d_textureManager_ptr;
+
+	// We can't cast the vector to the correct type directly, so we do it in a hacky way instead
+	auto ppArray = (PostProcess::PostProcessShader*) &postProcessingPasses_ptr[0];
+	auto postProcessingPasses = std::vector<PostProcess::PostProcessShader>(ppArray, ppArray + postProcessingPasses_ptr.size());
 
 	if (means3D.ndimension() != 2 || means3D.size(1) != 3) {
 		AT_ERROR("means3D must have dimensions (num_points, 3)");
@@ -151,6 +157,7 @@ RasterizeGaussiansCUDA(
 			prefiltered,
 			computer_pseudo_normal,
 			d_textureManager,
+			postProcessingPasses,
 			out_color.contiguous().data_ptr<float>(),
 			out_opacity.contiguous().data_ptr<float>(),
 			out_depth.contiguous().data_ptr<float>(),

@@ -15,6 +15,7 @@
 #include <vector>
 #include <functional>
 #include "../utils/texture.h"
+#include "postProcessShader.h"
 
 namespace CudaRasterizer
 {
@@ -58,6 +59,7 @@ namespace CudaRasterizer
 			const bool prefiltered,
 			const bool computer_pseudo_normal,
 			Texture::TextureManager *const d_textureManager,
+			std::vector<PostProcess::PostProcessShader> postProcessPasses,
 			float* out_color,
 			float* out_opacity,
 			float* out_depth,

@@ -46,6 +46,7 @@ RasterizeGaussiansCUDA(
 	const bool prefiltered,
 	const bool computer_pseudo_normal,
 	const int64_t d_textureManager_ptr,
+	const std::vector<int64_t> postProcessingPasses,
 	const bool debug);
 
 std::tuple<torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor, torch::Tensor>

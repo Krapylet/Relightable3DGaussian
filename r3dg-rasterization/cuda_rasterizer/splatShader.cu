@@ -209,23 +209,23 @@ namespace SplatShader
         size_t shaderMemorySize = sizeof(SplatShader);
         
         // Copy device shader pointers to host map
-        SplatShader::SplatShader h_defaultShader;
+        SplatShader h_defaultShader;
         cudaMemcpyFromSymbol(&h_defaultShader, defaultShader, shaderMemorySize);
         shaderMap["SplatDefault"] = (int64_t)h_defaultShader;
 
-        SplatShader::SplatShader h_outlineShader;
+        SplatShader h_outlineShader;
         cudaMemcpyFromSymbol(&h_outlineShader, outlineShader, shaderMemorySize);
         shaderMap["OutlineShader"] = (int64_t)h_outlineShader;
 
-        SplatShader::SplatShader h_wireframeShader;
+        SplatShader h_wireframeShader;
         cudaMemcpyFromSymbol(&h_wireframeShader, wireframeShader, shaderMemorySize);
         shaderMap["WireframeShader"] = (int64_t)h_wireframeShader;
 
-        SplatShader::SplatShader h_dissolveShader;
+        SplatShader h_dissolveShader;
         cudaMemcpyFromSymbol(&h_dissolveShader, dissolveShader, shaderMemorySize);
         shaderMap["dissolveShader"] = (int64_t)h_dissolveShader;
 
-        SplatShader::SplatShader h_crackShader;
+        SplatShader h_crackShader;
         cudaMemcpyFromSymbol(&h_crackShader, crackShader, shaderMemorySize);
         shaderMap["Crack"] = (int64_t)h_crackShader;
 
@@ -240,23 +240,23 @@ namespace SplatShader
         int64_t* h_shaderArray = new int64_t[shaderCount];
         size_t shaderMemorySize = sizeof(SplatShader);
  
-        SplatShader::SplatShader h_defaultShader;
+        SplatShader h_defaultShader;
         cudaMemcpyFromSymbol(&h_defaultShader, defaultShader, shaderMemorySize);
         h_shaderArray[0] = (int64_t)h_defaultShader;
 
-        SplatShader::SplatShader h_outlineShader;
+        SplatShader h_outlineShader;
         cudaMemcpyFromSymbol(&h_outlineShader, outlineShader, shaderMemorySize);
         h_shaderArray[1] = (int64_t)h_outlineShader;
 
-        SplatShader::SplatShader h_wireframeShader;
+        SplatShader h_wireframeShader;
         cudaMemcpyFromSymbol(&h_wireframeShader, wireframeShader, shaderMemorySize);
         h_shaderArray[2] = (int64_t)h_wireframeShader;
 
-        SplatShader::SplatShader h_dissolveShader;
+        SplatShader h_dissolveShader;
         cudaMemcpyFromSymbol(&h_dissolveShader, dissolveShader, shaderMemorySize);
         h_shaderArray[3] = (int64_t)h_dissolveShader;
         
-        SplatShader::SplatShader h_crackShader;
+        SplatShader h_crackShader;
         cudaMemcpyFromSymbol(&h_crackShader, crackShader, shaderMemorySize);
         h_shaderArray[4] = (int64_t)h_crackShader;
 

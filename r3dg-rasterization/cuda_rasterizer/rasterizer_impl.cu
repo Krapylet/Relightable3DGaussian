@@ -228,6 +228,7 @@ int CudaRasterizer::Rasterizer::forward(
 	const bool prefiltered,
 	const bool computer_pseudo_normal,
 	Texture::TextureManager *const d_textureManager,
+	std::vector<PostProcess::PostProcessShader> postProcessPasses,
 	float* out_color,
 	float* out_opacity,
 	float* out_depth,
@@ -478,6 +479,8 @@ int CudaRasterizer::Rasterizer::forward(
     }
 
 	FORWARD::RunPostProcessShaders(
+		postProcessPasses,
+
 		width, height,
 		time, dt,
 		viewmatrix,

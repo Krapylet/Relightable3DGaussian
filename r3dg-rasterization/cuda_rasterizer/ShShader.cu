@@ -148,15 +148,15 @@ namespace ShShader
         size_t shaderMemorySize = sizeof(ShShader);
         
         // Copy device shader pointers to host map
-        ShShader::ShShader h_defaultShader;
+        ShShader h_defaultShader;
         cudaMemcpyFromSymbol(&h_defaultShader, defaultShader, shaderMemorySize);
         shaderMap["ShDefault"] = (int64_t)h_defaultShader;
 
-        ShShader::ShShader h_exponentialPositionShader;
+        ShShader h_exponentialPositionShader;
         cudaMemcpyFromSymbol(&h_exponentialPositionShader, expPosShader, shaderMemorySize);
         shaderMap["ExpPos"] = (int64_t)h_exponentialPositionShader;
 
-        ShShader::ShShader h_heartbeatShader;
+        ShShader h_heartbeatShader;
         cudaMemcpyFromSymbol(&h_heartbeatShader, heartbeatShader, shaderMemorySize);
         shaderMap["Heartbeat"] = (int64_t)h_heartbeatShader;
 
@@ -171,15 +171,15 @@ namespace ShShader
         int64_t* h_shaderArray = new int64_t[shaderCount];
         size_t shaderMemorySize = sizeof(ShShader);
 
-        ShShader::ShShader h_defaultShader;
+        ShShader h_defaultShader;
         cudaMemcpyFromSymbol(&h_defaultShader, defaultShader, shaderMemorySize);
         h_shaderArray[0] = (int64_t)h_defaultShader;
 
-        ShShader::ShShader h_exponentialPositionShader;
+        ShShader h_exponentialPositionShader;
         cudaMemcpyFromSymbol(&h_exponentialPositionShader, expPosShader, shaderMemorySize);
         h_shaderArray[1] = (int64_t)h_exponentialPositionShader;
 
-        ShShader::ShShader h_heartbeatShader;
+        ShShader h_heartbeatShader;
         cudaMemcpyFromSymbol(&h_heartbeatShader, heartbeatShader, shaderMemorySize);
         h_shaderArray[2] = (int64_t)h_heartbeatShader;
 

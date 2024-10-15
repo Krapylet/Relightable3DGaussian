@@ -126,7 +126,7 @@ namespace ShShader
 	int64_t* GetShShaderAddressArray();
 	
 	// Executes a shader on the GPU with the given parameters.
-	__global__ extern void ExecuteShader(ShShader* shaders, PackedShShaderParams packedParams);
+	__global__ extern void ExecuteShader(ShShader* shader, PackedShShaderParams packedParams);
 
 
 	/// -------------------- Debug --------------------------
