@@ -28,16 +28,16 @@ namespace ShShader
 		tan_fovx(p.tan_fovx), tan_fovy(tan_fovy),
         deg(p.deg), max_coeffs(p.max_coeffs),
         
-        // Precomputed 'texture' information from the neilf pbr decomposition
-		color_brdf ({p.features[idx * p.S + 0], p.features[idx * p.S + 1], p.features[idx * p.S + 2]}),
-		normal ({p.features[idx * p.S + 3], p.features[idx * p.S + 4], p.features[idx * p.S + 5]}),
-		color_base ({p.features[idx * p.S + 6], p.features[idx * p.S + 7], p.features[idx * p.S + 8]}),
-		roughness (p.features[idx * p.S + 9]),
-		metallic (p.features[idx * p.S + 10]),
-		incident_light ({p.features[idx * p.S + 11], p.features[idx * p.S + 12], p.features[idx * p.S + 13]}),
-		local_incident_light ({p.features[idx * p.S + 14], p.features[idx * p.S + 15], p.features[idx * p.S + 16]}),
-		global_incident_light ({p.features[idx * p.S + 17], p.features[idx * p.S + 18], p.features[idx * p.S + 19]}),
-		incident_visibility (p.features[idx * p.S + 20]),
+        // Precomputed pr. splat 'texture' information from the neilf pbr decomposition
+        roughness (p.features[idx * p.S + 0]),
+		metallic (p.features[idx * p.S + 1]),
+		incident_visibility (p.features[idx * p.S + 2]),
+		color_brdf ({p.features[idx * p.S + 3], p.features[idx * p.S + 4], p.features[idx * p.S + 5]}),
+		normal ({p.features[idx * p.S + 6], p.features[idx * p.S + 7], p.features[idx * p.S + 8]}),
+		color_base ({p.features[idx * p.S + 9], p.features[idx * p.S + 10], p.features[idx * p.S + 11]}),
+		incident_light ({p.features[idx * p.S + 12], p.features[idx * p.S + 13], p.features[idx * p.S + 14]}),
+		local_incident_light ({p.features[idx * p.S + 15], p.features[idx * p.S + 16], p.features[idx * p.S + 17]}),
+		global_incident_light ({p.features[idx * p.S + 18], p.features[idx * p.S + 19], p.features[idx * p.S + 20]}),
 
         d_textureManager(p.d_textureManager),
         

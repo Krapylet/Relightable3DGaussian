@@ -109,9 +109,9 @@ def render_view(viewpoint_camera: Camera, pc: GaussianModel, pipe, bg_color: tor
             is_training, direct_light_env_light, visibility, sample_num=dict_params['sample_num'])
 
     if is_training:
-        features = torch.cat([brdf_color, normal, base_color, roughness, metallic], dim=-1)
+        features = torch.cat([roughness, metallic, brdf_color, normal, base_color], dim=-1)
     else:
-        features = torch.cat([brdf_color, normal, base_color, roughness, metallic,
+        features = torch.cat([roughness, metallic, brdf_color, normal, base_color,
                               extra_results["incident_lights"].mean(-2),
                               extra_results["local_incident_lights"].mean(-2),
                               extra_results["global_incident_lights"].mean(-2),
@@ -133,18 +133,17 @@ def render_view(viewpoint_camera: Camera, pc: GaussianModel, pipe, bg_color: tor
 
     feature_dict = {}
     if is_training:
-        rendered_pbr, rendered_normal, rendered_base_color, \
-            rendered_roughness, rendered_metallic \
-            = rendered_feature.split([3, 3, 3, 1, 1], dim=0)
+        rendered_roughness, rendered_metallic, rendered_pbr, rendered_normal, rendered_base_color \
+            = rendered_feature.split([1, 1, 3, 3, 3], dim=0)
         feature_dict.update({"base_color": rendered_base_color,
                              "roughness": rendered_roughness,
                              "metallic": rendered_metallic,
                              })
     else:
-        rendered_pbr, rendered_normal, rendered_base_color, rendered_roughness, rendered_metallic, \
-            rendered_light, rendered_local_light, rendered_global_light, rendered_visibility \
-            = rendered_feature.split([3, 3, 3, 1, 1, 3, 3, 3, 1], dim=0)
-
+        rendered_roughness, rendered_metallic, rendered_visibility, rendered_pbr, rendered_normal, \
+            rendered_base_color, rendered_light, rendered_local_light, rendered_global_light,  \
+            = rendered_feature.split([1, 1 , 1, 3, 3, 3, 3, 3, 3], dim=0)
+         
         feature_dict.update({"base_color": rendered_base_color,
                              "roughness": rendered_roughness,
                              "metallic": rendered_metallic,

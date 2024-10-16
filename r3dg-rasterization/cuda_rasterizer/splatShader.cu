@@ -33,16 +33,16 @@ namespace SplatShader
         mean_pixel_idx (p.W * floorf(screen_position.y) + floorf(screen_position.x)),
         color_SH (p.colors_SH + idx),
 
-		// Precomputed 'texture' information from the neilf pbr decomposition
-        color_brdf ({p.features[idx * p.S + 0], p.features[idx * p.S + 1], p.features[idx * p.S + 2]}),
-		normal ({p.features[idx * p.S + 3], p.features[idx * p.S + 4], p.features[idx * p.S + 5]}),
-		color_base ({p.features[idx * p.S + 6], p.features[idx * p.S + 7], p.features[idx * p.S + 8]}),
-		roughness (p.features[idx * p.S + 9]),
-		metallic (p.features[idx * p.S + 10]),
-		incident_light ({p.features[idx * p.S + 11], p.features[idx * p.S + 12], p.features[idx * p.S + 13]}),
-		local_incident_light ({p.features[idx * p.S + 14], p.features[idx * p.S + 15], p.features[idx * p.S + 16]}),
-		global_incident_light ({p.features[idx * p.S + 17], p.features[idx * p.S + 18], p.features[idx * p.S + 19]}),
-		incident_visibility (p.features[idx * p.S + 20]),
+		// Precomputed pr. splat 'texture' information from the neilf pbr decomposition
+        roughness (p.features[idx * p.S + 0]),
+		metallic (p.features[idx * p.S + 1]),
+		incident_visibility (p.features[idx * p.S + 2]),
+		color_brdf ({p.features[idx * p.S + 3], p.features[idx * p.S + 4], p.features[idx * p.S + 5]}),
+		normal ({p.features[idx * p.S + 6], p.features[idx * p.S + 7], p.features[idx * p.S + 8]}),
+		color_base ({p.features[idx * p.S + 9], p.features[idx * p.S + 10], p.features[idx * p.S + 11]}),
+		incident_light ({p.features[idx * p.S + 12], p.features[idx * p.S + 13], p.features[idx * p.S + 14]}),
+		local_incident_light ({p.features[idx * p.S + 15], p.features[idx * p.S + 16], p.features[idx * p.S + 17]}),
+		global_incident_light ({p.features[idx * p.S + 18], p.features[idx * p.S + 19], p.features[idx * p.S + 20]}),
         
         // Texture information
         d_textureManager(p.d_textureManager),
@@ -64,7 +64,8 @@ namespace SplatShader
         *p.out_color = (*p.color_SH);
     }
 
-    __device__ static void OutlineShaderCUDA(SplatShaderParams p)
+    // A naive shader for hgihlighting edges on model.
+    __device__ static void NaiveOutlineShaderCUDA(SplatShaderParams p)
     {
         // Get angle between splat and camera:
         glm::vec3 directionToCamera = p.camera_position - p.position;
@@ -191,13 +192,19 @@ namespace SplatShader
         *p.out_color = finalColor;
     }
 
+    __device__ static void WriteToStencilCUDA(SplatShaderParams p){
+        *p.stencil_val = 1;
+        *p.out_color = *p.color_SH;
+    }
+
     ///// Assign all the shaders to their short handles.
     // we need to keep them in constant device memory for them to stay valid when passed to host.
     __device__ const SplatShader defaultShader = &DefaultSplatShaderCUDA;
-    __device__ const SplatShader outlineShader = &OutlineShaderCUDA;
+    __device__ const SplatShader naiveOutlineShader = &NaiveOutlineShaderCUDA;
     __device__ const SplatShader wireframeShader = &WireframeShaderCUDA;
     __device__ const SplatShader dissolveShader = &DissolveShader;
     __device__ const SplatShader crackShader = &CrackShaderCUDA;
+    __device__ const SplatShader stencilShader = &WriteToStencilCUDA;
 
 
     std::map<std::string, int64_t> GetSplatShaderAddressMap(){
@@ -214,8 +221,8 @@ namespace SplatShader
         shaderMap["SplatDefault"] = (int64_t)h_defaultShader;
 
         SplatShader h_outlineShader;
-        cudaMemcpyFromSymbol(&h_outlineShader, outlineShader, shaderMemorySize);
-        shaderMap["OutlineShader"] = (int64_t)h_outlineShader;
+        cudaMemcpyFromSymbol(&h_outlineShader, naiveOutlineShader, shaderMemorySize);
+        shaderMap["NaiveOutline"] = (int64_t)h_outlineShader;
 
         SplatShader h_wireframeShader;
         cudaMemcpyFromSymbol(&h_wireframeShader, wireframeShader, shaderMemorySize);
@@ -229,6 +236,10 @@ namespace SplatShader
         cudaMemcpyFromSymbol(&h_crackShader, crackShader, shaderMemorySize);
         shaderMap["Crack"] = (int64_t)h_crackShader;
 
+        SplatShader h_stencilShader;
+        cudaMemcpyFromSymbol(&h_stencilShader, stencilShader, shaderMemorySize);
+        shaderMap["Stencil"] = (int64_t)h_stencilShader;
+
         return shaderMap;
     }
 
@@ -236,7 +247,7 @@ namespace SplatShader
     // Returns an array in device memory containing addresses to device shader functions.
     int64_t* GetSplatShaderAddressArray(){
         // Array is assembled on CPU before being sent to device. Addresses themselves are in device space.
-        int shaderCount = 5;
+        int shaderCount = 6;
         int64_t* h_shaderArray = new int64_t[shaderCount];
         size_t shaderMemorySize = sizeof(SplatShader);
  
@@ -245,7 +256,7 @@ namespace SplatShader
         h_shaderArray[0] = (int64_t)h_defaultShader;
 
         SplatShader h_outlineShader;
-        cudaMemcpyFromSymbol(&h_outlineShader, outlineShader, shaderMemorySize);
+        cudaMemcpyFromSymbol(&h_outlineShader, naiveOutlineShader, shaderMemorySize);
         h_shaderArray[1] = (int64_t)h_outlineShader;
 
         SplatShader h_wireframeShader;
@@ -259,6 +270,10 @@ namespace SplatShader
         SplatShader h_crackShader;
         cudaMemcpyFromSymbol(&h_crackShader, crackShader, shaderMemorySize);
         h_shaderArray[4] = (int64_t)h_crackShader;
+
+        SplatShader h_stencilShader;
+        cudaMemcpyFromSymbol(&h_stencilShader, stencilShader, shaderMemorySize);
+        h_shaderArray[5] = (int64_t)h_stencilShader;
 
         // copy the host array to device
         int64_t* d_shaderArray;

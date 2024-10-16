@@ -499,14 +499,50 @@ renderCUDA(
 	{
 		final_T[pix_id] = T;
 		n_contrib[pix_id] = last_contributor;
-		for (int ch = 0; ch < CHANNELS; ch++)
-			out_color[ch * H * W + pix_id] = C[ch] + T * bg_color[ch];
-		for (int ch = 0; ch < CHANNELS; ch++)
-			out_shader_color[ch * H * W + pix_id] = C_shader[ch] + T * bg_color[ch];
-		for (int ch = 0; ch < S; ch++)
-			out_feature[ch * H * W + pix_id] = F[ch];
+		for (int ch = 0; ch < 3; ch++)
+			out_color[pix_id * 3 + ch] = C[ch] + T * bg_color[ch];
+		for (int ch = 0; ch < 3; ch++)
+			out_shader_color[pix_id * 3 + ch] = C_shader[ch] + T * bg_color[ch];
 		out_depth[pix_id] = Depth;
 		out_opacity[pix_id] = Opacity;
+
+		// Currently all features are interleaved in a single long array in this order.
+		/*
+		Order of features stored in F:
+        roughness               float      
+        metallic                float
+		incident_visibility     float
+		bdrf_color				float3
+        normal                  float3    
+        base_color              float3              
+        incident_light          float3         
+        local_incident_light    float3  
+        global_incident_light   float3
+		*/
+		// We therefore partially fold this array out into a set of sequentially stored complete textures
+		// (eg. the RGB of the bdrf_colors stored interleaved followed by the rgb of the normals)
+
+		int f_ch = 0;
+		int f_offset = 0;
+
+		// interleave set of 1 float texturs. (since they only have 1 float, they're actually not interleaved with anything)
+		for (size_t i = 0; i < 3; i++)
+		{
+			out_feature[pix_id + f_offset] = F[f_ch];
+			f_ch++;
+			f_offset += H * W;
+		}
+
+		// interleave set of 3 float textures:
+		for (size_t i = 0; i < 6; i++)
+		{
+			// Write all three floats next to each other before the offset is increased
+			for (int ch = 0; ch < 3; ch++){
+				out_feature[pix_id * 3 + f_offset + ch] = F[f_ch];
+				f_ch++;
+			}
+			f_offset += 3 * H * W;
+		}
 	}
 }
 

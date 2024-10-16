@@ -51,15 +51,15 @@ namespace PostProcess
 		// Precomputed 'texture' information from the neilf pbr decomposition
 		int const  S;						            // Feature channel count.
 		float const *const __restrict__ features;		// Screen textures stored in the following order:
+											// float  roughness,
+                                            // float  metallic
+                                            // float  incident_visibility
                                             // float3 brdf_color,
                                             // float3 normal,	       Object space
                                             // float3 base_color,
-                                            // float  roughness,
-                                            // float  metallic
                                             // float3  incident_light
                                             // float3  local_incident_light
                                             // float3  global_incident_light
-                                            // float  incident_visibility
 
         Texture::TextureManager *const d_textureManager;    // Object used to fetch textures uploaded by user.
 

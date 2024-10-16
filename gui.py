@@ -152,6 +152,7 @@ class GUI:
 
             if len(output.shape) == 2:
                 output = output[None]
+            # If the buffer only contains 1 values (like pixel depth as opposed to RGB) repeat it thrice to make the image black and white.
             if output.shape[0] == 1:
                 output = output.repeat(3, 1, 1)
             if "normal" in mode:
@@ -160,7 +161,8 @@ class GUI:
             if (self.H, self.W) != tuple(output.shape[1:]):
                 output = self.resize_fn(output)
 
-            output = output.permute(1, 2, 0).contiguous().detach().cpu().numpy()
+            #output = output.permute(1, 2, 0).contiguous().detach().cpu().numpy()
+            output = output.contiguous().detach().cpu().numpy()
         return output
 
     @property
@@ -447,7 +449,7 @@ if __name__ == '__main__':
 
     #Select which post processing passes.
     postProcessManager = PostProcess.PostProcessManager()
-    postProcessManager.AddPostProcessingPass("Invert")
+    postProcessManager.AddPostProcessingPass("Outline")
     
 
     render_fn = render_fn_dict[args.type]

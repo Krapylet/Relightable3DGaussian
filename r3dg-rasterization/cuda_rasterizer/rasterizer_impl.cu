@@ -30,6 +30,7 @@ namespace cg = cooperative_groups;
 #include "forward.h"
 #include "backward.h"
 #include "../utils/texture.h"
+#include "../utils/includeTorch.cu"
 
 // Helper function to find the next-highest bit of the MSB
 // on the CPU.
