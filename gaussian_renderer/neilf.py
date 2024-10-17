@@ -139,16 +139,41 @@ def render_view(viewpoint_camera: Camera, pc: GaussianModel, pipe, bg_color: tor
 
     if is_training:
         rendered_roughness, rendered_metallic, rendered_pbr, rendered_normal, rendered_base_color \
-            = rendered_feature.reshape(-1).view(11,800,800).permute(1,2,0).split([1, 1, 3, 3, 3], dim=2)
+            = rendered_feature.reshape(-1).view(11,800,800).split([1, 1, 3, 3, 3], dim=2)
         feature_dict.update({"base_color": rendered_base_color,
                              "roughness": rendered_roughness,
                              "metallic": rendered_metallic,
                              })
     else:
-        rendered_roughness, rendered_metallic, rendered_visibility, rendered_pbr, rendered_normal, \
-            rendered_base_color, rendered_light, rendered_local_light, rendered_global_light,  \
-            = rendered_feature.reshape(-1).view(21,800,800).permute(1,2,0).split([1, 1, 1, 3, 3, 3, 3, 3, 3], dim=2)
+        
+        #First we have to split all the feature textures up
+        features = list(rendered_feature.reshape(-1).view(21,800,800).split([1, 1, 1, 3, 3, 3, 3, 3, 3], dim=0))
+        
+        #And then we can reshape them
+        for i in range(len(features)):
+            features[i] = features[i].view(800, 800, features[i].shape[0])
 
+        rendered_roughness, rendered_metallic, rendered_visibility, \
+        rendered_pbr, rendered_normal, rendered_base_color, rendered_light, rendered_local_light, rendered_global_light,  \
+            = features
+        #rendered_roughness, rendered_metallic, rendered_visibility\
+        #    = rendered_feature.reshape(-1).view(21,800,800).permute(1,2,0).split([1, 1, 1, 3, 3, 3, 3, 3, 3], dim=2)[:3]
+        
+        
+        #rendered_pbr, rendered_normal, rendered_base_color, rendered_light, rendered_local_light, rendered_global_light,  \
+        #    = rendered_feature.reshape(-1).view(21,800,800).split([1, 1, 1, 3, 3, 3, 3, 3, 3], dim=0)[3:]
+       
+        #rendered_roughness = rendered_feature.reshape(-1)[:800*800].view(800,800,1).repeat(1,1,3)
+        #rendered_roughness = rendered_feature.reshape(-1).view(21,800,800)[0,:,:].unsqueeze(2).repeat(1,1,3)
+        #    = rendered_feature.reshape(-1).view(21,800,800).permute(1,2,0).split([1, 1, 1, 3, 3, 3, 3, 3, 3], dim=2)
+
+        
+        #rendered_pbr = rendered_feature.reshape(-1)[800*800*3:800*800*6].view(800,800,3)
+        #rendered_pbr = rendered_feature.reshape(-1).view(21, 800, 800)[3:6,:,:]
+        #rendered_pbr = rendered_feature.reshape(-1).view(21, 800, 800).split([1, 1, 1, 3, 3, 3, 3, 3, 3], dim=0)[3]
+        #    = rendered_feature.reshape(-1).view(21,800,800).split([1, 1, 1, 3, 3, 3, 3, 3, 3], dim=0)[3:]
+        
+        #print(rendered_pbr.shape)
         feature_dict.update({"base_color": rendered_base_color,
                              "roughness": rendered_roughness,
                              "metallic": rendered_metallic,
@@ -158,8 +183,8 @@ def render_view(viewpoint_camera: Camera, pc: GaussianModel, pipe, bg_color: tor
                              "visibility": rendered_visibility,
                              })
 
-    pbr = rendered_pbr
-    rendered_pbr = pbr + (1 - rendered_opacity) * bg_color[None, None, :]
+    #pbr = rendered_pbr
+    #rendered_pbr = pbr + (1 - rendered_opacity) * bg_color[None, None, :]
 
     val_gamma = 0
     if gamma_transform is not None:

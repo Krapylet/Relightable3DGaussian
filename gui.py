@@ -25,7 +25,6 @@ from scene.envmap import EnvLight
 import asset_processing.textureImport as texImport
 import asset_processing.PostProcess as PostProcess
 
-
 def safe_normalize(x, eps=1e-20):
     return x / torch.sqrt(torch.clamp(torch.sum(x * x, -1, keepdim=True), min=eps))
 
@@ -141,6 +140,7 @@ class GUI:
             output = torch.ones(self.H, self.W, 3, dtype=torch.float32, device='cuda').detach().cpu().numpy()
         else:
             output = render_results[mode]
+            print(output.shape)
 
             if mode == "depth":
                 output = (output - output.min()) / (output.max() - output.min())
@@ -162,11 +162,13 @@ class GUI:
             if hasOneValuePrPixel:
                 output = output.repeat(1, 1, 3) # Works for feat non-feature single depth textures
                 
+                
             if "normal" in mode:
-                opacity = self.resize_fn(render_results["opacity"]).repeat(1, 1, 3)
+                opacity = self.resize_fn(render_results["opacity"])
+                print(f"Normal shape: {output.shape}, Opacity shape: {opacity.shape}")
                 output = output * 0.5 + 0.5 * opacity
 
-            print(output.shape)
+            
             #output = output[:,:,0].unsqueeze(2).repeat(1,1,3)
             output = output.contiguous().detach().cpu().numpy()
         return output
