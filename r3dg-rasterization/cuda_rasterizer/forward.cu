@@ -506,42 +506,9 @@ renderCUDA(
 		out_depth[pix_id] = Depth;
 		out_opacity[pix_id] = Opacity;
 
-		// Currently all features are interleaved in a single long array in this order.
-		/*
-		Order of features stored in F:
-        roughness               float      
-        metallic                float
-		incident_visibility     float
-		bdrf_color				float3
-        normal                  float3    
-        base_color              float3              
-        incident_light          float3         
-        local_incident_light    float3  
-        global_incident_light   float3
-		*/
-		// We therefore partially fold this array out into a set of sequentially stored complete textures
-		// (eg. the RGB of the bdrf_colors stored interleaved followed by the rgb of the normals)
-
-		int f_ch = 0;
-		int f_offset = 0;
-
-		// interleave set of 1 float texturs. (since they only have 1 float, they're actually not interleaved with anything)
-		for (size_t i = 0; i < 3; i++)
+		for (size_t ch = 0; ch < S; ch++)
 		{
-			out_feature[pix_id + f_offset] = F[f_ch];
-			f_ch++;
-			f_offset += H * W;
-		}
-
-		// interleave set of 3 float textures:
-		for (size_t i = 0; i < 6; i++)
-		{
-			// Write all three floats next to each other before the offset is increased
-			for (int ch = 0; ch < 3; ch++){
-				out_feature[pix_id * 3 + f_offset + ch] = F[f_ch];
-				f_ch++;
-			}
-			f_offset += 3 * H * W;
+			out_feature[pix_id * S + ch] = F[ch];
 		}
 	}
 }
@@ -571,9 +538,9 @@ renderSurfaceXYZCUDA(
     uint32_t HW = H * W;
 	float depth = depths[pix_id] / fmaxf(opacities[pix_id], 0.0000001f);
 // 	float depth = depths[pix_id];
-    surface_xyz[pix_id] =  (pix.x - cx) / focal_x * depth;
-    surface_xyz[HW + pix_id] = (pix.y - cy) / focal_y * depth;
-    surface_xyz[2 * HW + pix_id] = depth;
+    surface_xyz[pix_id * 3 + 0] =  (pix.x - cx) / focal_x * depth;
+    surface_xyz[pix_id * 3 + 1] = (pix.y - cy) / focal_y * depth;
+    surface_xyz[pix_id * 3 + 2] = depth;
 }
 
 __global__ void __launch_bounds__(BLOCK_X * BLOCK_Y)
@@ -607,15 +574,16 @@ renderPseudoNormalCUDA(
 	uint32_t pix_id21 = W * (pix.y==H-1?H-1:pix.y+1) + pix.x;
 	uint32_t pix_id22 = W * (pix.y==H-1?H-1:pix.y+1) + (pix.x==W-1?W-1:pix.x+1);
 
-    float xyz00[3] = {surface_xyz[pix_id00],surface_xyz[HW + pix_id00],surface_xyz[2 * HW + pix_id00]};
-    float xyz01[3] = {surface_xyz[pix_id01],surface_xyz[HW + pix_id01],surface_xyz[2 * HW + pix_id01]};
-    float xyz02[3] = {surface_xyz[pix_id02],surface_xyz[HW + pix_id02],surface_xyz[2 * HW + pix_id02]};
-    float xyz10[3] = {surface_xyz[pix_id10],surface_xyz[HW + pix_id10],surface_xyz[2 * HW + pix_id10]};
+    float const * xyz00 = &surface_xyz[pix_id00 * 3];
+    float const * xyz01 = &surface_xyz[pix_id01 * 3];
+    float const * xyz02 = &surface_xyz[pix_id02 * 3];
+    float const * xyz10 = &surface_xyz[pix_id10 * 3];
     //float xyz11[3] = {surface_xyz[pix_id11],surface_xyz[HW + pix_id11],surface_xyz[2 * HW + pix_id11]};
-    float xyz12[3] = {surface_xyz[pix_id12],surface_xyz[HW + pix_id12],surface_xyz[2 * HW + pix_id12]};
-    float xyz20[3] = {surface_xyz[pix_id20],surface_xyz[HW + pix_id20],surface_xyz[2 * HW + pix_id20]};
-    float xyz21[3] = {surface_xyz[pix_id21],surface_xyz[HW + pix_id21],surface_xyz[2 * HW + pix_id21]};
-    float xyz22[3] = {surface_xyz[pix_id22],surface_xyz[HW + pix_id22],surface_xyz[2 * HW + pix_id22]};
+    float const * xyz12 = &surface_xyz[pix_id12 * 3];
+    float const * xyz20 = &surface_xyz[pix_id20 * 3];
+    float const * xyz21 = &surface_xyz[pix_id21 * 3];
+    float const * xyz22 = &surface_xyz[pix_id22 * 3];
+	
     for (int i=0;i<3;i++){
         gradient_a[i] = -0.125f * xyz00[i] + 0.125f * xyz02[i] - 0.25f * xyz10[i] + 0.25f * xyz12[i] - 0.125f * xyz20[i] + 0.125f * xyz22[i];
     }
@@ -637,9 +605,9 @@ renderPseudoNormalCUDA(
     normal[1] = -normal[1] / norm;
     normal[2] = -normal[2] / norm;
 
-    normals[pix_id11] = viewmatrix[0] * normal[0] + viewmatrix[1] * normal[1] + viewmatrix[2] * normal[2];
-    normals[HW + pix_id11] = viewmatrix[4] * normal[0] + viewmatrix[5] * normal[1] + viewmatrix[6] * normal[2];
-    normals[2 * HW + pix_id11] = viewmatrix[8] * normal[0] + viewmatrix[9] * normal[1] + viewmatrix[10] * normal[2];
+    normals[pix_id11 * 3 + 0] = viewmatrix[0] * normal[0] + viewmatrix[1] * normal[1] + viewmatrix[2] * normal[2];
+    normals[pix_id11 * 3 + 1] = viewmatrix[4] * normal[0] + viewmatrix[5] * normal[1] + viewmatrix[6] * normal[2];
+    normals[pix_id11 * 3 + 2] = viewmatrix[8] * normal[0] + viewmatrix[9] * normal[1] + viewmatrix[10] * normal[2];
 }
 
 void FORWARD::render(

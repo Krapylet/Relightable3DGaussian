@@ -152,16 +152,22 @@ class GUI:
 
             if len(output.shape) == 2:
                 output = output[None]
-            # If the buffer only contains 1 values (like pixel depth as opposed to RGB) repeat it thrice to make the image black and white.
-            if output.shape[0] == 1:
-                output = output.repeat(3, 1, 1)
-            if "normal" in mode:
-                opacity = render_results["opacity"]
-                output = output * 0.5 + 0.5 * opacity
-            if (self.H, self.W) != tuple(output.shape[1:]):
-                output = self.resize_fn(output)
 
-            #output = output.permute(1, 2, 0).contiguous().detach().cpu().numpy()
+            #if (self.H, self.W) != tuple(output.shape[:2]):
+             #   output = self.resize_fn(output)
+
+            # If the buffer only contains 1 value pr pixel (like pixel depth as opposed to RGB) repeat it thrice and permute it
+            # to copy that value into all three RGB fields, resulting in a black and white image.
+            hasOneValuePrPixel = output.shape[2] == 1
+            if hasOneValuePrPixel:
+                output = output.repeat(1, 1, 3)
+                print(f"Output: {output.shape}")
+            
+            if "normal" in mode:
+                opacity = render_results["opacity"].repeat(1, 1, 3)
+                output = output * 0.5 + 0.5 * opacity
+                print(f"Opacity: {opacity.shape}, Output: {output.shape}")
+            
             output = output.contiguous().detach().cpu().numpy()
         return output
 

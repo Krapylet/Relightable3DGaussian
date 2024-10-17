@@ -111,11 +111,11 @@ def render_view(viewpoint_camera: Camera, pc: GaussianModel, pipe, bg_color: tor
     if is_training:
         features = torch.cat([roughness, metallic, brdf_color, normal, base_color], dim=-1)
     else:
-        features = torch.cat([roughness, metallic, brdf_color, normal, base_color,
+        features = torch.cat([roughness, metallic, extra_results["incident_visibility"].mean(-2),
+                              brdf_color, normal, base_color,
                               extra_results["incident_lights"].mean(-2),
                               extra_results["local_incident_lights"].mean(-2),
-                              extra_results["global_incident_lights"].mean(-2),
-                              extra_results["incident_visibility"].mean(-2)], dim=-1)
+                              extra_results["global_incident_lights"].mean(-2)], dim=-1)
 
     # Rasterize visible Gaussians to image, obtain their radii (on screen).
     (num_rendered, num_contrib, rendered_image, rendered_opacity, rendered_depth, rendered_stencil,
@@ -134,7 +134,7 @@ def render_view(viewpoint_camera: Camera, pc: GaussianModel, pipe, bg_color: tor
     feature_dict = {}
     if is_training:
         rendered_roughness, rendered_metallic, rendered_pbr, rendered_normal, rendered_base_color \
-            = rendered_feature.split([1, 1, 3, 3, 3], dim=0)
+            = rendered_feature.split([1, 1, 3, 3, 3], dim=2)
         feature_dict.update({"base_color": rendered_base_color,
                              "roughness": rendered_roughness,
                              "metallic": rendered_metallic,
@@ -142,7 +142,7 @@ def render_view(viewpoint_camera: Camera, pc: GaussianModel, pipe, bg_color: tor
     else:
         rendered_roughness, rendered_metallic, rendered_visibility, rendered_pbr, rendered_normal, \
             rendered_base_color, rendered_light, rendered_local_light, rendered_global_light,  \
-            = rendered_feature.split([1, 1 , 1, 3, 3, 3, 3, 3, 3], dim=0)
+            = rendered_feature.split([1, 1, 1, 3, 3, 3, 3, 3, 3], dim=2)
          
         feature_dict.update({"base_color": rendered_base_color,
                              "roughness": rendered_roughness,
@@ -154,7 +154,7 @@ def render_view(viewpoint_camera: Camera, pc: GaussianModel, pipe, bg_color: tor
                              })
 
     pbr = rendered_pbr
-    rendered_pbr = pbr + (1 - rendered_opacity) * bg_color[:, None, None]
+    rendered_pbr = pbr + (1 - rendered_opacity) * bg_color[None, None, :]
 
     val_gamma = 0
     if gamma_transform is not None:

@@ -11,7 +11,7 @@ namespace PostProcess
     __device__ PostProcessShaderParams::PostProcessShaderParams(PackedPostProcessShaderParams p, int x, int y, int pixCount):
 
         width(p.width), height(p.height),		
-        pixel(glm::vec2(x, y)),               
+        pixel(x, y),               
         pixel_idx(x + y *p.width),               
 
 		// Time information
@@ -65,41 +65,48 @@ namespace PostProcess
         *p.out_shader_color = glm::vec3(1,1,1) - *p.out_shader_color;
     }
 
-    __device__ bool PixelIsInsideStencil(int pixel_idx, PostProcessShaderParams* p){
+    __device__ bool PixelIsInsideStencil(glm::ivec2 pixel, PostProcessShaderParams* p){
         // First check if the pixel is inside the screen.
-        bool pixelIsOutsideScreen = pixel_idx < 0 || pixel_idx > p->height * p->width;
-        if(pixelIsOutsideScreen)
+        int samplePixel_idx = pixel.x + pixel.y * p->width;
+
+        bool pixelIsOutsideScreen = samplePixel_idx < 0 || samplePixel_idx > p->height * p->width;
+        if(pixelIsOutsideScreen){
             return false;
+        }
 
         // then check the value of the stencil
-        float stencilThreshold = 1; // Stencil values under this value will be considered "outside of stencil"
-        bool pixelIsInsideStencil = p->stencil_tex[p->pixel_idx] >= stencilThreshold;
+        float stencilThreshold = 0.9; // Stencil values equal to or over this value will be considered "inside of stencil"
+        bool pixelIsInsideStencil = p->stencil_tex[samplePixel_idx] >= stencilThreshold;
+
         return pixelIsInsideStencil;
     }
 
     // Simple method for generating an outline around the object using stencil.
     __device__ static void OutlineShader(PostProcessShaderParams p){
-        bool pixelIsOutsideOfStencil = !PixelIsInsideStencil(p.pixel_idx, &p);
+        bool pixelIsOutsideOfStencil = !PixelIsInsideStencil(p.pixel, &p);
         
         int outlineThickness = 5;
-        int sampleDirections = 8;
+        int sampleDirections = 5;
 
-        bool pixelShouldBeOutined = false;
+        bool pixelIsNearStencil = false;
+
         // sample one pixel pr. thickness in all directions.
-        for (int radius = 1; radius < outlineThickness; radius++)
+        for (float radius = 1; radius < outlineThickness + 1; radius++)
         {
-            for (float direction = 0; direction <= 2*M_PI; direction += 2*M_PI/sampleDirections)
+            for (float direction = 0; direction <= 1; direction += 1.0f/(float)sampleDirections)
             {
-                glm::vec2 samplePixel = p.pixel + glm::vec2(cos(direction), sin(direction)) * (float)radius;
-                int samplePixelIdx = samplePixel.x + samplePixel.y * p.width;
-
-                pixelShouldBeOutined |= PixelIsInsideStencil(samplePixelIdx, &p);
+                glm::ivec2 samplePixel = p.pixel + (glm::ivec2)(glm::vec2(cos(direction * 2 * M_PI), sin(direction * 2 * M_PI)) * radius);
+        
+                pixelIsNearStencil |= PixelIsInsideStencil(samplePixel, &p);
             }
         }
         
+        bool pixelShouldBeOutlined = pixelIsOutsideOfStencil && pixelIsNearStencil;
+
         glm::vec3 outlineColor = glm::vec3(1,0,0);
-        //*p.out_shader_color = *p.out_shader_color * (1.0f-(float)pixelShouldBeOutined) + outlineColor * (float)pixelShouldBeOutined;
-        *p.out_shader_color = outlineColor;
+        *p.out_shader_color = *p.out_shader_color * (1.0f-(float)pixelShouldBeOutlined) + outlineColor * (float)pixelShouldBeOutlined;
+
+//        *p.out_shader_color = glm::vec3((float) pixelIsInsideStencil, (float) pixelIsInsideStencil, (float) pixelIsInsideStencil);
     }
 
     __device__ const PostProcessShader defaultShader = &DefaultPostProcess;
@@ -152,8 +159,17 @@ namespace PostProcess
         PostProcessShaderParams params(packedParams, x, y, pixelCount);
 
         // Debug print statement for seeing what's going on inside shader kernels.
-        //if (idx == 1)
-            //printf("Post process running for pixel (%i, %i)\n", x, y);
+        /*
+        if (idx == 80050){
+            // First check if the pixel is inside the screen.
+            int pixel_idx = x + y * params.width;
+
+            bool pixelIsOutsideScreen = pixel_idx < 0 || pixel_idx > params.height * params.width;
+
+            float stencilThreshold = 1; // Stencil values equal to or over this value will be considered "inside of stencil"
+            bool pixelIsInsideStencil = params.stencil_tex[p->pixel_idx] >= stencilThreshold;
+        }
+        */
 
         shader(params);        
     }

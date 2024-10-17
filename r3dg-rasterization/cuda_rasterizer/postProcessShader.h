@@ -77,8 +77,8 @@ namespace PostProcess
         // input
 		// Screen information:
         int const width; int const height;		// render resoltion in pixels.
-        glm::vec2 pixel;                        // Pixel position in screen space.
-        int pixel_idx;                          // The pixels index in the screen textures. Calculated as floor(pixel.x) + floor(pixel.y) * width.
+        glm::ivec2 const pixel;                        // Pixel position in screen space.
+        int const pixel_idx;                          // The pixels index in the screen textures. Calculated as floor(pixel.x) + floor(pixel.y) * width.
 
 		// Time information
 		float const time; float const dt;
