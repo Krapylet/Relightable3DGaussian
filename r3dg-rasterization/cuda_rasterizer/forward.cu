@@ -506,10 +506,50 @@ renderCUDA(
 		out_depth[pix_id] = Depth;
 		out_opacity[pix_id] = Opacity;
 
-		for (size_t ch = 0; ch < S; ch++)
+		// feature textures are written to a single array in the following order:.
+		/*
+		Order of features stored in F:
+        roughness               float      
+        metallic                float
+		incident_visibility     float
+		bdrf_color				float3
+        normal                  float3    
+        base_color              float3              
+        incident_light          float3         
+        local_incident_light    float3  
+        global_incident_light   float3
+		*/
+
+		// This gets displayed correctly in Python frontend
+		//out_feature[pix_id * S] = F[0];
+
+		// This gets read correctly from post processing 
+		//out_feature[pix_id] = F[0];
+
+		
+		int f_ch = 0; // Keep track of which texture we're currently workin on.
+		int f_offset = 0; // Keep track of the offset to the beginning of the current texture.
+
+		// Write all the 1 float texturs contigously one after the other.
+		for (size_t i = 0; i < 3; i++)
 		{
-			out_feature[pix_id * S + ch] = F[ch];
+			out_feature[f_offset + pix_id] = F[f_ch];
+			f_ch++;
+			f_offset += H * W;
 		}
+
+		
+		// Write all the 3 float textures contigously one after the other:
+		for (size_t i = 0; i < 6; i++)
+		{
+			// Write all three floats next to each other before the offset is increased
+			for (int ch = 0; ch < 3; ch++){
+				out_feature[f_offset + pix_id * 3 + ch] = F[f_ch];
+				f_ch++;
+			}
+			f_offset += 3 * H * W;
+		}
+		
 	}
 }
 

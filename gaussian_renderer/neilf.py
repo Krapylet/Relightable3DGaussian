@@ -31,9 +31,11 @@ def render_view(viewpoint_camera: Camera, pc: GaussianModel, pipe, bg_color: tor
     tanfovy = math.tan(viewpoint_camera.FoVy * 0.5)
     intrinsic = viewpoint_camera.intrinsics
 
+    height = int(viewpoint_camera.image_height)
+    width = int(viewpoint_camera.image_width)
     raster_settings = GaussianRasterizationSettings(
-        image_height=int(viewpoint_camera.image_height),
-        image_width=int(viewpoint_camera.image_width),
+        image_height=height,
+        image_width=width,
         tanfovx=tanfovx,
         tanfovy=tanfovy,
         cx=float(intrinsic[0, 2]),
@@ -131,10 +133,13 @@ def render_view(viewpoint_camera: Camera, pc: GaussianModel, pipe, bg_color: tor
         features=features,
     )
 
+    
     feature_dict = {}
+    #featureSlices = rendered_feature.split(7);
+
     if is_training:
         rendered_roughness, rendered_metallic, rendered_pbr, rendered_normal, rendered_base_color \
-            = rendered_feature.split([1, 1, 3, 3, 3], dim=2)
+            = rendered_feature.reshape(-1).view(11,800,800).permute(1,2,0).split([1, 1, 3, 3, 3], dim=2)
         feature_dict.update({"base_color": rendered_base_color,
                              "roughness": rendered_roughness,
                              "metallic": rendered_metallic,
@@ -142,8 +147,8 @@ def render_view(viewpoint_camera: Camera, pc: GaussianModel, pipe, bg_color: tor
     else:
         rendered_roughness, rendered_metallic, rendered_visibility, rendered_pbr, rendered_normal, \
             rendered_base_color, rendered_light, rendered_local_light, rendered_global_light,  \
-            = rendered_feature.split([1, 1, 1, 3, 3, 3, 3, 3, 3], dim=2)
-         
+            = rendered_feature.reshape(-1).view(21,800,800).permute(1,2,0).split([1, 1, 1, 3, 3, 3, 3, 3, 3], dim=2)
+
         feature_dict.update({"base_color": rendered_base_color,
                              "roughness": rendered_roughness,
                              "metallic": rendered_metallic,

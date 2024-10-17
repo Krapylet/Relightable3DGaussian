@@ -34,12 +34,12 @@ namespace PostProcess
         roughness               (p.features + pixCount * (0)),      
         metallic                (p.features + pixCount * (1)),
         incident_visibility     (p.features + pixCount * (1+1)),
-        brdf_color              ((glm::vec3 const * const)p.features + pixCount * (1+1+1)),
-        normal                  ((glm::vec3 const * const)p.features + pixCount * (1+1+1+3)),    
-        base_color              ((glm::vec3 const * const)p.features + pixCount * (1+1+1+3+3)),              
-        incident_light          ((glm::vec3 const * const)p.features + pixCount * (1+1+1+3+3+3)),         
-        local_incident_light    ((glm::vec3 const * const)p.features + pixCount * (1+1+1+3+3+3+3)),  
-        global_incident_light   ((glm::vec3 const * const)p.features + pixCount * (1+1+1+3+3+3+3+3)),
+        brdf_color              ((glm::vec3 const * const)(p.features + pixCount * (1+1+1))),
+        normal                  ((glm::vec3 const * const)(p.features + pixCount * (1+1+1+3))),    
+        base_color              ((glm::vec3 const * const)(p.features + pixCount * (1+1+1+3+3))),              
+        incident_light          ((glm::vec3 const * const)(p.features + pixCount * (1+1+1+3+3+3))),         
+        local_incident_light    ((glm::vec3 const * const)(p.features + pixCount * (1+1+1+3+3+3+3))),  
+        global_incident_light   ((glm::vec3 const * const)(p.features + pixCount * (1+1+1+3+3+3+3+3))),
 
 
         //// Scene textures:
@@ -81,6 +81,18 @@ namespace PostProcess
         return pixelIsInsideStencil;
     }
 
+    // Performs a very simple quantization of the model colors
+    __device__ static glm::vec3 QuantizeColor(glm::vec3 color, int steps)
+    {
+        // for each component of the color, clamp it to the closest multiple of the step threshold (1/steps).
+        float quantizedR = roundf(color.r * steps)/steps;
+        float quantizedG = roundf(color.g * steps)/steps;
+        float quantizedB = roundf(color.b * steps)/steps;
+
+        glm::vec3 quatnizedColor(quantizedR, quantizedG, quantizedB);
+        return quatnizedColor;
+    }
+
     // Simple method for generating an outline around the object using stencil.
     __device__ static void OutlineShader(PostProcessShaderParams p){
         bool pixelIsOutsideOfStencil = !PixelIsInsideStencil(p.pixel, &p);
@@ -104,10 +116,15 @@ namespace PostProcess
         bool pixelShouldBeOutlined = pixelIsOutsideOfStencil && pixelIsNearStencil;
 
         glm::vec3 outlineColor = glm::vec3(1,0,0);
-        *p.out_shader_color = *p.out_shader_color * (1.0f-(float)pixelShouldBeOutlined) + outlineColor * (float)pixelShouldBeOutlined;
 
-//        *p.out_shader_color = glm::vec3((float) pixelIsInsideStencil, (float) pixelIsInsideStencil, (float) pixelIsInsideStencil);
+        glm::vec3 litColor = p.base_color[p.pixel_idx] * p.incident_light[p.pixel_idx];
+        glm::vec3 internalColor = QuantizeColor(litColor, 4);
+
+        *p.out_shader_color = internalColor * (1.0f-(float)pixelShouldBeOutlined) + outlineColor * (float)pixelShouldBeOutlined;
+        //*p.out_shader_color = glm::vec3(p.roughness[p.pixel_idx],p.roughness[p.pixel_idx],p.roughness[p.pixel_idx]);
     }
+
+
 
     __device__ const PostProcessShader defaultShader = &DefaultPostProcess;
     __device__ const PostProcessShader invertShader = &InvertColorsShader;

@@ -72,12 +72,6 @@ class _RasterizeGaussians(torch.autograd.Function):
             raster_settings,
     ):
         
-        shaderATextures = {"Red": torch.tensor([0.2,0.2,0.2], dtype=torch.float32).cuda(),
-             "Green": torch.tensor([0.3,0.3,0.3], dtype=torch.float32).cuda()}
-        shaderBTextures = {"Blue": torch.tensor([0.4,0.4,0.4], dtype=torch.float32).cuda(),
-             "Black": torch.tensor([0.5,0.5,0.5], dtype=torch.float32).cuda()}
-        shaderTextureCollection = { "ShaderATextures": shaderATextures, "ShaderBTextures": shaderBTextures}
-        
         # Restructure arguments the way that the C++ lib expects them
         args = (
             raster_settings.bg,

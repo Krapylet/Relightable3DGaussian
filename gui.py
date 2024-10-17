@@ -153,21 +153,21 @@ class GUI:
             if len(output.shape) == 2:
                 output = output[None]
 
-            #if (self.H, self.W) != tuple(output.shape[:2]):
-             #   output = self.resize_fn(output)
+            if (self.H, self.W) != tuple(output.shape[:2]):
+               output = self.resize_fn(output)
 
             # If the buffer only contains 1 value pr pixel (like pixel depth as opposed to RGB) repeat it thrice and permute it
             # to copy that value into all three RGB fields, resulting in a black and white image.
             hasOneValuePrPixel = output.shape[2] == 1
             if hasOneValuePrPixel:
-                output = output.repeat(1, 1, 3)
-                print(f"Output: {output.shape}")
-            
+                output = output.repeat(1, 1, 3) # Works for feat non-feature single depth textures
+                
             if "normal" in mode:
-                opacity = render_results["opacity"].repeat(1, 1, 3)
+                opacity = self.resize_fn(render_results["opacity"]).repeat(1, 1, 3)
                 output = output * 0.5 + 0.5 * opacity
-                print(f"Opacity: {opacity.shape}, Output: {output.shape}")
-            
+
+            print(output.shape)
+            #output = output[:,:,0].unsqueeze(2).repeat(1,1,3)
             output = output.contiguous().detach().cpu().numpy()
         return output
 
