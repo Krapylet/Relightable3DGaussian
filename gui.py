@@ -140,7 +140,6 @@ class GUI:
             output = torch.ones(self.H, self.W, 3, dtype=torch.float32, device='cuda').detach().cpu().numpy()
         else:
             output = render_results[mode]
-            print(output.shape)
 
             if mode == "depth":
                 output = (output - output.min()) / (output.max() - output.min())
@@ -154,7 +153,7 @@ class GUI:
                 output = output[None]
 
             if (self.H, self.W) != tuple(output.shape[:2]):
-               output = self.resize_fn(output)
+               output = self.resize_fn(output.permute(2,0,1)).permute(1,2,0) ## Resizing is INCREDIBLY slow if we don't permute to the form (ch, H, W) first.
 
             # If the buffer only contains 1 value pr pixel (like pixel depth as opposed to RGB) repeat it thrice and permute it
             # to copy that value into all three RGB fields, resulting in a black and white image.
@@ -164,8 +163,7 @@ class GUI:
                 
                 
             if "normal" in mode:
-                opacity = self.resize_fn(render_results["opacity"])
-                print(f"Normal shape: {output.shape}, Opacity shape: {opacity.shape}")
+                opacity = self.resize_fn(render_results["opacity"].permute(2,0,1)).permute(1,2,0)
                 output = output * 0.5 + 0.5 * opacity
 
             
