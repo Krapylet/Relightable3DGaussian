@@ -94,6 +94,7 @@ namespace PostProcess
     }
 
     // Simple method for generating an outline around the object using stencil.
+    // Could be upgrade to also use depth map etc.
     __device__ static void OutlineShader(PostProcessShaderParams p){
         bool pixelIsOutsideOfStencil = !PixelIsInsideStencil(p.pixel, &p);
         
@@ -121,7 +122,61 @@ namespace PostProcess
         glm::vec3 internalColor = QuantizeColor(litColor, 4);
 
         *p.out_shader_color = internalColor * (1.0f-(float)pixelShouldBeOutlined) + outlineColor * (float)pixelShouldBeOutlined;
-        //*p.out_shader_color = glm::vec3(p.roughness[p.pixel_idx],p.roughness[p.pixel_idx],p.roughness[p.pixel_idx]);
+    }
+
+    // Simple method for generating an outline around the object using stencil.
+    __device__ static void ToonShader(PostProcessShaderParams p){
+        bool pixelIsOutsideOfStencil = !PixelIsInsideStencil(p.pixel, &p);
+        
+        int outlineThickness = 5;
+        int sampleDirections = 5;
+
+        bool pixelIsNearStencil = false;
+
+        // sample one pixel pr. thickness in all directions.
+        for (float radius = 1; radius < outlineThickness + 1; radius++)
+        {
+            for (float direction = 0; direction <= 1; direction += 1.0f/(float)sampleDirections)
+            {
+                glm::ivec2 samplePixel = p.pixel + (glm::ivec2)(glm::vec2(cos(direction * 2 * M_PI), sin(direction * 2 * M_PI)) * radius);
+        
+                pixelIsNearStencil |= PixelIsInsideStencil(samplePixel, &p);
+            }
+        }
+        
+        bool pixelShouldBeOutlined = pixelIsOutsideOfStencil && pixelIsNearStencil;
+
+        glm::vec3 outlineColor = glm::vec3(1,0,0);
+
+        // instead of darking areas with shadow by darkening the color, we instead draw a texture on top of the darnkeded areas.
+        // The textures are in screen space, though...
+        // Again. 3d textures would probably be a good addition.
+        auto shadowTex = p.d_textureManager->GetTexture("shadow");
+        
+        float uvScale = 10;
+        float u = (float)p.pixel.x / (float)p.width * uvScale;
+        float v = (float)p.pixel.y / (float)p.height * uvScale;
+
+        float lightShadow = tex2D<float4>(shadowTex, u, v).x;
+        float mediumShadow = tex2D<float4>(shadowTex, u, v).y;
+        float heavyShadow = tex2D<float4>(shadowTex, u, v).z;
+
+        glm::vec3 quantizedLight = QuantizeColor(p.incident_light[p.pixel_idx], 4);
+        float shadowIntensity = 1 - max(quantizedLight.r, max(quantizedLight.g, quantizedLight.b))/2;
+
+        glm::vec3 shadowIntensityVec(shadowIntensity, shadowIntensity, shadowIntensity);
+        glm::vec3 shadowThresholds = glm::vec3(1, 0.75, 0.5);
+        glm::vec3 shouldUseShadowWeight = glm::step(shouldUseShadowWeight, shadowIntensityVec);
+        
+
+        bool pixelIsInStencil = PixelIsInsideStencil(p.pixel, &p);
+        float light = 1 - max(lightShadow * shouldUseShadowWeight.x, max(mediumShadow + shouldUseShadowWeight.y, heavyShadow + shouldUseShadowWeight.z)) * pixelIsInStencil;
+        
+        // Apply the shadow texture on top of the unlit colors
+        glm::vec3 internalColor = p.base_color[p.pixel_idx] * light;
+        //glm::vec3 internalColor = shouldUseShadowWeight;
+
+        *p.out_shader_color = internalColor * (1.0f-(float)pixelShouldBeOutlined) + outlineColor * (float)pixelShouldBeOutlined;
     }
 
 
@@ -129,6 +184,7 @@ namespace PostProcess
     __device__ const PostProcessShader defaultShader = &DefaultPostProcess;
     __device__ const PostProcessShader invertShader = &InvertColorsShader;
     __device__ const PostProcessShader outlineShader = &OutlineShader;
+    __device__ const PostProcessShader toonShader = &ToonShader;
 
 	std::map<std::string, int64_t> GetPostProcessShaderAddressMap(){
         // we cast pointers to numbers since most pointers aren't supported by pybind
@@ -150,6 +206,10 @@ namespace PostProcess
         PostProcessShader h_outlineShader;
         cudaMemcpyFromSymbol(&h_outlineShader, outlineShader, shaderMemorySize);
         shaderMap["Outline"] = (int64_t)h_outlineShader;
+        
+        PostProcessShader h_toonShader;
+        cudaMemcpyFromSymbol(&h_toonShader, toonShader, shaderMemorySize);
+        shaderMap["Toon"] = (int64_t)h_toonShader;
 
 
         printf("Post proces address collector called\n");
