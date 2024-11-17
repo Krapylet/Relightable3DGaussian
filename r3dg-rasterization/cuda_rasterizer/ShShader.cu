@@ -1,5 +1,4 @@
 #include "shShader.h"
-#include "config.h"
 #include <iostream>
 #include <cooperative_groups.h>
 #include "../utils/texture.h"

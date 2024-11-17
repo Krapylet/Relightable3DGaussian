@@ -346,7 +346,7 @@ namespace Texture
             int stringlength = name.length();
             char* d_charName;
             cudaMalloc(&d_charName, (stringlength+1)*sizeof(char)); // add 1 to also include the termination character
-            cudaMemcpy(d_charName, name.c_str(), stringlength+1, cudaMemcpyKind::cudaMemcpyDefault);
+            cudaMemcpy(d_charName, name.c_str(), (stringlength+1)*sizeof(char), cudaMemcpyKind::cudaMemcpyDefault);
 
             // Save the pointers to the tempoary host vectors.
             h_names[i] = d_charName;

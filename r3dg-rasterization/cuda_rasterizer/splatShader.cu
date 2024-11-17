@@ -1,5 +1,4 @@
 #include "splatShader.h"
-#include "config.h"
 #include <cooperative_groups.h>
 #include "../utils/shaderUtils.h"
 #include "auxiliary.h"
