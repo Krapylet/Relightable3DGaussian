@@ -198,11 +198,13 @@ namespace ShShader
         return d_shaderArray;
     }
 
-    __global__ void ExecuteShader(ShShader* shaders, PackedShShaderParams packedParams){
-        // calculate index for the spalt.
-        auto idx = cg::this_grid().thread_rank();
-        if (idx >= packedParams.P)
+    __global__ void ExecuteShader(ShShader shader, int* d_splatIndexes, PackedShShaderParams packedParams){
+        auto shaderInstance = cg::this_grid().thread_rank();
+        if (shaderInstance >= packedParams.P)
             return;
+
+        // Figure out which splat to execute on
+        int idx = d_splatIndexes[shaderInstance];
 
         // Unpack shader parameters into a format that is easier to work with. Increases memory footprint as tradeoff.
         // Could easily be optimized away by only indexing into the params inside the shader, but for now I'm prioritizing ease of use.
@@ -211,7 +213,7 @@ namespace ShShader
         ShShaderOutputs out(packedParams, idx);
 
         // No need to dereference the shader function pointer.
-        shaders[idx](in, io, out);
+        shader(in, io, out);
     }
 
 

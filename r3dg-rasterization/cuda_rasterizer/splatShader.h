@@ -172,7 +172,7 @@ namespace SplatShader
 	int64_t* GetSplatShaderAddressArray();
 
 	// Executes a shader on the GPU with the given parameters.
-	__global__ extern void ExecuteShader(SplatShader* shaders, PackedSplatShaderParams packedParams);
+	__global__ extern void ExecuteShader(SplatShader shader, int* d_splatIndexes, PackedSplatShaderParams packedParams);
 
 	
 };

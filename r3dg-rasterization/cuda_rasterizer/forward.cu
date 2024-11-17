@@ -849,19 +849,16 @@ void FORWARD::RunSHShaders(
 		opacities,
 		stencil_vals
 	};
-	int* shaderAddresses = new int[2];
-	ShShader::ShShader* d_shaderAddresses;
-	size_t sizeOfAddresses = P * sizeof(ShShader::ShShader);
-	cudaMalloc(&d_shaderAddresses, sizeOfAddresses);
-	cudaMemcpy(d_shaderAddresses, shaderAddresses, sizeOfAddresses, cudaMemcpyHostToDevice);
 
-	ShShader::ExecuteShader<<<(P + 255) / 256, 256>>>(d_shaderAddresses, params);
-	
+	// execute all shaders in individual clusters to prevent branching
+	for (size_t i = 0; i < h_shShaderManager->h_shaderCount; i++)
+	{
+		auto shader = (ShShader::ShShader)h_shShaderManager->h_shaderAddresses[i];
+		int shaderInstanceCount = h_shShaderManager->h_shaderInstanceCount[i];
+		int* d_associatedSplats = h_shShaderManager->h_d_shaderAssociationMap[i];
 
-	// Wait for each shader to finish.
-	cudaDeviceSynchronize();
-
-	cudaFree(d_shaderAddresses);
+		ShShader::ExecuteShader<<<(shaderInstanceCount + 255) / 256, 256>>>(shader, d_associatedSplats, params);
+	}
 }
 
 void FORWARD::RenderIntermediateTextures(
@@ -942,15 +939,16 @@ void FORWARD::RunSplatShaders(
 
 		(glm::vec3*)out_colors
 	};
-		int* shaderAddresses = new int[2];
-	SplatShader::SplatShader* d_shaderAddresses;
-	size_t sizeOfAddresses = P * sizeof(SplatShader::SplatShader);
-	cudaMalloc(&d_shaderAddresses, sizeOfAddresses);
-	cudaMemcpy(d_shaderAddresses, shaderAddresses, sizeOfAddresses, cudaMemcpyHostToDevice);
 
-	SplatShader::ExecuteShader<<<(P + 255) / 256, 256>>>(d_shaderAddresses, params);
+	// execute all shaders in individual clusters to prevent branching
+	for (size_t i = 0; i < h_splatShaderManager->h_shaderCount; i++)
+	{
+		auto shader = (SplatShader::SplatShader)h_splatShaderManager->h_shaderAddresses[i];
+		int shaderInstanceCount = h_splatShaderManager->h_shaderInstanceCount[i];
+		int* d_associatedSplats = h_splatShaderManager->h_d_shaderAssociationMap[i];
 
-	cudaFree(d_shaderAddresses);	
+		SplatShader::ExecuteShader<<<(shaderInstanceCount + 255) / 256, 256>>>(shader, d_associatedSplats, params);
+	}
 }
 
 void FORWARD::RunPostProcessShaders(
