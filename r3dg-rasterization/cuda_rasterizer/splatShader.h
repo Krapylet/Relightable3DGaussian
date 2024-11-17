@@ -54,11 +54,11 @@ namespace SplatShader
 		// pr. frame texture information
 		float const *const __restrict__ splat_depths;				
 		glm::vec3 const *const __restrict__ colors_SH;				
-		glm::vec4 const *const __restrict__ conic_opacity;		
+		glm::vec4 *const __restrict__ conic_opacity;		
 
 		// Precomputed 'texture' information from the neilf pbr decomposition
 		int const  S;						// Feature channel count.
-		float const *const __restrict__ features;		// Interleaved array of precomputed 'textures' for each individual gaussian. Stored in the following order:
+		float *const __restrict__ features;		// Interleaved array of precomputed 'textures' for each individual gaussian. Stored in the following order:
 											// float  roughness,
                                             // float  metallic
                                             // float  incident_visibility
@@ -79,12 +79,14 @@ namespace SplatShader
 		glm::vec3 *const __restrict__ out_colors;			// shader color output.
 	};
 
-	// Used as input and output interface to the shaders.
+	// --------- Shader input and output interfaces.
 	// Only contains information relevant to each individual splat.
 	// Acts as an interface layer that hides complexities and calculates commonly used values, thereby reducing boiler-plate code and human error.
-	struct SplatShaderParams {
+
+	// Inputs that cannot be changed by the shader
+	struct SplatShaderConstantInputs {
 		// Constructor
-		__device__ SplatShaderParams(PackedSplatShaderParams params, int idx);
+		__device__ SplatShaderConstantInputs(PackedSplatShaderParams params, int idx);
 
 		// Screen information:
         int const W; int const H;							// Sceen width and height
@@ -120,35 +122,47 @@ namespace SplatShader
 
 		// pr. frame splat information
 		float const splat_depth;					// Mean splat depth in view space.
-		glm::vec3 const conic;				// Covariance matrix used to determine how splats should be merged in final rendering step.
+		glm::vec3 const conic;				// Covariance matrix used to determine splats shapes in the final rendering step.
 		glm::vec3 const *const __restrict__ color_SH;	// Color from SH evaluation
-
-		// Precomputed 'texture' information from the neilf pbr decomposition
-		glm::vec3 const color_brdf;			// pbr splat color
-		glm::vec3 const normal;				// Splat normal in object space
-		glm::vec3 const color_base;			// Decomposed splat color without lighting
-		float const  roughness;
-		float const  metallic;
-		glm::vec3 const  incident_light;
-		glm::vec3 const  local_incident_light;
-		glm::vec3 const  global_incident_light;
-		float const  incident_visibility;
 
 		// Class that is used to retrieve textures. Make sure to cache textures once retrieved.
 		Texture::TextureManager *const d_textureManager;
+	};
 
-		// input / output 
-		// can be changed, but is already populated when function is called
-		float *const __restrict__ opacity;						//The opacity of the splat. Opacity works a bit funky because how splats are blended. It is better to multiply this paramter by something rather than setting it to specific values.
+	// Modifiable intputs
+	// Inputs values that can be changed by the shader
+	// We use pointers to the outputs/modifiable inputs so we can operate in-place.
+	struct SplatShaderModifiableInputs {
+		// Constructor
+		__device__ SplatShaderModifiableInputs(PackedSplatShaderParams params, int idx);
+
+		// Precomputed 'texture' information from the neilf pbr decomposition
+		glm::vec3 *const color_brdf;			// pbr splat color
+		glm::vec3 *const normal;				// Splat normal in object space
+		glm::vec3 *const color_base;			// Decomposed splat color without lighting
+		float *const  roughness;
+		float *const  metallic;
+		glm::vec3 *const  incident_light;
+		glm::vec3 *const  local_incident_light;
+		glm::vec3 *const  global_incident_light;
+		float *const  incident_visibility;
+
+		// pr. splat information
+		float *const __restrict__ opacity;				//The opacity of the splat. Opacity works a bit funky because how splats are blended. It is better to multiply this paramter by something rather than setting it to specific values.
 		float *const __restrict__ stencil_val;			//The stencil value of the splat.
+	};
 
-		// output
-		// We use pointers to the output instead of return values to make it easy to extend during development.
+	// output
+	// All outputs has to be assigned in the shader.
+	struct SplatShaderOutputs{
+		// Constructor
+		__device__ SplatShaderOutputs(PackedSplatShaderParams params, int idx);
+
 		glm::vec3 *const __restrict__ out_color;					// RGB color output the splat. Will get combined based on alpha in the next step.
 	};
 
 	// Define a shared type of fuction pointer that can point to all implemented shaders.
-    typedef void (*SplatShader)(SplatShaderParams params);
+    typedef void (*SplatShader)(SplatShaderConstantInputs in, SplatShaderModifiableInputs io, SplatShaderOutputs out);
 
 	// Returns a map of shader names and shader device function pointers that can be passed back to the python frontend though pybind.
 	// we cast pointers to int since pure pointers aren't supported by pybind (ideally uint64_t, but pythorch only supports usigned 8-bit ints)

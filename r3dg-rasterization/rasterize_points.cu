@@ -113,6 +113,7 @@ RasterizeGaussiansCUDA(
 	// While this is an interesting feature (that should maybe be toggleable?) we don't want that right now. We therefore have to copy
 	// every array that contains a value we want to be able to change non-persistantly
 	torch::Tensor temp_means3D = means3D.detach().clone();
+	torch::Tensor temp_features = features.detach().clone();
 	torch::Tensor temp_opacity = opacity.detach().clone();
 	torch::Tensor temp_scales = scales.detach().clone();
 	torch::Tensor temp_rotations = rotations.detach().clone();
@@ -137,7 +138,7 @@ RasterizeGaussiansCUDA(
 			temp_means3D.contiguous().data_ptr<float>(),
 			temp_sh.contiguous().data_ptr<float>(),
 			colors.contiguous().data_ptr<float>(),
-			features.contiguous().data_ptr<float>(),
+			temp_features.contiguous().data_ptr<float>(),
 			temp_opacity.contiguous().data_ptr<float>(),
 			temp_scales.contiguous().data_ptr<float>(),
 			scale_modifier,
