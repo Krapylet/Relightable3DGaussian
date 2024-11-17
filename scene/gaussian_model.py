@@ -116,10 +116,10 @@ class GaussianModel:
         splatCount = self._opacity.shape[0]
         print("Appending shader addresses to " + str(splatCount) + " splats")     
            
-        (shShaderAddresses, splatshaderAddresses) = _C.PreprocessModel(self._xyz)
+        (h_shShaderManager_ptr, h_splatShaderManager_ptr) = _C.PreprocessModel(self._xyz)
         print("preprocessing done")
-        self.sh_shader_addresses = shShaderAddresses
-        self.splat_shader_addresses = splatshaderAddresses
+        self.h_shShaderManager_ptr = h_shShaderManager_ptr
+        self.h_splatShaderManager_ptr = h_splatShaderManager_ptr
         print("Done appending addresses")
 
     #Adds an additional tensor to the model with addresses for default shaders to use. Only used during training.
