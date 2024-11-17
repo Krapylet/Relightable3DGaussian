@@ -16,6 +16,7 @@
 #include <functional>
 #include "../utils/texture.h"
 #include "postProcessShader.h"
+#include "../shaderManager.h"
 
 namespace CudaRasterizer
 {
@@ -47,8 +48,6 @@ namespace CudaRasterizer
 			const float scale_modifier,
 			float* rotations,
 			const float* cov3D_precomp,
-			const int64_t* shShaderAddresses,
-			const int64_t* splatShaderAddresses,
 			const float* viewmatrix,
 			const float* viewmatrix_inv,
 			const float* projmatrix,
@@ -59,6 +58,8 @@ namespace CudaRasterizer
 			const bool prefiltered,
 			const bool computer_pseudo_normal,
 			Texture::TextureManager *const d_textureManager,
+			ShaderManager* h_shShaderManager,
+			ShaderManager* h_splatShaderManager,
 			std::vector<PostProcess::PostProcessShader> postProcessPasses,
 			float* out_color,
 			float* out_opacity,

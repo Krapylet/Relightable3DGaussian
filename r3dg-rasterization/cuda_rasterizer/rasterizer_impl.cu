@@ -217,8 +217,6 @@ int CudaRasterizer::Rasterizer::forward(
 	const float scale_modifier,
 	float* rotations,
 	const float* cov3D_precomp,
-	const int64_t* shShaderAddresses,
-	const int64_t* splatShaderAddresses,
 	const float* viewmatrix,
 	const float* viewmatrix_inv,
 	const float* projmatrix,
@@ -229,6 +227,8 @@ int CudaRasterizer::Rasterizer::forward(
 	const bool prefiltered,
 	const bool computer_pseudo_normal,
 	Texture::TextureManager *const d_textureManager,
+	ShaderManager* h_shShaderManager,
+	ShaderManager* h_splatShaderManager,
 	std::vector<PostProcess::PostProcessShader> postProcessPasses,
 	float* out_color,
 	float* out_opacity,
@@ -267,7 +267,7 @@ int CudaRasterizer::Rasterizer::forward(
 
 	CHECK_CUDA(FORWARD::RunSHShaders(
 		P,
-		shShaderAddresses,
+		h_shShaderManager,
 
 		//input
 		time, dt,
@@ -386,7 +386,7 @@ int CudaRasterizer::Rasterizer::forward(
 
 	CHECK_CUDA(FORWARD::RunSplatShaders(
 		P,
-		splatShaderAddresses,
+		h_splatShaderManager,
 
 		// input
 		width, height,

@@ -795,7 +795,7 @@ void FORWARD::render_pseudo_normal(
 
 void FORWARD::RunSHShaders(
 	const int P,
-	int64_t const *const shaderAddresses,
+	ShaderManager* h_shShaderManager,
 
 	//input
 	float const time, float const dt,
@@ -849,7 +849,7 @@ void FORWARD::RunSHShaders(
 		opacities,
 		stencil_vals
 	};
-	
+	int* shaderAddresses = new int[2];
 	ShShader::ShShader* d_shaderAddresses;
 	size_t sizeOfAddresses = P * sizeof(ShShader::ShShader);
 	cudaMalloc(&d_shaderAddresses, sizeOfAddresses);
@@ -892,7 +892,7 @@ void FORWARD::RenderIntermediateTextures(
 
 void FORWARD::RunSplatShaders(
 	int const P,
-	int64_t const *const __restrict__ shaderAddresses,
+	ShaderManager* h_splatShaderManager,
 	
 	int const W, int const H,			
 	float const time, float const dt,
@@ -942,7 +942,7 @@ void FORWARD::RunSplatShaders(
 
 		(glm::vec3*)out_colors
 	};
-	
+		int* shaderAddresses = new int[2];
 	SplatShader::SplatShader* d_shaderAddresses;
 	size_t sizeOfAddresses = P * sizeof(SplatShader::SplatShader);
 	cudaMalloc(&d_shaderAddresses, sizeOfAddresses);

@@ -17,6 +17,7 @@
 #include "device_launch_parameters.h"
 #include "../utils/texture.h"
 #include "postProcessShader.h"
+#include "../shaderManager.h"
 
 #ifndef GLM_FORCE_CUDA
 #define GLM_FORCE_CUDA
@@ -29,7 +30,7 @@ namespace FORWARD
 	// Run any user-provided SH shaders prior to preprocessing, allowing users to change positions and such.
 	void RunSHShaders(
 		const int P,
-		int64_t const *const shaderAddresses,
+		ShaderManager* h_shShaderManager,
 
 		//input
 		float const time, float const dt,
@@ -100,7 +101,7 @@ namespace FORWARD
 	// Runs after preprocess but before renderer. Allows changing rgb output for individual splats.
 	void RunSplatShaders(
 		int const P,
-		int64_t const *const shaderAddresses,
+		ShaderManager* h_splatShaderManager,
 
 		// intput
 		int const W, int const H,
