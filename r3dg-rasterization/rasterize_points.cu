@@ -27,6 +27,7 @@
 #include "utils/texture.h"
 #include "cuda_rasterizer/auxiliary.h"
 #include "cuda_rasterizer/postProcessShader.h"
+#include "shaderManager.h"
 
 std::function<char*(size_t N)> resizeFunctional(torch::Tensor& t) {
     auto lambda = [&t](size_t N) {
@@ -49,8 +50,6 @@ RasterizeGaussiansCUDA(
 	const torch::Tensor& rotations, 	//
 	const float scale_modifier,
 	const torch::Tensor& cov3D_precomp,
-	const torch::Tensor& shShaderAddresses,
-	const torch::Tensor& splatShaderAddresses,
 	const torch::Tensor& viewmatrix,
 	const torch::Tensor& viewmatrix_inv,
 	const torch::Tensor& projmatrix,
@@ -67,11 +66,17 @@ RasterizeGaussiansCUDA(
 	const bool prefiltered,
 	const bool computer_pseudo_normal,
 	const int64_t d_textureManager_ptr, // is actually a TextureManager* stored on device.
+	const int64_t h_shShaderManager_ptr,
+	const int64_t h_splatShaderManager_ptr,
 	const std::vector<int64_t> postProcessingPasses_ptr, // is actually a vector of PostProcessShaders
 	const bool debug)
 {
 	// cast the texture manager back into its original class.
 	auto d_textureManager = (Texture::TextureManager *const)d_textureManager_ptr;
+	auto h_shShaderManager =  (ShaderManager *const)h_shShaderManager_ptr;
+	auto h_splatShaderManager = (ShaderManager *const) h_splatShaderManager_ptr;
+	const int64_t* shShaderAddresses = new int64_t[2];
+	const int64_t* splatShaderAddresses = new int64_t[2];
 
 	// We can't cast the vector to the correct type directly, so we do it in a hacky way instead
 	auto ppArray = (PostProcess::PostProcessShader*) &postProcessingPasses_ptr[0];
@@ -144,8 +149,8 @@ RasterizeGaussiansCUDA(
 			scale_modifier,
 			temp_rotations.contiguous().data_ptr<float>(),
 			cov3D_precomp.contiguous().data_ptr<float>(),
-			shShaderAddresses.contiguous().data_ptr<int64_t>(),	
-			splatShaderAddresses.contiguous().data_ptr<int64_t>(),
+			shShaderAddresses,	
+			splatShaderAddresses,
 			viewmatrix.contiguous().data_ptr<float>(),
 			viewmatrix_inv.contiguous().data_ptr<float>(),
 			projmatrix.contiguous().data_ptr<float>(),

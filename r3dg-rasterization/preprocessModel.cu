@@ -55,7 +55,7 @@ void AppendShaderIndexes(
 
 // Figures out which shader each splat should be using and writes it the splatShaders tensor. Currently we only assign shaders
 // based on splat coordinates in order to facilitate testing. Ideally, this entire step should be preauthored and worked directly into the splat file or something.
-std::tuple<torch::Tensor, torch::Tensor> PreprocessModel(torch::Tensor& splatCoordinateTensor)
+std::tuple<int64_t, int64_t> PreprocessModel(torch::Tensor& splatCoordinateTensor)
 {
     // Load shader addresses. Allocates memory
     int64_t* shShaderAddressArray = ShShader::GetShShaderAddressArray();
@@ -70,7 +70,7 @@ std::tuple<torch::Tensor, torch::Tensor> PreprocessModel(torch::Tensor& splatCoo
     torch::Tensor d_out_ShShaderAddresses = torch::empty({splatCount}, options);
     torch::Tensor d_out_splatShaderAddresses = torch::empty({splatCount}, options);
 
-    ShaderManager newShaderManager(ShShader::GetShShaderAddressMap());
+    ShaderManager* newShaderManager = new ShaderManager(ShShader::GetShShaderAddressMap());
 
     // Run the address appending on the GPU   
 	CHECK_CUDA(AppendShaderIndexes(
@@ -91,5 +91,5 @@ std::tuple<torch::Tensor, torch::Tensor> PreprocessModel(torch::Tensor& splatCoo
     cudaFree(shShaderAddressArray);
     cudaFree(splatShaderAddressArray);
     
-    return std::make_tuple(h_out_ShShaderAddresses, h_out_splatShaderAddresses);
+    return std::make_tuple((int64_t)newShaderManager, (int64_t)newShaderManager);
 }

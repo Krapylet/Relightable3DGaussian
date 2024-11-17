@@ -28,8 +28,6 @@ RasterizeGaussiansCUDA(
 	const torch::Tensor& rotations,
 	const float scale_modifier,
 	const torch::Tensor& cov3D_precomp,
-	const torch::Tensor& shShaderAddresses,
-	const torch::Tensor& splatShaderAddresses,
 	const torch::Tensor& viewmatrix,
 	const torch::Tensor& viewmatrix_inv,
 	const torch::Tensor& projmatrix,
@@ -46,6 +44,8 @@ RasterizeGaussiansCUDA(
 	const bool prefiltered,
 	const bool computer_pseudo_normal,
 	const int64_t d_textureManager_ptr,
+	const int64_t h_shShaderManager_ptr,
+	const int64_t h_splatShaderManager_ptr,
 	const std::vector<int64_t> postProcessingPasses,
 	const bool debug);
 

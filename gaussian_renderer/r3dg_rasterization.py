@@ -85,8 +85,6 @@ class _RasterizeGaussians(torch.autograd.Function):
             rotations,
             raster_settings.scale_modifier,
             cov3Ds_precomp,
-            raster_settings.h_shShaderManager_ptr,
-            raster_settings.h_splatShaderManager_ptr,
             raster_settings.viewmatrix,
             raster_settings.viewmatrix_inv,
             raster_settings.projmatrix,
@@ -102,6 +100,8 @@ class _RasterizeGaussians(torch.autograd.Function):
             raster_settings.campos,
             raster_settings.prefiltered,
             raster_settings.computer_pseudo_normal,
+            raster_settings.h_shShaderManager_ptr,
+            raster_settings.h_splatShaderManager_ptr,
             raster_settings.d_textureManager_ptr,
             raster_settings.postProcessingPasses,
             raster_settings.debug
@@ -214,8 +214,8 @@ class GaussianRasterizationSettings(NamedTuple):
     backward_geometry: bool
     computer_pseudo_normal: bool
     debug: bool
-    h_shShaderManager_ptr: torch.Tensor
-    h_splatShaderManager_ptr: torch.Tensor
+    h_shShaderManager_ptr: int
+    h_splatShaderManager_ptr: int
     time: float
     dt: float
     d_textureManager_ptr: int
