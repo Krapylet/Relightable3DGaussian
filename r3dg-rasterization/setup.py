@@ -33,6 +33,7 @@ setup(
                 "ext.cu",
                 "preprocessModel.cu",
                 "utils/texture.cu",
+                "shaderManager.cu",
                 "utils/charOperations.cu",
                 "utils/includeTorch.cu",
                 "utils/shaderUtils.cu"],

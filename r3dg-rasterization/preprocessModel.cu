@@ -4,6 +4,7 @@
 #include "cuda_rasterizer/ShShader.h"
 #include "cuda_rasterizer/splatShader.h"
 #include "cuda_rasterizer/auxiliary.h"
+#include "shaderManager.h"
 #include <cooperative_groups.h>
 #include <inttypes.h>
 #ifndef GLM_FORCE_CUDA
@@ -68,6 +69,8 @@ std::tuple<torch::Tensor, torch::Tensor> PreprocessModel(torch::Tensor& splatCoo
     c10::TensorOptions options = torch::dtype(torch::kInt64).device(torch::kCUDA);
     torch::Tensor d_out_ShShaderAddresses = torch::empty({splatCount}, options);
     torch::Tensor d_out_splatShaderAddresses = torch::empty({splatCount}, options);
+
+    ShaderManager newShaderManager(ShShader::GetShShaderAddressMap());
 
     // Run the address appending on the GPU   
 	CHECK_CUDA(AppendShaderIndexes(
