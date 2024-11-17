@@ -211,7 +211,7 @@ int CudaRasterizer::Rasterizer::forward(
 	float* means3D,
 	float* shs,
 	const float* colors_precomp,
-	const float* features,
+	float* features,
 	float* opacities,
 	float* scales,
 	const float scale_modifier,
@@ -272,7 +272,6 @@ int CudaRasterizer::Rasterizer::forward(
 		//input
 		time, dt,
 		scale_modifier,
-		tile_grid,
 		viewmatrix,
 		viewmatrix_inv,
 		projmatrix,
@@ -416,19 +415,6 @@ int CudaRasterizer::Rasterizer::forward(
 		geomState.shader_rgb
 	), debug);
 
-	CHECK_CUDA(FORWARD::RenderIntermediateTextures(
-		tile_grid, block,
-		imgState.ranges,
-		binningState.point_list,
-		width, height,
-		geomState.means2D,
-		geomState.depths,
-		geomState.stencils,
-		geomState.conic_opacity,
-		out_depth,
-		out_stencil
-	), debug);
-
 	// Let each tile blend its range of Gaussians independently in parallel
 	//const float* colors_ptr = colors_precomp != nullptr ? colors_precomp : geomState.rgb;
 	CHECK_CUDA(FORWARD::render(
@@ -478,6 +464,19 @@ int CudaRasterizer::Rasterizer::forward(
             out_surface_xyz
             ), debug)
     }
+
+	CHECK_CUDA(FORWARD::RenderIntermediateTextures(
+		tile_grid, block,
+		imgState.ranges,
+		binningState.point_list,
+		width, height,
+		geomState.means2D,
+		geomState.depths,
+		geomState.stencils,
+		geomState.conic_opacity,
+		out_depth,
+		out_stencil
+	), debug);
 
 	FORWARD::RunPostProcessShaders(
 		postProcessPasses,

@@ -153,11 +153,11 @@ namespace SplatShader
 	};
 
 	// output
-	// All outputs has to be assigned in the shader.
 	struct SplatShaderOutputs{
 		// Constructor
 		__device__ SplatShaderOutputs(PackedSplatShaderParams params, int idx);
 
+		// Note: HAS to be assigned in the shader.
 		glm::vec3 *const __restrict__ out_color;					// RGB color output the splat. Will get combined based on alpha in the next step.
 	};
 

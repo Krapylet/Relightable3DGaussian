@@ -34,7 +34,6 @@ namespace FORWARD
 		//input
 		float const time, float const dt,
 		float const scale_modifier,
-		dim3 const grid, // Could maybe be made dynamic?
 		float const *const viewmatrix,
 		float const *const viewmatrix_inv,
 		float const *const projmatrix,
@@ -44,7 +43,7 @@ namespace FORWARD
 		float const tan_fovx, float const tan_fovy,
 		int deg, int max_coeffs,
 		int const S,
-		float const *const features,
+		float *const features,
 		Texture::TextureManager *const d_textureManager,
 
 		//input/output   -   contains values when the method is called that can be changed.
@@ -120,7 +119,7 @@ namespace FORWARD
 		float const *const colors_SH, 
 		float4 const *const conic_opacity,        
 		int const S,						
-		float const *const features,
+		float *const features,
 		Texture::TextureManager *const d_textureManager,
 
 		// input/output

@@ -14,10 +14,9 @@ namespace cg = cooperative_groups;
 
 namespace ShShader
 {
-    __device__ ShShaderParams::ShShaderParams(PackedShShaderParams p, int idx):
+    __device__ ShShaderConstantInputs::ShShaderConstantInputs(PackedShShaderParams p, int idx):
         time(p.time), dt(p.dt),
         scale_modifier(p.scale_modifier),
-		grid(p.grid),
 		viewmatrix(p.viewmatrix),
 		viewmatrix_inv(p.viewmatrix_inv),
 		projmatrix(p.projmatrix),
@@ -27,67 +26,73 @@ namespace ShShader
 		focal_x(p.focal_x), focal_y(p.focal_y),
 		tan_fovx(p.tan_fovx), tan_fovy(tan_fovy),
         deg(p.deg), max_coeffs(p.max_coeffs),
-        
-        // Precomputed pr. splat 'texture' information from the neilf pbr decomposition
-        roughness (p.features[idx * p.S + 0]),
-		metallic (p.features[idx * p.S + 1]),
-		incident_visibility (p.features[idx * p.S + 2]),
-		color_brdf ({p.features[idx * p.S + 3], p.features[idx * p.S + 4], p.features[idx * p.S + 5]}),
-		normal ({p.features[idx * p.S + 6], p.features[idx * p.S + 7], p.features[idx * p.S + 8]}),
-		color_base ({p.features[idx * p.S + 9], p.features[idx * p.S + 10], p.features[idx * p.S + 11]}),
-		incident_light ({p.features[idx * p.S + 12], p.features[idx * p.S + 13], p.features[idx * p.S + 14]}),
-		local_incident_light ({p.features[idx * p.S + 15], p.features[idx * p.S + 16], p.features[idx * p.S + 17]}),
-		global_incident_light ({p.features[idx * p.S + 18], p.features[idx * p.S + 19], p.features[idx * p.S + 20]}),
 
-        d_textureManager(p.d_textureManager),
-        
-		//input/output   -   contains values when the method is called that can be changed.
+        d_textureManager(p.d_textureManager)
+        {
+		// for now we're not actually doing anyting in the constuctior other than initializing the constants.
+    }
+
+    __device__ ShShaderModifiableInputs::ShShaderModifiableInputs(PackedShShaderParams p, int idx):
+        // Precomputed pr. splat 'texture' information from the neilf pbr decomposition
+        roughness (p.features + idx * p.S + 0),
+		metallic (p.features + idx * p.S + 1),
+		incident_visibility (p.features + idx * p.S + 2),
+		color_brdf ((glm::vec3*)p.features + idx * p.S + 3),
+		normal ((glm::vec3*)p.features + idx * p.S + 6),
+		color_base ((glm::vec3*)p.features + idx * p.S + 9),
+		incident_light ((glm::vec3*)p.features + idx * p.S + 12),
+		local_incident_light ((glm::vec3*)p.features + idx * p.S + 15),
+		global_incident_light ((glm::vec3*)p.features + idx * p.S + 18),
+
 		position(p.positions + idx),
 		scale(p.scales + idx),
 		rotation(p.rotations + idx),
 		opacity(p.opacities + idx),
-		sh(p.shs + idx * p.max_coeffs), // could also be calculated as idx + (p.deg + 1)^2
-        
-        // output
+		sh(p.shs + idx * p.max_coeffs) // could also be calculated as idx + (p.deg + 1)^2
+        {
+		// for now we're not actually doing anyting in the constuctior other than initializing the constants.
+    }
+
+    __device__ ShShaderOutputs::ShShaderOutputs(PackedShShaderParams p, int idx):
         stencil_val(p.stencil_vals + idx)
         {
 		// for now we're not actually doing anyting in the constuctior other than initializing the constants.
     }
 
-    __device__ static void DefaultShShaderCUDA(ShShaderParams p)
+    __device__ static void DefaultShShaderCUDA(ShShaderConstantInputs in, ShShaderModifiableInputs io, ShShaderOutputs out)
     {
         // Default shader doesn't need to set any values.
     }
 
-    __device__ static void ExponentialPositionShaderCUDA(ShShaderParams p)
+    __device__ static void ExponentialPositionShaderCUDA(ShShaderConstantInputs in, ShShaderModifiableInputs io, ShShaderOutputs out)
     {
         // multiply sh position and scale by y coordinate
-        float posX = abs((*p.position).x);
-        float posY = abs((*p.position).y);
-        float posZ = abs((*p.position).z);
-        float dist = glm::length(*p.position);
+        float posX = abs((*io.position).x);
+        float posY = abs((*io.position).y);
+        float posZ = abs((*io.position).z);
+        float dist = glm::length(*io.position);
         
-        *p.scale = glm::vec3((*p.scale).x * posY, (*p.scale).y * 2, (*p.scale).z) * posY;
-        *p.position = glm::vec3((*p.position).x * posY, (*p.position).y * 2, (*p.position).z) * posY;
+        *io.scale = glm::vec3((*io.scale).x * posY, (*io.scale).y * 2, (*io.scale).z) * posY;
+        *io.position = glm::vec3((*io.position).x * posY, (*io.position).y * 2, (*io.position).z) * posY;
     }
 
     // A shader that makes an object pulse with a heartbeat
     // The heart has two concurrent beats that we model here.
     // Written as SH shader because this is where we can update positions and scales.
-    __device__ static void HeartbeatShaderCUDA(ShShaderParams p)
+    __device__ static void HeartbeatShaderCUDA(ShShaderConstantInputs in, ShShaderModifiableInputs io, ShShaderOutputs out)
     {
         // Sample the texture contiaing the pattern for growth with the atreal pulse.
-        cudaTextureObject_t atrialTex = p.d_textureManager->GetTexture("Turbulence");
-        float atrialSampleXY = tex2D<float4>(atrialTex, p.position->x, p.position->y).x;
-        float atrialSampleXZ = tex2D<float4>(atrialTex, p.position->x, p.position->z).x;
-        float atrialSampleYZ = tex2D<float4>(atrialTex, p.position->y, p.position->z).x;
+        cudaTextureObject_t atrialTex = in.d_textureManager->GetTexture("Turbulence");
+        float atrialSampleXY = tex2D<float4>(atrialTex, io.position->x, io.position->y).x;
+        float atrialSampleXZ = tex2D<float4>(atrialTex, io.position->x, io.position->z).x;
+        float atrialSampleYZ = tex2D<float4>(atrialTex, io.position->y, io.position->z).x;
         float atrialPattern = (atrialSampleXY + atrialSampleXZ + atrialSampleYZ) / 3;
 
         // Sample for ventricular pattern
-        cudaTextureObject_t ventricularTex = p.d_textureManager->GetTexture("Craters");
-        float ventricularSampleXY = 1-tex2D<float4>(ventricularTex, p.position->x, p.position->y).x;
-        float ventricularSampleXZ = 1-tex2D<float4>(ventricularTex, p.position->x, p.position->z).x;
-        float ventricularSampleYZ = 1-tex2D<float4>(ventricularTex, p.position->y, p.position->z).x;
+        cudaTextureObject_t ventricularTex = in.d_textureManager->GetTexture("Craters");
+        float ventricularSampleXY = 1-tex2D<float4>(ventricularTex, io.position->x, io.position->y).x;
+        float ventricularSampleXZ = 1-tex2D<float4>(ventricularTex, io.position->x, io.position->z).x;
+        float ventricularSampleYZ = 1-tex2D<float4>(ventricularTex, io.position->y, io.position->z).x;
         float ventricularPattern = (ventricularSampleXY + ventricularSampleXZ + ventricularSampleYZ) / 3;
  
         // Create a wave that pulses out from the center of the object with values from 0-1.
@@ -95,8 +100,8 @@ namespace ShShader
         // when only rendinering a single object, I'm using the origin of the world instead.
         float pulsePeriod = 1;
         float distInfluence = -0.5;
-        float splatDist = glm::length(*p.position);
-        float time = p.time/1000/pulsePeriod + splatDist * distInfluence;
+        float splatDist = glm::length(*io.position);
+        float time = in.time/1000/pulsePeriod + splatDist * distInfluence;
 
         // Function i came up with myself for approximating the volume of a heartbeat with a regular rythm.
         // 1/4th conrraction and 3/4th expansion. Is graphed here: https://graphtoy.com/?f1(x,t)=cos(x)&v1=false&f2(x,t)=cos(x*3)&v2=false&f3(x,t)=1-round(sin(x)/2+0.5)&v3=false&f4(x,t)=f2(x)*f3(x)&v4=false&f5(x,t)=round(sin(x/4*3)/2+0.5)&v5=false&f6(x,t)=(f1(x%25(%F0%9D%9C%8B*4/3))*(1-f3(x%25(%F0%9D%9C%8B*4/3)))+f4(x%25(%F0%9D%9C%8B*4/3))+1)/2&v6=true&grid=1&coords=3.966845761855698,-0.05408620270927578,6.1301195710745375
@@ -117,20 +122,20 @@ namespace ShShader
         float atrialGrowth = heartBeatFunc(time) * atrialPattern;
         float ventricularGrowth = heartBeatFunc(time-0.9f) * ventricularPattern; // offset ventricular cycle slightly
         
-        glm::vec3 atrialPosModifier = p.normal * atrialGrowth * 0.025f;
-        glm::vec3 ventricularPosModifier = p.normal * ventricularGrowth * 0.025f;
+        glm::vec3 atrialPosModifier = *io.normal * atrialGrowth * 0.025f;
+        glm::vec3 ventricularPosModifier = *io.normal * ventricularGrowth * 0.025f;
 
         glm::vec3 atrialScaleModifier = glm::vec3(atrialGrowth, atrialGrowth, atrialGrowth) * 0.0025f;
         glm::vec3 ventricularScaleModifier = glm::vec3(ventricularGrowth, ventricularGrowth, ventricularGrowth) * 0.0025f;
         
-        *p.position = (*p.position) + atrialPosModifier + ventricularPosModifier;
-        *p.scale = (*p.scale) + atrialScaleModifier + ventricularScaleModifier;
+        *io.position = (*io.position) + atrialPosModifier + ventricularPosModifier;
+        *io.scale = (*io.scale) + atrialScaleModifier + ventricularScaleModifier;
 
         // Darken areas that barely grow to simulate shadows. 
         //float totalGrowth = (atrialGrowth + ventricularGrowth)/2;
         // We floor from 0.5 to make sure only stuff that barely moves gets darkened
         // Techincally we could pull the colors into a HSV or HSL space to make better shadows, but implementing that will probably take too long.
-        //p.sh[0] = p.sh[0] * (1 - max(0.0f, 0.5f-totalGrowth));
+        //io.sh[0] = io.sh[0] * (1 - max(0.0f, 0.5f-totalGrowth));
     }
 
     ///// Assign all the shaders to their short handles.
@@ -202,10 +207,12 @@ namespace ShShader
 
         // Unpack shader parameters into a format that is easier to work with. Increases memory footprint as tradeoff.
         // Could easily be optimized away by only indexing into the params inside the shader, but for now I'm prioritizing ease of use.
-        ShShaderParams params(packedParams, idx);
+        ShShaderConstantInputs in(packedParams, idx);
+        ShShaderModifiableInputs io(packedParams, idx);
+        ShShaderOutputs out(packedParams, idx);
 
         // No need to dereference the shader function pointer.
-        shaders[idx](params);
+        shaders[idx](in, io, out);
     }
 
 

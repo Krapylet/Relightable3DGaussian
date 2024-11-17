@@ -800,7 +800,6 @@ void FORWARD::RunSHShaders(
 	//input
 	float const time, float const dt,
 	float const scale_modifier,
-	dim3 const grid, // Could maybe be made dynamic?
 	float const *const viewmatrix,
 	float const *const viewmatrix_inv,
 	float const *const projmatrix,
@@ -810,7 +809,7 @@ void FORWARD::RunSHShaders(
 	float const tan_fovx, float const tan_fovy,
 	int deg, int max_coeffs,
 	int const S,
-	float const *const __restrict__ features,
+	float *const __restrict__ features,
 	Texture::TextureManager *const d_textureManager,
 
 	//input/output   -   contains values when the method is called that can be changed.
@@ -826,18 +825,19 @@ void FORWARD::RunSHShaders(
 {
 	ShShader::PackedShShaderParams params {
 		P,
-
+		W, H,
 		time, dt,
 		scale_modifier,
-		grid,			
+		deg, max_coeffs,
+
 		viewmatrix,
 		viewmatrix_inv,
 		projmatrix,
 		projmatrix_inv,
-		W, H,
+		
 		focal_x, focal_y,
 		tan_fovx, tan_fovy,
-		deg, max_coeffs,
+		
 		S,
 		features,
 		d_textureManager,
@@ -845,8 +845,8 @@ void FORWARD::RunSHShaders(
 		positions,
 		scales,
 		rotations,
-		opacities,
 		shs,
+		opacities,
 		stencil_vals
 	};
 	
@@ -910,7 +910,7 @@ void FORWARD::RunSplatShaders(
 	float const *const __restrict__ colors_SH,		
 	float4 const *const __restrict__ conic_opacity, 
 	int const S,					
-	float const *const __restrict__ features,
+	float *const __restrict__ features,
 	Texture::TextureManager *const d_textureManager,
 	float *const __restrict__ stencils,
 	float *const __restrict__ out_colors

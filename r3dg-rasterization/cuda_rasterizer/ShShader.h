@@ -26,20 +26,27 @@ namespace ShShader
 	struct PackedShShaderParams {
         const int P;
 
-        //input
+		// Screen information
+		int const W; int const H;
+
+        //time
 		float const time; float const dt;
+		
+		// global splat parameters
 		float const scale_modifier;
-		dim3 const grid; 
+        int deg; int max_coeffs;
+
+		// Projection information
 		float const *const viewmatrix;
 		float const *const viewmatrix_inv;
 		float const *const projmatrix;
 		float const *const projmatrix_inv;
-		int const W; int const H;
 		float const focal_x; float const focal_y;
 		float const tan_fovx; float const tan_fovy;
-        int deg; int max_coeffs;
+
+		// pbr decomposition "textures"
 		int const  S;						// Feature channel count.
-		float const *const __restrict__ features;		// Interleaved array of precomputed 'textures' for each individual gaussian. Stored in the following order:
+		float *const __restrict__ features;		// Interleaved array of precomputed 'textures' for each individual gaussian. Stored in the following order:
 											// float  roughness,
                                             // float  metallic
                                             // float  incident_visibility
@@ -50,49 +57,52 @@ namespace ShShader
                                             // float3  local_incident_light
                                             // float3  global_incident_light
 
+		// textures
 		Texture::TextureManager *const d_textureManager;
 
-		//input/output   -   contains values when the method is called that can be changed.
+		// geometry
 		glm::vec3 *const positions;
 		glm::vec3 *const scales;
 		glm::vec4 *const rotations;
-		float *const opacities;
-		glm::vec3 *const shs;
 
-		//output
+		// SH color  
+		glm::vec3 *const shs;
+		float *const opacities;
+
+		// intermediate textures
 		float *const stencil_vals;
 	};
 
-	struct ShShaderParams {
+	struct ShShaderConstantInputs {
 		// Constructor
-		__device__ ShShaderParams(PackedShShaderParams params, int idx);
+		__device__ ShShaderConstantInputs(PackedShShaderParams params, int idx);
 
-        //input
+		// Screen information
+		int const W; int const H;
+
+        //time
 		float const time; float const dt;
-		float const scale_modifier;
-		dim3 const grid; 
+
+		// Global splat parameters
+		float const scale_modifier;		// How much each splat needs to be scaled to match the scene size
+		int deg; int max_coeffs;		// Information about number of SHs
+			
+		// projection information
 		float const *const viewmatrix;
 		float const *const viewmatrix_inv;
 		float const *const projmatrix;
 		float const *const projmatrix_inv;
         glm::vec3 const camera_position;
-		int const W; int const H;
 		float const focal_x; float const focal_y;
 		float const tan_fovx; float const tan_fovy;
-        int deg; int max_coeffs;
-
-		// Precomputed 'texture' information from the neilf pbr decomposition
-		glm::vec3 const color_brdf;			// pbr splat color
-		glm::vec3 const normal;				// Splat normal in object space
-		glm::vec3 const color_base;			// Decomposed splat color without lighting
-		float const roughness;
-		float const metallic;
-		glm::vec3 const incident_light;
-		glm::vec3 const local_incident_light;
-		glm::vec3 const global_incident_light;
-		float const incident_visibility;
-
+        
+		// textures
 		Texture::TextureManager *const d_textureManager;
+	};
+
+	struct ShShaderModifiableInputs {
+		// Constructor
+		__device__ ShShaderModifiableInputs(PackedShShaderParams params, int idx);
 
 		//input/output   -   contains values when the method is called that can be changed.
 		glm::vec3 *const position;
@@ -111,12 +121,27 @@ namespace ShShader
 		// +-----------+----------------+------------------------------------+
 		glm::vec3 *const sh;
 
-		// output
+		// Precomputed 'texture' information from the neilf pbr decomposition
+		glm::vec3 *const color_brdf;			// pbr splat color
+		glm::vec3 *const normal;				// Splat normal in object space
+		glm::vec3 *const color_base;			// Decomposed splat color without lighting
+		float *const roughness;
+		float *const metallic;
+		glm::vec3 *const incident_light;
+		glm::vec3 *const local_incident_light;
+		glm::vec3 *const global_incident_light;
+		float *const incident_visibility;
+	};
+
+	struct ShShaderOutputs {
+		// Constructor
+		__device__ ShShaderOutputs(PackedShShaderParams params, int idx);
+
 		float *const stencil_val; //The stencil value of the individual splat
 	};
 
 	// Define a shared type of fuction pointer that can point to all implemented shaders.
-    typedef void (*ShShader)(ShShaderParams params);
+    typedef void (*ShShader)(ShShaderConstantInputs in, ShShaderModifiableInputs io, ShShaderOutputs out);
 
 	// Returns a map of shader names and shader device function pointers that can be passed back to the python frontend though pybind.
 	// we cast pointers to int since pure pointers aren't supported by pybind (ideally uint64_t, but pythorch only supports usigned 8-bit ints)
