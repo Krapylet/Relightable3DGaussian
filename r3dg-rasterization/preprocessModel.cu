@@ -28,13 +28,8 @@ __global__ void SelectShadersCUDA(
         return;
     auto pos = splatCoordinates[idx];
 
-
-    //shShaderIndexes[idx] = shShaderManager->GetIndexOfShader("ShDefault");
-    shShaderIndexes[idx] = shShaderManager->GetIndexOfShader("Heartbeat");
-
-
-    splatShadersIndexes[idx] = splatShaderManager->GetIndexOfShader("featureTest");
-
+    shShaderIndexes[idx] = shShaderManager->GetIndexOfShader("ShDefault");
+    splatShadersIndexes[idx] = splatShaderManager->GetIndexOfShader("crackNoRecon");
 }
 
 

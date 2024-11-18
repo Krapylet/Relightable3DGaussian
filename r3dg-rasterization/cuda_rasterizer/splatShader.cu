@@ -63,14 +63,6 @@ namespace SplatShader
 		// for now we're not actually doing anyting in the constuctior other than initializing the constants.
     }
 
-
-    __device__ static void FeatureTestCUDA(SplatShaderConstantInputs in, SplatShaderModifiableInputs io, SplatShaderOutputs out)
-    {
-        // Set output color
-        *out.out_color = *io.color_brdf;
-    }
-
-
     __device__ static void DefaultSplatShaderCUDA(SplatShaderConstantInputs in, SplatShaderModifiableInputs io, SplatShaderOutputs out)
     {
         // Set output color
@@ -205,6 +197,40 @@ namespace SplatShader
         *out.out_color = finalColor;
     }
 
+    __device__ static void CrackWithoutReconstructionShaderCUDA(SplatShaderConstantInputs in, SplatShaderModifiableInputs io, SplatShaderOutputs out)
+    {
+        cudaTextureObject_t crackTex = in.d_textureManager->GetTexture("Depth cracks");
+        // Rescale UVs
+        // Currently we just project directly downwards, but the projection can be rotated and pivoted to anywhere around the model.
+        float texScale = 2;
+        float u = in.position.x/texScale - 0.5;
+        float v = in.position.y/texScale - 0.5;
+        float crackTexDepth = 1 - tex2D<float4>(crackTex, u, v).x;
+
+        // First, delete all splats inside the crack by making them completely transparent. 
+        float maxCrackDepth = 2;
+        float projectionHeight = 2;
+        float crackHeight = projectionHeight - crackTexDepth * maxCrackDepth;
+        float splatHeight = in.position.z;
+
+        bool crackReachesSplat = crackHeight < splatHeight;
+        *io.opacity = crackReachesSplat ? 0 : *io.opacity;
+
+        // Figure out which splats are beneath the surface of the model
+        float depthTolerance = -0.2f; // Increasing this value causes more splats to be considered internal.
+        float depthRelativeToSurface = in.splat_depth - in.depth_tex[in.mean_pixel_idx] - depthTolerance;
+        bool splatIsInsideModel = depthRelativeToSurface > 0;
+        
+        // Splats that are both close to the deleted splats AND inside the model gets a completely new color.
+        float internalColorReach = 0.1f * crackTexDepth;
+        float maxPrimaryColorHeight = projectionHeight - (crackTexDepth + internalColorReach) * maxCrackDepth;
+        bool SplatIsInCrackColorReach = maxPrimaryColorHeight < splatHeight;
+        bool shouldUseInternalColor = splatIsInsideModel && SplatIsInCrackColorReach;
+        
+        *out.out_color = *io.color_base;
+        *io.stencil_val = shouldUseInternalColor;
+    }
+
     __device__ static void WriteToStencilCUDA(SplatShaderConstantInputs in, SplatShaderModifiableInputs io, SplatShaderOutputs out){
         *io.stencil_val = 1;
         *out.out_color = *in.color_SH;
@@ -218,7 +244,7 @@ namespace SplatShader
     __device__ const SplatShader dissolveShader = &DissolveShader;
     __device__ const SplatShader crackShader = &CrackShaderCUDA;
     __device__ const SplatShader stencilShader = &WriteToStencilCUDA;
-    __device__ const SplatShader featureTestShader = &FeatureTestCUDA;
+    __device__ const SplatShader crackNoReconShader = &CrackWithoutReconstructionShaderCUDA;
 
 
     std::map<std::string, int64_t> GetSplatShaderAddressMap(){
@@ -254,9 +280,9 @@ namespace SplatShader
         cudaMemcpyFromSymbol(&h_stencilShader, stencilShader, shaderMemorySize);
         shaderMap["Stencil"] = (int64_t)h_stencilShader;
 
-        SplatShader h_featureTestShader;
-        cudaMemcpyFromSymbol(&h_featureTestShader, featureTestShader, shaderMemorySize);
-        shaderMap["featureTest"] = (int64_t)h_featureTestShader;
+        SplatShader h_crackNoReconShader;
+        cudaMemcpyFromSymbol(&h_crackNoReconShader, crackNoReconShader, shaderMemorySize);
+        shaderMap["crackNoRecon"] = (int64_t)h_crackNoReconShader;
 
         return shaderMap;
     }

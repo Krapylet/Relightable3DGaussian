@@ -57,11 +57,6 @@ namespace ShShader
         {
 		// for now we're not actually doing anyting in the constuctior other than initializing the constants.
     }
-     
-    __device__ static void FeatureTestShaderCUDA(ShShaderConstantInputs in, ShShaderModifiableInputs io, ShShaderOutputs out)
-    {
-        *out.stencil_val = *io.roughness;
-    }
 
     __device__ static void DefaultShShaderCUDA(ShShaderConstantInputs in, ShShaderModifiableInputs io, ShShaderOutputs out)
     {
@@ -148,7 +143,6 @@ namespace ShShader
     __device__ const ShShader defaultShader = &DefaultShShaderCUDA;
     __device__ const ShShader expPosShader = &ExponentialPositionShaderCUDA;
     __device__ const ShShader heartbeatShader = &HeartbeatShaderCUDA;
-    __device__ const ShShader featurTestShader = &FeatureTestShaderCUDA;
 
     std::map<std::string, int64_t> GetShShaderAddressMap(){
         // we cast pointers to numbers since most pointers aren't supported by pybind
@@ -169,10 +163,6 @@ namespace ShShader
         ShShader h_heartbeatShader;
         cudaMemcpyFromSymbol(&h_heartbeatShader, heartbeatShader, shaderMemorySize);
         shaderMap["Heartbeat"] = (int64_t)h_heartbeatShader;
-
-        ShShader h_featurTestShader;
-        cudaMemcpyFromSymbol(&h_featurTestShader, featurTestShader, shaderMemorySize);
-        shaderMap["FeatureTest"] = (int64_t)h_featurTestShader;
 
         return shaderMap;
     }

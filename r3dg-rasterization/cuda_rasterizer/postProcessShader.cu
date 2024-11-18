@@ -124,7 +124,6 @@ namespace PostProcess
         *p.out_shader_color = internalColor * (1.0f-(float)pixelShouldBeOutlined) + outlineColor * (float)pixelShouldBeOutlined;
     }
 
-    // Simple method for generating an outline around the object using stencil.
     __device__ static void ToonShader(PostProcessShaderParams p){
         bool pixelIsOutsideOfStencil = !PixelIsInsideStencil(p.pixel, &p);
         
@@ -161,6 +160,7 @@ namespace PostProcess
         float mediumShadow = tex2D<float4>(shadowTex, u, v).y;
         float heavyShadow = tex2D<float4>(shadowTex, u, v).z;
 
+
         glm::vec3 quantizedLight = QuantizeColor(p.incident_light[p.pixel_idx], 4);
         float shadowIntensity = 1 - max(quantizedLight.r, max(quantizedLight.g, quantizedLight.b))/2;
 
@@ -173,7 +173,7 @@ namespace PostProcess
         float light = 1 - max(lightShadow * shouldUseShadowWeight.x, max(mediumShadow + shouldUseShadowWeight.y, heavyShadow + shouldUseShadowWeight.z)) * pixelIsInStencil;
         
         // Apply the shadow texture on top of the unlit colors
-        glm::vec3 internalColor = p.base_color[p.pixel_idx] * light;
+        glm::vec3 internalColor = p.base_color[p.pixel_idx] * quantizedLight;
         //glm::vec3 internalColor = shouldUseShadowWeight;
 
         *p.out_shader_color = internalColor * (1.0f-(float)pixelShouldBeOutlined) + outlineColor * (float)pixelShouldBeOutlined;
