@@ -70,9 +70,9 @@ namespace PostProcess
 	// Used as input and output interface to the shaders.
 	// Only contains information relevant to each individual splat.
 	// Acts as an interface layer that hides complexities and calculates commonly used values, thereby reducing boiler-plate code and human error.
-	struct PostProcessShaderParams {
+	struct PostProcessShaderInputs {
 		// Constructor
-		__device__ PostProcessShaderParams(PackedPostProcessShaderParams params, int x, int y, int pixCount);
+		__device__ PostProcessShaderInputs(PackedPostProcessShaderParams params, int x, int y, int pixCount);
 
         // input
 		// Screen information:
@@ -115,16 +115,21 @@ namespace PostProcess
         float const * const metallic;               // metallicness of objects in scene. PBR decomposition derived.
 
         //// Scene textures:
-        float const * const opacity;        // Transparrency mask for all rendered objects in the scene.
+        float const * const opacity;        	// Transparrency mask for all rendered objects in the scene.
 		float const * const depth_tex;          // Depth texture for the scene.
 		float const * const stencil_tex;        // Stencil texture. Derived form SH and splat shaders.
+	};
 
-        // input/output
+	// Used as input and output interface to the shaders.
+	// Only contains information relevant to each individual splat.
+	// Acts as an interface layer that hides complexities and calculates commonly used values, thereby reducing boiler-plate code and human error.
+	struct PostProcessShaderModifiableInputs {
+		__device__ PostProcessShaderModifiableInputs(PackedPostProcessShaderParams params, int x, int y, int pixCount);
         glm::vec3 * const out_shader_color;   // Color derived from SH and splat shader. Also works as output.
 	};
 
 	// Define a shared type of fuction pointer that can point to all implemented shaders.
-    typedef void (*PostProcessShader)(PostProcessShaderParams params);
+    typedef void (*PostProcessShader)(PostProcessShaderInputs in, PostProcessShaderModifiableInputs io);
 
 	// Returns a map of shader names and shader device function pointers that can be passed back to the python frontend though pybind.
 	// we cast pointers to int since pure pointers aren't supported by pybind (ideally uint64_t, but pythorch only supports usigned 8-bit ints)

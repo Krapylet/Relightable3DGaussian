@@ -8,7 +8,7 @@ namespace cg = cooperative_groups;
 
 namespace PostProcess 
 {
-    __device__ PostProcessShaderParams::PostProcessShaderParams(PackedPostProcessShaderParams p, int x, int y, int pixCount):
+    __device__ PostProcessShaderInputs::PostProcessShaderInputs(PackedPostProcessShaderParams p, int x, int y, int pixCount):
 
         width(p.width), height(p.height),		
         pixel(x, y),               
@@ -48,35 +48,39 @@ namespace PostProcess
 		stencil_tex(p.stencil_tex),        // Stencil texture. Derived form SH and splat shaders.
 
         // Custom textures:
-        d_textureManager(p.d_textureManager),    // Object used to fetch textures uploaded by user.
-
-        // input / output
-        //TODO: Seperate post process output from SH/splat shader output, so we don't accidentally write over a result another thread needs.
-        out_shader_color(&p.out_shader_color[pixel_idx])
+        d_textureManager(p.d_textureManager)    // Object used to fetch textures uploaded by user.
     {
         // Don't do anything during intialization other than setting basic values.
     }
 
-    __device__ static void DefaultPostProcess(PostProcessShaderParams p){
+__device__ PostProcessShaderModifiableInputs::PostProcessShaderModifiableInputs(PackedPostProcessShaderParams p, int x, int y, int pixCount):
+        // input / output
+        //TODO: Seperate post process output from SH/splat shader output, so we don't accidentally write over a result another thread needs.
+        out_shader_color(&p.out_shader_color[x + y *p.width])
+    {
+        // Don't do anything during intialization other than setting basic values.
+    }
+
+    __device__ static void DefaultPostProcess(PostProcessShaderInputs in, PostProcessShaderModifiableInputs io){
         // We don't actuallyt do any post processing by default.
     }
 
-    __device__ static void InvertColorsShader(PostProcessShaderParams p){
-        *p.out_shader_color = glm::vec3(1,1,1) - *p.out_shader_color;
+    __device__ static void InvertColorsShader(PostProcessShaderInputs in, PostProcessShaderModifiableInputs io){
+        *io.out_shader_color = glm::vec3(1,1,1) - *io.out_shader_color;
     }
 
-    __device__ bool PixelIsInsideStencil(glm::ivec2 pixel, PostProcessShaderParams* p){
+    __device__ bool PixelIsInsideStencil(glm::ivec2 pixel, PostProcessShaderInputs* in){
         // First check if the pixel is inside the screen.
-        int samplePixel_idx = pixel.x + pixel.y * p->width;
+        int samplePixel_idx = pixel.x + pixel.y * in->width;
 
-        bool pixelIsOutsideScreen = samplePixel_idx < 0 || samplePixel_idx > p->height * p->width;
+        bool pixelIsOutsideScreen = samplePixel_idx < 0 || samplePixel_idx > in->height * in->width;
         if(pixelIsOutsideScreen){
             return false;
         }
 
         // then check the value of the stencil
         float stencilThreshold = 0.9; // Stencil values equal to or over this value will be considered "inside of stencil"
-        bool pixelIsInsideStencil = p->stencil_tex[samplePixel_idx] >= stencilThreshold;
+        bool pixelIsInsideStencil = in->stencil_tex[samplePixel_idx] >= stencilThreshold;
 
         return pixelIsInsideStencil;
     }
@@ -95,8 +99,8 @@ namespace PostProcess
 
     // Simple method for generating an outline around the object using stencil.
     // Could be upgrade to also use depth map etc.
-    __device__ static void OutlineShader(PostProcessShaderParams p){
-        bool pixelIsOutsideOfStencil = !PixelIsInsideStencil(p.pixel, &p);
+    __device__ static void OutlineShader(PostProcessShaderInputs in, PostProcessShaderModifiableInputs io){
+        bool pixelIsOutsideOfStencil = !PixelIsInsideStencil(in.pixel, &in);
         
         int outlineThickness = 5;
         int sampleDirections = 5;
@@ -108,9 +112,9 @@ namespace PostProcess
         {
             for (float direction = 0; direction <= 1; direction += 1.0f/(float)sampleDirections)
             {
-                glm::ivec2 samplePixel = p.pixel + (glm::ivec2)(glm::vec2(cos(direction * 2 * M_PI), sin(direction * 2 * M_PI)) * radius);
+                glm::ivec2 samplePixel = in.pixel + (glm::ivec2)(glm::vec2(cos(direction * 2 * M_PI), sin(direction * 2 * M_PI)) * radius);
         
-                pixelIsNearStencil |= PixelIsInsideStencil(samplePixel, &p);
+                pixelIsNearStencil |= PixelIsInsideStencil(samplePixel, &in);
             }
         }
         
@@ -118,14 +122,14 @@ namespace PostProcess
 
         glm::vec3 outlineColor = glm::vec3(1,0,0);
 
-        glm::vec3 litColor = p.base_color[p.pixel_idx] * p.incident_light[p.pixel_idx];
+        glm::vec3 litColor = in.base_color[in.pixel_idx] * in.incident_light[in.pixel_idx];
         glm::vec3 internalColor = QuantizeColor(litColor, 4);
 
-        *p.out_shader_color = internalColor * (1.0f-(float)pixelShouldBeOutlined) + outlineColor * (float)pixelShouldBeOutlined;
+        *io.out_shader_color = internalColor * (1.0f-(float)pixelShouldBeOutlined) + outlineColor * (float)pixelShouldBeOutlined;
     }
 
-    __device__ static void ToonShader(PostProcessShaderParams p){
-        bool pixelIsOutsideOfStencil = !PixelIsInsideStencil(p.pixel, &p);
+    __device__ static void ToonShader(PostProcessShaderInputs in, PostProcessShaderModifiableInputs io){
+        bool pixelIsOutsideOfStencil = !PixelIsInsideStencil(in.pixel, &in);
         
         int outlineThickness = 5;
         int sampleDirections = 5;
@@ -137,9 +141,9 @@ namespace PostProcess
         {
             for (float direction = 0; direction <= 1; direction += 1.0f/(float)sampleDirections)
             {
-                glm::ivec2 samplePixel = p.pixel + (glm::ivec2)(glm::vec2(cos(direction * 2 * M_PI), sin(direction * 2 * M_PI)) * radius);
+                glm::ivec2 samplePixel = in.pixel + (glm::ivec2)(glm::vec2(cos(direction * 2 * M_PI), sin(direction * 2 * M_PI)) * radius);
         
-                pixelIsNearStencil |= PixelIsInsideStencil(samplePixel, &p);
+                pixelIsNearStencil |= PixelIsInsideStencil(samplePixel, &in);
             }
         }
         
@@ -150,18 +154,18 @@ namespace PostProcess
         // instead of darking areas with shadow by darkening the color, we instead draw a texture on top of the darnkeded areas.
         // The textures are in screen space, though...
         // Again. 3d textures would probably be a good addition.
-        auto shadowTex = p.d_textureManager->GetTexture("shadow");
+        auto shadowTex = in.d_textureManager->GetTexture("shadow");
         
         float uvScale = 10;
-        float u = (float)p.pixel.x / (float)p.width * uvScale;
-        float v = (float)p.pixel.y / (float)p.height * uvScale;
+        float u = (float)in.pixel.x / (float)in.width * uvScale;
+        float v = (float)in.pixel.y / (float)in.height * uvScale;
 
         float lightShadow = tex2D<float4>(shadowTex, u, v).x;
         float mediumShadow = tex2D<float4>(shadowTex, u, v).y;
         float heavyShadow = tex2D<float4>(shadowTex, u, v).z;
 
 
-        glm::vec3 quantizedLight = QuantizeColor(p.incident_light[p.pixel_idx], 4);
+        glm::vec3 quantizedLight = QuantizeColor(in.incident_light[in.pixel_idx], 4);
         float shadowIntensity = 1 - max(quantizedLight.r, max(quantizedLight.g, quantizedLight.b))/2;
 
         glm::vec3 shadowIntensityVec(shadowIntensity, shadowIntensity, shadowIntensity);
@@ -169,14 +173,22 @@ namespace PostProcess
         glm::vec3 shouldUseShadowWeight = glm::step(shouldUseShadowWeight, shadowIntensityVec);
         
 
-        bool pixelIsInStencil = PixelIsInsideStencil(p.pixel, &p);
+        bool pixelIsInStencil = PixelIsInsideStencil(in.pixel, &in);
         float light = 1 - max(lightShadow * shouldUseShadowWeight.x, max(mediumShadow + shouldUseShadowWeight.y, heavyShadow + shouldUseShadowWeight.z)) * pixelIsInStencil;
         
         // Apply the shadow texture on top of the unlit colors
-        glm::vec3 internalColor = p.base_color[p.pixel_idx] * quantizedLight;
+        glm::vec3 internalColor = in.base_color[in.pixel_idx] * quantizedLight;
         //glm::vec3 internalColor = shouldUseShadowWeight;
 
-        *p.out_shader_color = internalColor * (1.0f-(float)pixelShouldBeOutlined) + outlineColor * (float)pixelShouldBeOutlined;
+        *io.out_shader_color = internalColor * (1.0f-(float)pixelShouldBeOutlined) + outlineColor * (float)pixelShouldBeOutlined;
+    }
+
+    __device__ static void CrackReconstructionShader(PostProcessShaderInputs in, PostProcessShaderModifiableInputs io){
+        float shouldBeReconstructed = in.stencil_tex[in.pixel_idx];
+
+        glm::vec3 internalColor = glm::vec3(1,1,0);// * (1.0f - 0.3f * in.depth_tex[in.pixel_idx]);
+
+        *io.out_shader_color = in.base_color[in.pixel_idx] * (1-shouldBeReconstructed) + internalColor * shouldBeReconstructed;
     }
 
 
@@ -185,6 +197,7 @@ namespace PostProcess
     __device__ const PostProcessShader invertShader = &InvertColorsShader;
     __device__ const PostProcessShader outlineShader = &OutlineShader;
     __device__ const PostProcessShader toonShader = &ToonShader;
+    __device__ const PostProcessShader crackReconstriction = &CrackReconstructionShader;
 
 	std::map<std::string, int64_t> GetPostProcessShaderAddressMap(){
         // we cast pointers to numbers since most pointers aren't supported by pybind
@@ -211,14 +224,15 @@ namespace PostProcess
         cudaMemcpyFromSymbol(&h_toonShader, toonShader, shaderMemorySize);
         shaderMap["Toon"] = (int64_t)h_toonShader;
 
+        PostProcessShader h_crackReconstriction;
+        cudaMemcpyFromSymbol(&h_crackReconstriction, crackReconstriction, shaderMemorySize);
+        shaderMap["crackReconstriction"] = (int64_t)h_crackReconstriction;
+
 
         printf("Post proces address collector called\n");
 
         return shaderMap;
     }
-
-	// Returns shader addresses in an array so they can be used in CUDA.
-	//int64_t* GetPostProcessShaderAddressArray();
 
 	// Executes a shader on the GPU with the given parameters.
 	__global__ extern void ExecuteShader(PostProcessShader shader, PackedPostProcessShaderParams packedParams){
@@ -233,22 +247,10 @@ namespace PostProcess
 
         // Unpack shader parameters into a format that is easier to work with. Increases memory footprint as tradeoff.
         // Could easily be optimized away by only indexing into the params inside the shader, but for now I'm prioritizing ease of use.
-        PostProcessShaderParams params(packedParams, x, y, pixelCount);
+        PostProcessShaderInputs in(packedParams, x, y, pixelCount);
+        PostProcessShaderModifiableInputs io(packedParams, x, y, pixelCount);
 
-        // Debug print statement for seeing what's going on inside shader kernels.
-        /*
-        if (idx == 80050){
-            // First check if the pixel is inside the screen.
-            int pixel_idx = x + y * params.width;
-
-            bool pixelIsOutsideScreen = pixel_idx < 0 || pixel_idx > params.height * params.width;
-
-            float stencilThreshold = 1; // Stencil values equal to or over this value will be considered "inside of stencil"
-            bool pixelIsInsideStencil = params.stencil_tex[p->pixel_idx] >= stencilThreshold;
-        }
-        */
-
-        shader(params);        
+        shader(in, io);        
     }
 
 	
