@@ -7,7 +7,6 @@ class PostProcessManager:
         self.activePostProcessingPasses : list[int] = []
         
     def AddPostProcessingPass(self, passName : str):
-        print(self.postProcessingShaders)
 
         shaderAddress = self.postProcessingShaders[passName]
         

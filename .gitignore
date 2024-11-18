@@ -12,3 +12,4 @@ point
 nvdiffrast
 *.dump
 textures/NoiseTextures/**
+*.ncu-rep

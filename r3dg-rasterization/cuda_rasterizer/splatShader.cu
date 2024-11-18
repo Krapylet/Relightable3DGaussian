@@ -293,7 +293,7 @@ namespace SplatShader
     }
 
 
-    __global__ void ExecuteShader(SplatShader shader, int* d_splatIndexes, PackedSplatShaderParams packedParams){
+    __global__ void ExecuteSplatShaderCUDA(SplatShader shader, int* d_splatIndexes, PackedSplatShaderParams packedParams){
         auto shaderInstance = cg::this_grid().thread_rank();
         if (shaderInstance >= packedParams.P)
             return;

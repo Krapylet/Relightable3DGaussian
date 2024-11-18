@@ -26,10 +26,21 @@ __global__ void SelectShadersCUDA(
     auto idx = cg::this_grid().thread_rank();
     if (idx >= splatCount)
         return;
+    auto pos = splatCoordinates[idx];
 
-    shShaderIndexes[idx] = shShaderManager->GetIndexOfShader("ShDefault");
-    splatShadersIndexes[idx] = splatShaderManager->GetIndexOfShader("SplatDefault");
-    
+    if(pos.x < 0){
+        shShaderIndexes[idx] = shShaderManager->GetIndexOfShader("ShDefault");
+    }
+    else{
+        shShaderIndexes[idx] = shShaderManager->GetIndexOfShader("Heartbeat");
+    }
+
+    if(pos.y < 0){
+        splatShadersIndexes[idx] = splatShaderManager->GetIndexOfShader("SplatDefault");
+    }
+    else{
+        splatShadersIndexes[idx] = splatShaderManager->GetIndexOfShader("Crack");
+    }
 }
 
 

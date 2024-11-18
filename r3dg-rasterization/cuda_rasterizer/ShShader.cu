@@ -198,7 +198,7 @@ namespace ShShader
         return d_shaderArray;
     }
 
-    __global__ void ExecuteShader(ShShader shader, int* d_splatIndexes, PackedShShaderParams packedParams){
+    __global__ void ExecuteSHShaderCUDA(ShShader shader, int* d_splatIndexes, PackedShShaderParams packedParams){
         auto shaderInstance = cg::this_grid().thread_rank();
         if (shaderInstance >= packedParams.P)
             return;

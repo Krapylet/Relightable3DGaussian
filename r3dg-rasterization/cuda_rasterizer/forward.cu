@@ -860,7 +860,7 @@ void FORWARD::RunSHShaders(
 		if(shaderInstanceCount == 0){
 			continue;
 		}
-		ShShader::ExecuteShader<<<(shaderInstanceCount + 255) / 256, 256>>>(shader, d_associatedSplats, params);
+		ShShader::ExecuteSHShaderCUDA<<<(shaderInstanceCount + 255) / 256, 256>>>(shader, d_associatedSplats, params);
 
 	}
 }
@@ -951,7 +951,7 @@ void FORWARD::RunSplatShaders(
 		int shaderInstanceCount = h_splatShaderManager->h_shaderInstanceCount[i];
 		int* d_associatedSplats = h_splatShaderManager->h_d_shaderAssociationMap[i];
 
-		SplatShader::ExecuteShader<<<(shaderInstanceCount + 255) / 256, 256>>>(shader, d_associatedSplats, params);
+		SplatShader::ExecuteSplatShaderCUDA<<<(shaderInstanceCount + 255) / 256, 256>>>(shader, d_associatedSplats, params);
 	}
 }
 
