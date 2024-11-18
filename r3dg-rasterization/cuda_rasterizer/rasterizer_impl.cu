@@ -265,8 +265,6 @@ int CudaRasterizer::Rasterizer::forward(
 		throw std::runtime_error("For non-RGB, provide precomputed Gaussian colors!");
 	}
 
-	printf("About to run SH shaders\n");
-
 	CHECK_CUDA(FORWARD::RunSHShaders(
 		P,
 		h_shShaderManager,
@@ -296,7 +294,7 @@ int CudaRasterizer::Rasterizer::forward(
 		// output
 		geomState.stencils
 	), debug)
-	printf("SH shaders done\n");
+
 	// Run preprocessing per-Gaussian (transformation, bounding, conversion of SHs to RGB)
 	CHECK_CUDA(FORWARD::PreProcess(
 		P, D, M,
@@ -385,7 +383,6 @@ int CudaRasterizer::Rasterizer::forward(
 		out_stencil
 	), debug);
 
-	printf("About to run splat shaders\n");
 	CHECK_CUDA(FORWARD::RunSplatShaders(
 		P,
 		h_splatShaderManager,
@@ -416,7 +413,6 @@ int CudaRasterizer::Rasterizer::forward(
 		// output
 		geomState.shader_rgb
 	), debug);
-	printf("splat shaders done\n");
 
 	// Let each tile blend its range of Gaussians independently in parallel
 	//const float* colors_ptr = colors_precomp != nullptr ? colors_precomp : geomState.rgb;

@@ -70,7 +70,6 @@ RasterizeGaussiansCUDA(
 	const std::vector<int64_t> postProcessingPasses_ptr, // is actually a vector of PostProcessShaders
 	const bool debug)
 {
-	printf("Entering rasterization\n");
 	// cast the texture manager back into its original class.
 	auto d_textureManager = (Texture::TextureManager *const)d_textureManager_ptr;
 	auto h_shShaderManager =  (ShaderManager *const)h_shShaderManager_ptr;
@@ -122,7 +121,6 @@ RasterizeGaussiansCUDA(
 	torch::Tensor temp_rotations = rotations.detach().clone();
 	torch::Tensor temp_sh = sh.detach().clone();
 
-	printf("Calling forward renderer\n");
 	cudaDeviceSynchronize();
 	int rendered = 0;
 	if(P != 0)

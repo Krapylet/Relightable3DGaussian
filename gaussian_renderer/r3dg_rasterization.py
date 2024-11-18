@@ -100,9 +100,9 @@ class _RasterizeGaussians(torch.autograd.Function):
             raster_settings.campos,
             raster_settings.prefiltered,
             raster_settings.computer_pseudo_normal,
+            raster_settings.d_textureManager_ptr,
             raster_settings.h_shShaderManager_ptr,
             raster_settings.h_splatShaderManager_ptr,
-            raster_settings.d_textureManager_ptr,
             raster_settings.postProcessingPasses,
             raster_settings.debug
         )

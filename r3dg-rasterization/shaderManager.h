@@ -29,4 +29,6 @@ public:
     __device__ int GetIndexOfShader(char* shaderName);
     __device__ int64_t GetShader(char* shaderName);
     __device__ int64_t GetShader(int shaderIndex);
+
+    void ShaderManager::printAllAddresses();
 };

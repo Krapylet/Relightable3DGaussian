@@ -856,8 +856,12 @@ void FORWARD::RunSHShaders(
 		auto shader = (ShShader::ShShader)h_shShaderManager->h_shaderAddresses[i];
 		int shaderInstanceCount = h_shShaderManager->h_shaderInstanceCount[i];
 		int* d_associatedSplats = h_shShaderManager->h_d_shaderAssociationMap[i];
-
+		// Skip shaders with no associated splats
+		if(shaderInstanceCount == 0){
+			continue;
+		}
 		ShShader::ExecuteShader<<<(shaderInstanceCount + 255) / 256, 256>>>(shader, d_associatedSplats, params);
+
 	}
 }
 
@@ -993,11 +997,6 @@ void FORWARD::RunPostProcessShaders(
 
 		(glm::vec3*) out_shader_color
 	};
-	
-	//PostProcess::PostProcessShader* d_shaderAddresses;
-	//size_t sizeOfAddresses = sizeof(PostProcess::PostProcessShader);
-	//cudaMalloc(&d_shaderAddresses, sizeOfAddresses);
-	//cudaMemcpy(d_shaderAddresses, shaderAddresses, sizeOfAddresses, cudaMemcpyHostToDevice);
 
 	int pixels = height * width;
 
@@ -1005,8 +1004,6 @@ void FORWARD::RunPostProcessShaders(
 	{
 			PostProcess::ExecuteShader<<<(pixels + 255) / 256, 256>>>(shader, params);		
 	}
-
-	//cudaFree(d_shaderAddresses);	
 }
 
 

@@ -455,7 +455,7 @@ if __name__ == '__main__':
 
     #Select which post processing passes.
     postProcessManager = PostProcess.PostProcessManager()
-    postProcessManager.AddPostProcessingPass("Toon")
+    #postProcessManager.AddPostProcessingPass("Toon")
     
 
     render_fn = render_fn_dict[args.type]

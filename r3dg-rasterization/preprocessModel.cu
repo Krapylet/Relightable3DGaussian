@@ -29,6 +29,7 @@ __global__ void SelectShadersCUDA(
 
     shShaderIndexes[idx] = shShaderManager->GetIndexOfShader("ShDefault");
     splatShadersIndexes[idx] = splatShaderManager->GetIndexOfShader("SplatDefault");
+    
 }
 
 
@@ -58,8 +59,6 @@ __global__ void SortShadersCUDA(
     int64_t* shShaderIndexes, 
     int64_t* splatShaderIndexes)
 {
-
-    printf("Beginning counting\n");
     // Count how many times each shader is used
     for (size_t i = 0; i < splatCount; i++)
     {
@@ -70,7 +69,6 @@ __global__ void SortShadersCUDA(
         splatShaderManager->d_shaderInstanceCount[splatShader]++;
     }
 
-    printf("Allocatiing new memory\n");
     // allocate new memory for storing 3D gaussians indexes by which shader they use    
     int shShaderCount = *shShaderManager->d_shaderCount;
     for (size_t i = 0; i < shShaderCount; i++)
@@ -79,7 +77,6 @@ __global__ void SortShadersCUDA(
         shShaderManager->d_d_shaderAssociationMap[i] = shaderAssociationList;
     }
     
-    printf("Allocating new memory to splats\n");
     int splatShaderCount = *splatShaderManager->d_shaderCount;
     for (size_t i = 0; i < splatShaderCount; i++)
     {
@@ -87,7 +84,6 @@ __global__ void SortShadersCUDA(
         splatShaderManager->d_d_shaderAssociationMap[i] = shaderAssociationList;
     }
 
-    printf("Begin sorting\n");
     // For each shader, fill out their array with the indexes of the Gaussians that use it.
     int* shShaderInstanceIndexes = (int*)malloc(shShaderCount * sizeof(int));
     int* splatShaderInstanceIndexes = (int*)malloc(splatShaderCount * sizeof(int));
@@ -110,7 +106,6 @@ __global__ void SortShadersCUDA(
         shShaderInstanceIndexes[shShaderIdx]++;
         splatShaderInstanceIndexes[splatShaderIdx]++;
     }
-    printf("Sorting done\n");
 }
 
 void SortShaders(
@@ -146,7 +141,7 @@ std::tuple<int64_t, int64_t> PreprocessModel(torch::Tensor& splatCoordinateTenso
     // Create shader managers
     ShaderManager* h_shShaderManager = new ShaderManager(ShShader::GetShShaderAddressMap());
     ShaderManager* h_splatShaderManager = new ShaderManager(SplatShader::GetSplatShaderAddressMap());
-
+    
     // Copying managers to device
     ShaderManager* d_shShaderManager;
     ShaderManager* d_splatShaderManager;
@@ -154,8 +149,7 @@ std::tuple<int64_t, int64_t> PreprocessModel(torch::Tensor& splatCoordinateTenso
     cudaMalloc(&d_splatShaderManager, sizeof(ShaderManager));
     cudaMemcpy(d_shShaderManager, h_shShaderManager, sizeof(ShaderManager), cudaMemcpyHostToDevice);
     cudaMemcpy(d_splatShaderManager, h_splatShaderManager, sizeof(ShaderManager), cudaMemcpyHostToDevice);
-
-    printf("Beginning Selection\n");
+    
     // Run the address appending on the GPU   
 	CHECK_CUDA(SelectShaders(
         splatCoordinates,
@@ -165,7 +159,6 @@ std::tuple<int64_t, int64_t> PreprocessModel(torch::Tensor& splatCoordinateTenso
         d_shShaderIndexes.contiguous().mutable_data_ptr<int64_t>(),
         d_splatShaderIndexes.contiguous().mutable_data_ptr<int64_t>()
         ), true)
-    printf("Selection done. Beginning sorting\n");
 
     CHECK_CUDA(SortShaders(
         d_shShaderManager,
@@ -174,15 +167,11 @@ std::tuple<int64_t, int64_t> PreprocessModel(torch::Tensor& splatCoordinateTenso
         d_shShaderIndexes.contiguous().mutable_data_ptr<int64_t>(),
         d_splatShaderIndexes.contiguous().mutable_data_ptr<int64_t>()
     ), true)
-    
-    cudaDeviceSynchronize();
-    printf("Sorting done. Copying shader managers\n");
 
     // Copying managers back to host
-    cudaMemcpy(h_shShaderManager, d_shShaderManager, sizeof(ShaderManager), cudaMemcpyHostToDevice);
-    cudaMemcpy(h_splatShaderManager, d_splatShaderManager, sizeof(ShaderManager), cudaMemcpyHostToDevice);
+    cudaMemcpy(h_shShaderManager, d_shShaderManager, sizeof(ShaderManager), cudaMemcpyDeviceToHost);
+    cudaMemcpy(h_splatShaderManager, d_splatShaderManager, sizeof(ShaderManager), cudaMemcpyDeviceToHost);
 
-    printf("Copying association maps\n");
     // Finally, copy the maps to host.
     int shShaderCount = h_shShaderManager->h_shaderCount;
     int splatShaderCount = h_splatShaderManager->h_shaderCount;
@@ -191,10 +180,9 @@ std::tuple<int64_t, int64_t> PreprocessModel(torch::Tensor& splatCoordinateTenso
     cudaMemcpy(h_shShaderManager->h_shaderInstanceCount, h_shShaderManager->d_shaderInstanceCount, shShaderCount * sizeof(int), cudaMemcpyDeviceToHost);
     cudaMemcpy(h_splatShaderManager->h_shaderInstanceCount, h_splatShaderManager->d_shaderInstanceCount, splatShaderCount * sizeof(int), cudaMemcpyDeviceToHost);
     
-    printf("Copying done\n");
-    // TODO: delete device managers
-    //cudaFree(d_ShShaderManager);
-    //cudaFree(d_splatShaderManager);
+    // delete device managers
+    cudaFree(d_shShaderManager);
+    cudaFree(d_splatShaderManager);
     
     return std::make_tuple((int64_t)h_shShaderManager, (int64_t)h_splatShaderManager);
 }

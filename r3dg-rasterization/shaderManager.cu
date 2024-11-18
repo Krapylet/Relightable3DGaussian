@@ -1,6 +1,19 @@
 #include "shaderManager.h"
 #include "utils/charOperations.h"
 
+void ShaderManager::printAllAddresses(){
+    printf("Printing %i addresses\n", h_shaderCount);
+    for (size_t i = 0; i < h_shaderCount; i++)
+    {
+        printf("Address %i: %llu\n", i, h_shaderAddresses[i]);
+    }
+    
+}
+
+__global__ void printAddress(int64_t* addresses, int i){
+    printf("Saving %llu shader address on GPU\n", addresses[i]);
+}
+
 ShaderManager::ShaderManager(std::map<std::string, int64_t> shaders){
     // initialize containers
     h_shaderCount = shaders.size();
