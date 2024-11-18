@@ -43,12 +43,12 @@ namespace SplatShader
         roughness (p.features + idx * p.S + 0),
 		metallic (p.features + idx * p.S + 1),
 		incident_visibility (p.features + idx * p.S + 2),
-		color_brdf ((glm::vec3*)p.features + idx * p.S + 3),
-		normal ((glm::vec3*)p.features + idx * p.S + 6),
-		color_base ((glm::vec3*)p.features + idx * p.S + 9),
-		incident_light ((glm::vec3*)p.features + idx * p.S + 12),
-		local_incident_light ((glm::vec3*)p.features + idx * p.S + 15),
-		global_incident_light ((glm::vec3*)p.features + idx * p.S + 18),
+		color_brdf ((glm::vec3*)&p.features[idx * p.S + 3]),
+		normal ((glm::vec3*)&p.features[idx * p.S + 6]),
+		color_base ((glm::vec3*)&p.features[idx * p.S + 9]),
+		incident_light ((glm::vec3*)&p.features[idx * p.S + 12]),
+		local_incident_light ((glm::vec3*)&p.features[idx * p.S + 15]),
+		global_incident_light ((glm::vec3*)&p.features[idx * p.S + 18]),
 
 		// pr. splat information
 		opacity (((float*)p.conic_opacity) + idx * 4 + 3),  // Opacity works a bit funky because how splats are blended. It is better to multiply this paramter by something rather than setting it to specific values.
@@ -63,6 +63,12 @@ namespace SplatShader
 		// for now we're not actually doing anyting in the constuctior other than initializing the constants.
     }
 
+
+    __device__ static void FeatureTestCUDA(SplatShaderConstantInputs in, SplatShaderModifiableInputs io, SplatShaderOutputs out)
+    {
+        // Set output color
+        *out.out_color = *io.color_brdf;
+    }
 
 
     __device__ static void DefaultSplatShaderCUDA(SplatShaderConstantInputs in, SplatShaderModifiableInputs io, SplatShaderOutputs out)
@@ -212,6 +218,7 @@ namespace SplatShader
     __device__ const SplatShader dissolveShader = &DissolveShader;
     __device__ const SplatShader crackShader = &CrackShaderCUDA;
     __device__ const SplatShader stencilShader = &WriteToStencilCUDA;
+    __device__ const SplatShader featureTestShader = &FeatureTestCUDA;
 
 
     std::map<std::string, int64_t> GetSplatShaderAddressMap(){
@@ -246,6 +253,10 @@ namespace SplatShader
         SplatShader h_stencilShader;
         cudaMemcpyFromSymbol(&h_stencilShader, stencilShader, shaderMemorySize);
         shaderMap["Stencil"] = (int64_t)h_stencilShader;
+
+        SplatShader h_featureTestShader;
+        cudaMemcpyFromSymbol(&h_featureTestShader, featureTestShader, shaderMemorySize);
+        shaderMap["featureTest"] = (int64_t)h_featureTestShader;
 
         return shaderMap;
     }

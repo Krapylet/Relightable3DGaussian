@@ -36,12 +36,12 @@ namespace ShShader
         roughness (p.features + idx * p.S + 0),
 		metallic (p.features + idx * p.S + 1),
 		incident_visibility (p.features + idx * p.S + 2),
-		color_brdf ((glm::vec3*)p.features + idx * p.S + 3),
-		normal ((glm::vec3*)p.features + idx * p.S + 6),
-		color_base ((glm::vec3*)p.features + idx * p.S + 9),
-		incident_light ((glm::vec3*)p.features + idx * p.S + 12),
-		local_incident_light ((glm::vec3*)p.features + idx * p.S + 15),
-		global_incident_light ((glm::vec3*)p.features + idx * p.S + 18),
+		color_brdf ((glm::vec3*)&p.features[idx * p.S + 3]),
+		normal ((glm::vec3*)&p.features[idx * p.S + 6]),
+		color_base ((glm::vec3*)&p.features[idx * p.S + 9]),
+		incident_light ((glm::vec3*)&p.features[idx * p.S + 12]),
+		local_incident_light ((glm::vec3*)&p.features[idx * p.S + 15]),
+		global_incident_light ((glm::vec3*)&p.features[idx * p.S + 18]),
 
 		position(p.positions + idx),
 		scale(p.scales + idx),
@@ -56,6 +56,11 @@ namespace ShShader
         stencil_val(p.stencil_vals + idx)
         {
 		// for now we're not actually doing anyting in the constuctior other than initializing the constants.
+    }
+     
+    __device__ static void FeatureTestShaderCUDA(ShShaderConstantInputs in, ShShaderModifiableInputs io, ShShaderOutputs out)
+    {
+        *out.stencil_val = *io.roughness;
     }
 
     __device__ static void DefaultShShaderCUDA(ShShaderConstantInputs in, ShShaderModifiableInputs io, ShShaderOutputs out)
@@ -143,6 +148,7 @@ namespace ShShader
     __device__ const ShShader defaultShader = &DefaultShShaderCUDA;
     __device__ const ShShader expPosShader = &ExponentialPositionShaderCUDA;
     __device__ const ShShader heartbeatShader = &HeartbeatShaderCUDA;
+    __device__ const ShShader featurTestShader = &FeatureTestShaderCUDA;
 
     std::map<std::string, int64_t> GetShShaderAddressMap(){
         // we cast pointers to numbers since most pointers aren't supported by pybind
@@ -163,6 +169,10 @@ namespace ShShader
         ShShader h_heartbeatShader;
         cudaMemcpyFromSymbol(&h_heartbeatShader, heartbeatShader, shaderMemorySize);
         shaderMap["Heartbeat"] = (int64_t)h_heartbeatShader;
+
+        ShShader h_featurTestShader;
+        cudaMemcpyFromSymbol(&h_featurTestShader, featurTestShader, shaderMemorySize);
+        shaderMap["FeatureTest"] = (int64_t)h_featurTestShader;
 
         return shaderMap;
     }
