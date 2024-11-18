@@ -186,7 +186,7 @@ __device__ PostProcessShaderModifiableInputs::PostProcessShaderModifiableInputs(
     __device__ static void CrackReconstructionShader(PostProcessShaderInputs in, PostProcessShaderModifiableInputs io){
         float shouldBeReconstructed = in.stencil_tex[in.pixel_idx];
 
-        glm::vec3 internalColor = glm::vec3(1,1,0);// * (1.0f - 0.3f * in.depth_tex[in.pixel_idx]);
+        glm::vec3 internalColor = glm::vec3(0.94f, 0.86f, 0.26f);// * (1.0f - 0.3f * in.depth_tex[in.pixel_idx]);
 
         *io.out_shader_color = in.base_color[in.pixel_idx] * (1-shouldBeReconstructed) + internalColor * shouldBeReconstructed;
     }
