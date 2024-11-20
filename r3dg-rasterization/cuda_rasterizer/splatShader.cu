@@ -102,37 +102,40 @@ namespace SplatShader
     // Makes the object fade in and out.
     // Written in splat shader because this is where we have best access to colors.
     __device__ static void DissolveShader(SplatShaderConstantInputs in, SplatShaderModifiableInputs io, SplatShaderOutputs out){
-        cudaTextureObject_t grainyTexture = in.d_textureManager->GetTexture("Grid");
+        cudaTextureObject_t maskTex = in.d_textureManager->GetTexture("Cracks");
 
         // Grab the opacity from a mask texture
-        float maskSample_xy = tex2D<float4>(grainyTexture, in.position.x, in.position.y).x;
-        float maskSample_xz = tex2D<float4>(grainyTexture, in.position.x, in.position.z).x;
-        float maskSample_yz = tex2D<float4>(grainyTexture, in.position.y, in.position.z).x;
+        float maskSample_xy = tex2D<float4>(maskTex, in.position.x, in.position.y).x;
+        float maskSample_xz = tex2D<float4>(maskTex, in.position.x, in.position.z).x;
+        float maskSample_yz = tex2D<float4>(maskTex, in.position.y, in.position.z).x;
         
         // combine masking from the 3 planes to create a 3d mask.
         float maskSample = maskSample_xy * maskSample_xz * maskSample_yz;
 
-        // goes back and forth between 0 and 1 over time
-        float opacityPercent = (cosf(in.time/4000) + 1)/2;
+        // make the mask less gray
+        maskSample = __saturatef((maskSample-0.125)*1.5);
 
-        // Offset the opacity by the mask
-        float opacity = __saturatef((1 + maskSample) * opacityPercent);
+        // How often to repeat each second
+        float period = 0.1f; 
+
+        // goes back and forth between 0 and 1 over time
+        float opacity = (cosf(in.time * period * 4 / (M_1_PI * 2 * 1000)) + 1);
+
+        // Offset the opacity by the mask  
+        float maskedOpacity = __saturatef(opacity - (1 - maskSample));
 
         // Ease in and out of transparency with a quint easing.
-        float easedOpacity = opacity < 0.5 ? 16.0 * powf(opacity, 5) : 1 - powf(-2 * opacity + 2, 5) / 2;
-
-        float originalOpacity = *io.opacity;
+        //float easedFade = fadeAmount < 0.5 ? 16.0 * powf(fadeAmount, 5) : 1 - powf(-2 * fadeAmount + 2, 5) / 2;
 
         // Opacity output
-        *io.opacity = easedOpacity * originalOpacity;
+        *io.opacity = *io.opacity * maskedOpacity;
+
+        float colorFading = __saturatef(maskedOpacity*3);
+        *io.stencil_val = maskSample;
 
         // We want the colors to turn progressively more bright blue as they turn transparen
         glm::vec3 targetfadeColor = glm::vec3(0.6,0.9,1);
-        float fadeColorPercent = __saturatef(1-opacity -0.3);// ;
-        float fadeColorEasing = fadeColorPercent < 0.5 ? 16.0 * powf(fadeColorPercent + 0.1, 5) : 1 - powf(-2 * fadeColorPercent + 2, 5) / 2;
-
-        // mix degree the fade color into the base color
-        *out.out_color = glm::mix(*in.color_SH, targetfadeColor, fadeColorEasing);
+        *out.out_color = glm::mix(targetfadeColor, *in.color_SH, colorFading);
     }
 
     __device__ static void CrackShaderCUDA(SplatShaderConstantInputs in, SplatShaderModifiableInputs io, SplatShaderOutputs out)
