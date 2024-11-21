@@ -46,7 +46,8 @@ namespace PostProcess
         opacity(p.out_opacity),        // Transparrency mask for all rendered objects in the scene.
 		depth_tex(p.depth_tex),          // Depth texture for the scene.
 		stencil_tex(p.stencil_tex),        // Stencil texture. Derived form SH and splat shaders.
-        out_surface_xyz(p.stencil_tex),
+        out_surface_xyz(p.out_surface_xyz),
+        out_pseudonormal(p.out_pseudonormal), 
 
         // Custom textures:
         d_textureManager(p.d_textureManager)    // Object used to fetch textures uploaded by user.
@@ -200,47 +201,30 @@ namespace PostProcess
         int pid = in.pixel_idx;
         float constructionMask = in.stencil_tex[pid] * in.metallic[pid];
        
-        // early exit for pixels outside of mask.
+        //early exit for pixels outside of mask.
         if(constructionMask <= 0.01f){
             return;
         }
 
-        // Get depth of sorrounding pixels
-        int sampleDist = 1;
-        float depthNorth = in.depth_tex[pid - in.width * sampleDist];
-        float depthSouth = in.depth_tex[pid + in.width * sampleDist];
-        float depthWest = in.depth_tex[pid - 1 * sampleDist];
-        float depthEast = in.depth_tex[pid + 1 * sampleDist];
-
-        // calculate surface normal in tanget space.
-        float normalStrength = 100;
-        glm::vec3 tanget = glm::normalize(glm::vec3(0, sampleDist/normalStrength, depthNorth - depthSouth));
-        glm::vec3 bitanget = glm::normalize(glm::vec3(sampleDist/normalStrength, 0, depthEast - depthWest));
-        glm::vec3 normal = glm::normalize(glm::cross(bitanget, tanget));
-
-        // transform the normal into world space
-        glm::vec3 w_normal = *(glm::vec3*)&transformVec4x3Transpose(*(float3*)&normal, in.viewmatrix_inv);
+        glm::vec3 normal = in.out_pseudonormal[pid];
 
         // Use the slope inside the crack to apply very simple shadow to the internal color.
         // Light is shined down from above at an angle
         // TODO: Make viewDir a precalucalted value.
         glm::vec3 viewDir = glm::vec3(in.viewmatrix[9], in.viewmatrix[10], in.viewmatrix[11]); 
-        glm::vec3 lightDir = glm::normalize(glm::vec3(0.4f, 0.2f, -1));
-        float lightIntensity = 0.5f;
-        float ambientLight = 0.5f;
+        glm::vec3 lightDir = glm::normalize(glm::vec3(0, -0.2f, 1));
+        float lightIntensity = 0.1f;
+        float ambientLight = 0.9f;
         glm::vec3 internalColor = glm::vec3(0.83f, 0.64f, 0.2f);
 
         // apply lighting calulation to internal color
         // We use a simple lambertian diffuse 
-        internalColor *= __saturatef(glm::dot(lightDir, w_normal) * lightIntensity + ambientLight);
+        internalColor *= __saturatef(__saturatef(glm::dot(lightDir, normal) * lightIntensity) + ambientLight);
 
-
-
+        // mix the base color into the internal color near the mask edge.
         glm::vec3 outputColor = internalColor * constructionMask + *io.out_shader_color * (1-constructionMask);
 
-
-
-        *io.out_shader_color = w_normal;
+        *io.out_shader_color = outputColor;
     }
 
 

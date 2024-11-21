@@ -511,6 +511,7 @@ int CudaRasterizer::Rasterizer::forward(
 		out_depth,
 		out_stencil,
 		out_surface_xyz,
+		out_normal,
 		S, out_feature,
 		d_textureManager,
 

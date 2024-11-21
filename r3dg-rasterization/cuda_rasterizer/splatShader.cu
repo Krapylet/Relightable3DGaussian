@@ -184,8 +184,8 @@ namespace SplatShader
 
     __device__ static void CrackWithoutReconstructionShaderCUDA(SplatShaderConstantInputs in, SplatShaderModifiableInputs io, SplatShaderOutputs out)
     {
-        //cudaTextureObject_t crackTex = in.d_textureManager->GetTexture("Bulge");
-        cudaTextureObject_t crackTex = in.d_textureManager->GetTexture("Depth cracks");
+        cudaTextureObject_t crackTex = in.d_textureManager->GetTexture("Bulge");
+        //cudaTextureObject_t crackTex = in.d_textureManager->GetTexture("Depth cracks");
         
         // Rescale UVs
         // Currently we just project directly downwards, but the projection can be rotated and pivoted to anywhere around the model.
@@ -222,6 +222,7 @@ namespace SplatShader
         *io.stencil_opacity = originalOpacity;
 
         // Write sorrounding splats to seperate stencil.
+        float opacityIncrease = 2.;// increase opacity of nearby splats.
         *io.metallic = shouldUseInternalColor;
     }
 
