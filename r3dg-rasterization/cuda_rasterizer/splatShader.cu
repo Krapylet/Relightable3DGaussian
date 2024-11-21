@@ -159,12 +159,12 @@ namespace SplatShader
         *io.opacity = crackReachesSplat ? 0 : *io.opacity;
 
         // Figure out which splats are beneath the surface of the model
-        float depthTolerance = 0.2f; // Increasing this value causes more splats to be considered internal.
-        float distToSurface = in.splat_depth - in.depth_tex[in.mean_pixel_idx] - depthTolerance;
-        bool splatIsInsideModel = distToSurface < 0;
+        float depthTolerance = 0.3f; // Increasing this value causes more splats to be considered internal.
+        float distToSurface = in.splat_depth - in.depth_tex[in.mean_pixel_idx] + depthTolerance;
+        bool splatIsInsideModel = distToSurface > 0;
         
         // Splats that are both close to the deleted splats AND inside the model gets a completely new color.
-        float internalColorReach = 0.1f;
+        float internalColorReach = 0.3f;
         float maxPrimaryColorHeight = projectionHeight - (crackTexDepth + internalColorReach) * maxCrackDepth;
         bool SplatIsInCrackColorReach = splatHeight > maxPrimaryColorHeight;
         bool shouldUseInternalColor = splatIsInsideModel && SplatIsInCrackColorReach;
@@ -177,23 +177,15 @@ namespace SplatShader
         float discolorPercent =  __saturatef((splatHeight - maxDiscolorHeight) / (discolorReach + internalColorReach));
         glm::vec3 externalColor = glm::mix(*in.color_SH, internalColor, discolorPercent);
 
-        // Sample the texture a couple of times more to calculate the normal of the slope inside the crack
-        float uvOffset = 0.01f; // in UV coords [0-1]
-        float resampleDist = uvOffset * texScale;
-        float crackTexDepth_North = 1 - tex2D<float4>(crackTex, u, v + uvOffset).x;
-        float crackTexDepth_South = 1 - tex2D<float4>(crackTex, u, v - uvOffset).x;
-        float crackTexDepth_East = 1 - tex2D<float4>(crackTex, u + uvOffset, v).x;
-        float crackTexDepth_West = 1 - tex2D<float4>(crackTex, u - uvOffset, v).x;
-
-        glm::vec3 tanget = glm::normalize(glm::vec3(0, resampleDist, crackTexDepth_North - crackTexDepth_South));
-        glm::vec3 bitanget = glm::normalize(glm::vec3(resampleDist, 0, crackTexDepth_East - crackTexDepth_West));
-        glm::vec3 crackNormal = glm::cross(tanget, bitanget);
+        //glm::vec3 tanget = glm::normalize(glm::vec3(0, resampleDist, crackTexDepth_North - crackTexDepth_South));
+        //glm::vec3 bitanget = glm::normalize(glm::vec3(resampleDist, 0, crackTexDepth_East - crackTexDepth_West));
+        //glm::vec3 crackNormal = glm::cross(tanget, bitanget);
 
         // Use the slope inside the crack to apply very simple shadow to the internal color.
         // Light is shined down directly from above.
         //glm::vec3 viewDir = glm::vec3(p.viewmatrix[9], p.viewmatrix[10], p.viewmatrix[11]); 
-        glm::vec3 lightDir = glm::vec3(0, 0, -1);
-        float ambientLight = 0.5f;
+        //glm::vec3 lightDir = glm::vec3(0, 0, -1);
+        //float ambientLight = 0.5f;
         //internalColor *= __saturatef(glm::dot(lightDir, crackNormal)/2 + ambientLight);
 
         glm::vec3 finalColor = internalColor * (float)shouldUseInternalColor + externalColor * (float)!shouldUseInternalColor;
@@ -221,8 +213,8 @@ namespace SplatShader
         *io.opacity = crackReachesSplat ? 0 : *io.opacity;
 
         // Figure out which splats are beneath the surface of the model
-        float depthTolerance = -0.2f; // Increasing this value causes more splats to be considered internal.
-        float depthRelativeToSurface = in.splat_depth - in.depth_tex[in.mean_pixel_idx] - depthTolerance;
+        float depthTolerance = 0.2f; // Increasing this value causes more splats to be considered internal.
+        float depthRelativeToSurface = in.splat_depth - in.depth_tex[in.mean_pixel_idx] + depthTolerance;
         bool splatIsInsideModel = depthRelativeToSurface > 0;
         
         // Splats that are both close to the deleted splats AND inside the model gets a completely new color.
@@ -248,8 +240,8 @@ namespace SplatShader
     __device__ const SplatShader wireframeShader = &WireframeShaderCUDA;
     __device__ const SplatShader dissolveShader = &DissolveShader;
     __device__ const SplatShader crackShader = &CrackShaderCUDA;
-    __device__ const SplatShader stencilShader = &WriteToStencilCUDA;
     __device__ const SplatShader crackNoReconShader = &CrackWithoutReconstructionShaderCUDA;
+    __device__ const SplatShader stencilShader = &WriteToStencilCUDA;
 
 
     std::map<std::string, int64_t> GetSplatShaderAddressMap(){
