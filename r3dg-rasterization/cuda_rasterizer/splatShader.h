@@ -73,6 +73,7 @@ namespace SplatShader
 
 		// input / output
 		float *const __restrict__ stencils;			//The stencil value of the individual splat
+		float *const stencil_opacities;				//A seperate opacity that is used when rendering the stencil mask
 
 		// output
 		// In producion code, the colors field should function both as SH color input and as color output though reassignment, but we keep them seperate to make it easy to illustrate the difference.
@@ -150,6 +151,7 @@ namespace SplatShader
 		// pr. splat information
 		float *const __restrict__ opacity;				//The opacity of the splat. Opacity works a bit funky because how splats are blended. It is better to multiply this paramter by something rather than setting it to specific values.
 		float *const __restrict__ stencil_val;			//The stencil value of the splat.
+		float *const stencil_opacity;					//A seperate opacity that is used when rendering the stencil mask
 	};
 
 	// output

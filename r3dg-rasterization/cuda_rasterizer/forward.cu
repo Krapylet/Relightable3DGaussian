@@ -273,6 +273,7 @@ RenderIntermediateTexturesCUDA(
 	const float* __restrict__ depths,
 	const float* __restrict__ stencils,
 	const float4* __restrict__ conic_opacity,
+	float const* stencil_opacity,
 	float* __restrict__ out_depth,
 	float* __restrict__ out_stencil)
 {
@@ -299,8 +300,10 @@ RenderIntermediateTexturesCUDA(
 	__shared__ int collected_id[BLOCK_SIZE];
 	__shared__ float2 collected_xy[BLOCK_SIZE];
 	__shared__ float4 collected_conic_opacity[BLOCK_SIZE];
+	__shared__ float collected_stencil_opacity[BLOCK_SIZE];
 
 	// Initialize helper variables
+	float stencil_T = 1.0f;
 	float T = 1.0f;
 	float Stencil, Depth = 0;
 
@@ -320,6 +323,7 @@ RenderIntermediateTexturesCUDA(
 			collected_id[block.thread_rank()] = coll_id;
 			collected_xy[block.thread_rank()] = screen_positions[coll_id];
 			collected_conic_opacity[block.thread_rank()] = conic_opacity[coll_id];
+			collected_stencil_opacity[block.thread_rank()] = stencil_opacity[coll_id];
 		}
 		block.sync();
 
@@ -331,6 +335,7 @@ RenderIntermediateTexturesCUDA(
 			float2 xy = collected_xy[j];
 			float2 d = { xy.x - pixf.x, xy.y - pixf.y };
 			float4 con_o = collected_conic_opacity[j];
+			float stencil_o = collected_stencil_opacity[j];
 			float power = -0.5f * (con_o.x * d.x * d.x + con_o.z * d.y * d.y) - con_o.y * d.x * d.y;
 			if (power > 0.0f)
 				continue;
@@ -340,22 +345,27 @@ RenderIntermediateTexturesCUDA(
 			// and its exponential falloff from mean.
 			// Avoid numerical instabilities (see paper appendix).
 			float alpha = min(0.99f, con_o.w * exp(power));
-			if (alpha < 1.0f / 255.0f)
+			float stencil_alpha = min(0.99f, stencil_o * exp(power));
+			if (alpha < 1.0f / 255.0f && stencil_alpha < 1.0f / 255.0f)
 				continue;
 			float test_T = T * (1 - alpha);
-			if (test_T < 0.0001f)
+			float test_stencil_T = stencil_T * (1 - stencil_alpha);
+			if (test_T < 0.0001f && test_stencil_T < 0.0001f)
 			{
 				done = true;
 				continue;
 			}
 
             float weight = alpha * T;
+			float stencil_weight = stencil_alpha * stencil_T;
 
 			// Eq. (3) from 3D Gaussian splatting paper.
 			Depth += depths[collected_id[j]] * weight;
-			Stencil += stencils[collected_id[j]] * weight;
-
 			T = test_T;
+
+			// keep track of seperate transparency for Opacity pass
+			Stencil += stencils[collected_id[j]] * stencil_weight;
+			stencil_T = test_stencil_T;
 		}
 	}
 
@@ -820,7 +830,8 @@ void FORWARD::RunSHShaders(
 	glm::vec3 *const shs,
 
 	// output
-	float *const stencil_vals
+	float *const stencil_vals,
+	float *const stencil_opacities
 	)
 {
 	ShShader::PackedShShaderParams params {
@@ -847,7 +858,8 @@ void FORWARD::RunSHShaders(
 		rotations,
 		shs,
 		opacities,
-		stencil_vals
+		stencil_vals,
+		stencil_opacities
 	};
 
 	// execute all shaders in individual clusters to prevent branching
@@ -874,6 +886,7 @@ void FORWARD::RenderIntermediateTextures(
 	const float* __restrict__ depths,
 	const float* __restrict__ stencils,
 	const float4* __restrict__ conic_opacity,
+	float *const stencil_opacities,
 	float* __restrict__ out_depth,
 	float* __restrict__ out_stencil
 	)
@@ -886,6 +899,7 @@ void FORWARD::RenderIntermediateTextures(
 		depths,
 		stencils,
 		conic_opacity,
+		stencil_opacities,
 		out_depth,
 		out_stencil
 	);
@@ -914,6 +928,7 @@ void FORWARD::RunSplatShaders(
 	float *const __restrict__ features,
 	Texture::TextureManager *const d_textureManager,
 	float *const __restrict__ stencils,
+	float *const stencil_opacities,
 	float *const __restrict__ out_colors
 	)
 {
@@ -940,6 +955,7 @@ void FORWARD::RunSplatShaders(
 		d_textureManager,
 		
 		stencils,
+		stencil_opacities,
 
 		(glm::vec3*)out_colors
 	};

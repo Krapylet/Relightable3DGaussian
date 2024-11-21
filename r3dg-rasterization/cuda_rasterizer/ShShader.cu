@@ -53,7 +53,8 @@ namespace ShShader
     }
 
     __device__ ShShaderOutputs::ShShaderOutputs(PackedShShaderParams p, int idx):
-        stencil_val(p.stencil_vals + idx)
+        stencil_val(p.stencil_vals + idx),
+        stencil_opacity(p.stencil_opacities + idx)
         {
 		// for now we're not actually doing anyting in the constuctior other than initializing the constants.
     }

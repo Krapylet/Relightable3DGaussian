@@ -52,7 +52,8 @@ namespace SplatShader
 
 		// pr. splat information
 		opacity (((float*)p.conic_opacity) + idx * 4 + 3),  // Opacity works a bit funky because how splats are blended. It is better to multiply this paramter by something rather than setting it to specific values.
-        stencil_val (p.stencils + idx)
+        stencil_val (p.stencils + idx),
+        stencil_opacity (p.stencil_opacities + idx)
         {
 		// for now we're not actually doing anyting in the constuctior other than initializing the constants.
     }
@@ -236,6 +237,7 @@ namespace SplatShader
 
     __device__ static void WriteToStencilCUDA(SplatShaderConstantInputs in, SplatShaderModifiableInputs io, SplatShaderOutputs out){
         *io.stencil_val = 1;
+        *io.stencil_opacity = *io.opacity;
         *out.out_color = *in.color_SH;
     }
 

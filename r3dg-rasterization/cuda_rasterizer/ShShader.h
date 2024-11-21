@@ -71,6 +71,7 @@ namespace ShShader
 
 		// intermediate textures
 		float *const stencil_vals;
+		float *const stencil_opacities;
 	};
 
 	struct ShShaderConstantInputs {
@@ -138,6 +139,7 @@ namespace ShShader
 		__device__ ShShaderOutputs(PackedShShaderParams params, int idx);
 
 		float *const stencil_val; //The stencil value of the individual splat
+		float *const stencil_opacity; // a seperate opacity for when rendering the stencil mask
 	};
 
 	// Define a shared type of fuction pointer that can point to all implemented shaders.

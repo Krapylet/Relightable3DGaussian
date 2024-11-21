@@ -159,6 +159,7 @@ CudaRasterizer::GeometryState CudaRasterizer::GeometryState::fromChunk(char*& ch
 	GeometryState geom;
 	obtain(chunk, geom.depths, P, 128);
 	obtain(chunk, geom.stencils, P, 128);
+	obtain(chunk, geom.stencil_opacity, P, 128);
 	obtain(chunk, geom.clamped, P * 3, 128);
 	obtain(chunk, geom.internal_radii, P, 128);
 	obtain(chunk, geom.means2D, P, 128);
@@ -166,6 +167,7 @@ CudaRasterizer::GeometryState CudaRasterizer::GeometryState::fromChunk(char*& ch
 	obtain(chunk, geom.cov3DInverse, P * 6, 128);
 	obtain(chunk, geom.conic_opacity, P, 128);
 	obtain(chunk, geom.rgb, P * 3, 128);
+	obtain(chunk, geom.shader_rgb, P * 3, 128);
 	obtain(chunk, geom.shader_rgb, P * 3, 128);
 	obtain(chunk, geom.tiles_touched, P, 128);
 	cub::DeviceScan::InclusiveSum(nullptr, geom.scan_size, geom.tiles_touched, geom.tiles_touched, P);
@@ -196,6 +198,14 @@ CudaRasterizer::BinningState CudaRasterizer::BinningState::fromChunk(char*& chun
 		binning.point_list_unsorted, binning.point_list, P);
 	obtain(chunk, binning.list_sorting_space, binning.sorting_size, 128);
 	return binning;
+}
+
+__global__ void InitializeStencil(int splatCount, float* stencilVals, float* stencilOpacities){
+	auto idx = cg::this_grid().thread_rank();
+	if (idx >= splatCount)
+		return;
+	stencilVals[idx] = 0;
+	stencilOpacities[idx] = 1; // Set a high default opacity, so an unused stencil won't prevent early exits during rendering;
 }
 
 // Forward rendering procedure for differentiable rasterization
@@ -265,6 +275,9 @@ int CudaRasterizer::Rasterizer::forward(
 		throw std::runtime_error("For non-RGB, provide precomputed Gaussian colors!");
 	}
 
+	// Initialize stencil values
+	InitializeStencil<<<(P + 255) / 256, 256>>>(P, geomState.stencils, geomState.stencil_opacity);
+
 	CHECK_CUDA(FORWARD::RunSHShaders(
 		P,
 		h_shShaderManager,
@@ -292,7 +305,8 @@ int CudaRasterizer::Rasterizer::forward(
 		(glm::vec3*) shs,
 
 		// output
-		geomState.stencils
+		geomState.stencils,
+		geomState.stencil_opacity
 	), debug)
 
 	// Run preprocessing per-Gaussian (transformation, bounding, conversion of SHs to RGB)
@@ -379,6 +393,7 @@ int CudaRasterizer::Rasterizer::forward(
 		geomState.depths,
 		geomState.stencils,
 		geomState.conic_opacity,
+		geomState.stencil_opacity,
 		out_depth,
 		out_stencil
 	), debug);
@@ -409,6 +424,7 @@ int CudaRasterizer::Rasterizer::forward(
 
 		// input/output
 		geomState.stencils,
+		geomState.stencil_opacity,
 
 		// output
 		geomState.shader_rgb
@@ -473,6 +489,7 @@ int CudaRasterizer::Rasterizer::forward(
 		geomState.depths,
 		geomState.stencils,
 		geomState.conic_opacity,
+		geomState.stencil_opacity,
 		out_depth,
 		out_stencil
 	), debug);

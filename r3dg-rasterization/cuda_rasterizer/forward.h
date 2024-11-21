@@ -55,7 +55,8 @@ namespace FORWARD
 		glm::vec3 *const shs,
 
 		// output
-		float *const stencil_vals
+		float *const stencil_vals,
+		float *const stencil_opacity
 		);
 
 	// Perform initial steps for each Gaussian prior to rasterization.
@@ -94,6 +95,7 @@ namespace FORWARD
 		const float* __restrict__ depths,
 		const float* __restrict__ stencils,
 		const float4* __restrict__ conic_opacity,
+		float *const stencil_opacity,
 		float* __restrict__ out_depth,
 		float* __restrict__ out_stencil
 		);
@@ -125,6 +127,7 @@ namespace FORWARD
 
 		// input/output
 		float *const stencils,
+		float *const stencil_opacity,
 
 		// output
 		float *const out_colors
