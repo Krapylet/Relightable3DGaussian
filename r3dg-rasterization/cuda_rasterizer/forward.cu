@@ -987,6 +987,7 @@ void FORWARD::RunPostProcessShaders(
 	float const *const __restrict__ out_opacity,
 	float const *const __restrict__ out_depth,
 	float const *const __restrict__ stencil_tex,
+	float const *const out_surface_xyz,
 	int const S,
 	float const *const __restrict__ out_features,
 	Texture::TextureManager *const d_textureManager,
@@ -1008,6 +1009,7 @@ void FORWARD::RunPostProcessShaders(
         out_opacity,
 		out_depth,
 		stencil_tex,
+		out_surface_xyz,
 		S, out_features,
 		d_textureManager,
 

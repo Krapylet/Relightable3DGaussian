@@ -164,7 +164,7 @@ namespace SplatShader
         bool splatIsInsideModel = distToSurface > 0;
         
         // Splats that are both close to the deleted splats AND inside the model gets a completely new color.
-        float internalColorReach = 0.3f;
+        float internalColorReach = 0.1f;
         float maxPrimaryColorHeight = projectionHeight - (crackTexDepth + internalColorReach) * maxCrackDepth;
         bool SplatIsInCrackColorReach = splatHeight > maxPrimaryColorHeight;
         bool shouldUseInternalColor = splatIsInsideModel && SplatIsInCrackColorReach;
@@ -177,25 +177,16 @@ namespace SplatShader
         float discolorPercent =  __saturatef((splatHeight - maxDiscolorHeight) / (discolorReach + internalColorReach));
         glm::vec3 externalColor = glm::mix(*in.color_SH, internalColor, discolorPercent);
 
-        //glm::vec3 tanget = glm::normalize(glm::vec3(0, resampleDist, crackTexDepth_North - crackTexDepth_South));
-        //glm::vec3 bitanget = glm::normalize(glm::vec3(resampleDist, 0, crackTexDepth_East - crackTexDepth_West));
-        //glm::vec3 crackNormal = glm::cross(tanget, bitanget);
-
-        // Use the slope inside the crack to apply very simple shadow to the internal color.
-        // Light is shined down directly from above.
-        //glm::vec3 viewDir = glm::vec3(p.viewmatrix[9], p.viewmatrix[10], p.viewmatrix[11]); 
-        //glm::vec3 lightDir = glm::vec3(0, 0, -1);
-        //float ambientLight = 0.5f;
-        //internalColor *= __saturatef(glm::dot(lightDir, crackNormal)/2 + ambientLight);
-
         glm::vec3 finalColor = internalColor * (float)shouldUseInternalColor + externalColor * (float)!shouldUseInternalColor;
-        *io.opacity += 0.1f * (float)shouldUseInternalColor * (float)!crackReachesSplat; // Increase opacity of internal splats  
+        *io.opacity += 0.2f * (float)shouldUseInternalColor * (float)!crackReachesSplat; // Increase opacity of internal splats  
         *out.out_color = finalColor;
     }
 
     __device__ static void CrackWithoutReconstructionShaderCUDA(SplatShaderConstantInputs in, SplatShaderModifiableInputs io, SplatShaderOutputs out)
     {
+        //cudaTextureObject_t crackTex = in.d_textureManager->GetTexture("Bulge");
         cudaTextureObject_t crackTex = in.d_textureManager->GetTexture("Depth cracks");
+        
         // Rescale UVs
         // Currently we just project directly downwards, but the projection can be rotated and pivoted to anywhere around the model.
         float texScale = 2;
@@ -210,6 +201,7 @@ namespace SplatShader
         float splatHeight = in.position.z;
 
         bool crackReachesSplat = crackHeight < splatHeight;
+        float originalOpacity = *io.opacity;
         *io.opacity = crackReachesSplat ? 0 : *io.opacity;
 
         // Figure out which splats are beneath the surface of the model
@@ -218,13 +210,19 @@ namespace SplatShader
         bool splatIsInsideModel = depthRelativeToSurface > 0;
         
         // Splats that are both close to the deleted splats AND inside the model gets a completely new color.
-        float internalColorReach = 0.1f * crackTexDepth;
+        float internalColorReach = 0.5f * crackTexDepth;
         float maxPrimaryColorHeight = projectionHeight - (crackTexDepth + internalColorReach) * maxCrackDepth;
         bool SplatIsInCrackColorReach = maxPrimaryColorHeight < splatHeight;
         bool shouldUseInternalColor = splatIsInsideModel && SplatIsInCrackColorReach;
         
         *out.out_color = *io.color_base;
-        *io.stencil_val = shouldUseInternalColor;
+
+        // Write masked out splats to stencil
+        *io.stencil_val = crackReachesSplat;
+        *io.stencil_opacity = originalOpacity;
+
+        // Write sorrounding splats to seperate stencil.
+        *io.metallic = shouldUseInternalColor;
     }
 
     __device__ static void WriteToStencilCUDA(SplatShaderConstantInputs in, SplatShaderModifiableInputs io, SplatShaderOutputs out){

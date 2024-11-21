@@ -47,6 +47,8 @@ namespace PostProcess
         float const * const out_opacity;        // Transparrency mask for all rendered objects in the scene.
 		float const * const depth_tex;          // Depth texture for the scene.
 		float const * const stencil_tex;        // Stencil texture derived form SH and splat shaders.
+		float const *const out_surface_xyz;
+
 
 		// Precomputed 'texture' information from the neilf pbr decomposition
 		int const  S;						            // Feature channel count.
@@ -62,7 +64,7 @@ namespace PostProcess
                                             // float3  global_incident_light
 
         Texture::TextureManager *const d_textureManager;    // Object used to fetch textures uploaded by user.
-
+				
         // input/output
         glm::vec3 * const out_shader_color;   // Color derived from SH and splat shader.
 	};
@@ -118,6 +120,7 @@ namespace PostProcess
         float const * const opacity;        	// Transparrency mask for all rendered objects in the scene.
 		float const * const depth_tex;          // Depth texture for the scene.
 		float const * const stencil_tex;        // Stencil texture. Derived form SH and splat shaders.
+		float const * const out_surface_xyz;
 	};
 
 	// Used as input and output interface to the shaders.

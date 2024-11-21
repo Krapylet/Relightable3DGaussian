@@ -46,6 +46,7 @@ namespace PostProcess
         opacity(p.out_opacity),        // Transparrency mask for all rendered objects in the scene.
 		depth_tex(p.depth_tex),          // Depth texture for the scene.
 		stencil_tex(p.stencil_tex),        // Stencil texture. Derived form SH and splat shaders.
+        out_surface_xyz(p.stencil_tex),
 
         // Custom textures:
         d_textureManager(p.d_textureManager)    // Object used to fetch textures uploaded by user.
@@ -53,12 +54,22 @@ namespace PostProcess
         // Don't do anything during intialization other than setting basic values.
     }
 
-__device__ PostProcessShaderModifiableInputs::PostProcessShaderModifiableInputs(PackedPostProcessShaderParams p, int x, int y, int pixCount):
+    __device__ PostProcessShaderModifiableInputs::PostProcessShaderModifiableInputs(PackedPostProcessShaderParams p, int x, int y, int pixCount):
         // input / output
         //TODO: Seperate post process output from SH/splat shader output, so we don't accidentally write over a result another thread needs.
         out_shader_color(&p.out_shader_color[x + y *p.width])
     {
         // Don't do anything during intialization other than setting basic values.
+    }
+
+    // helper function for converting 2D pixel cooridnates to 1D pixel IDs
+    __device__ int GetPixelIdFromCoordinates(int x, int y, int screenWidth){
+        return x + y * screenWidth;
+    }
+
+    // helper function for converting 1D pixel IDs to to 2D pixel coordinates
+    __device__ glm::ivec2 GetPixelCoordinatesFromId(int id, int screenWidth){
+        return glm::ivec2(id % screenWidth, id / screenWidth);
     }
 
     __device__ static void DefaultPostProcess(PostProcessShaderInputs in, PostProcessShaderModifiableInputs io){
@@ -184,11 +195,52 @@ __device__ PostProcessShaderModifiableInputs::PostProcessShaderModifiableInputs(
     }
 
     __device__ static void CrackReconstructionShader(PostProcessShaderInputs in, PostProcessShaderModifiableInputs io){
-        float shouldBeReconstructed = in.stencil_tex[in.pixel_idx];
+        
+        // compute mask for new surfaces
+        int pid = in.pixel_idx;
+        float constructionMask = in.stencil_tex[pid] * in.metallic[pid];
+       
+        // early exit for pixels outside of mask.
+        if(constructionMask <= 0.01f){
+            return;
+        }
 
-        glm::vec3 internalColor = glm::vec3(0.94f, 0.86f, 0.26f);// * (1.0f - 0.3f * in.depth_tex[in.pixel_idx]);
+        // Get depth of sorrounding pixels
+        int sampleDist = 1;
+        float depthNorth = in.depth_tex[pid - in.width * sampleDist];
+        float depthSouth = in.depth_tex[pid + in.width * sampleDist];
+        float depthWest = in.depth_tex[pid - 1 * sampleDist];
+        float depthEast = in.depth_tex[pid + 1 * sampleDist];
 
-        *io.out_shader_color = in.base_color[in.pixel_idx] * (1-shouldBeReconstructed) + internalColor * shouldBeReconstructed;
+        // calculate surface normal in tanget space.
+        float normalStrength = 100;
+        glm::vec3 tanget = glm::normalize(glm::vec3(0, sampleDist/normalStrength, depthNorth - depthSouth));
+        glm::vec3 bitanget = glm::normalize(glm::vec3(sampleDist/normalStrength, 0, depthEast - depthWest));
+        glm::vec3 normal = glm::normalize(glm::cross(bitanget, tanget));
+
+        // transform the normal into world space
+        glm::vec3 w_normal = *(glm::vec3*)&transformVec4x3Transpose(*(float3*)&normal, in.viewmatrix_inv);
+
+        // Use the slope inside the crack to apply very simple shadow to the internal color.
+        // Light is shined down from above at an angle
+        // TODO: Make viewDir a precalucalted value.
+        glm::vec3 viewDir = glm::vec3(in.viewmatrix[9], in.viewmatrix[10], in.viewmatrix[11]); 
+        glm::vec3 lightDir = glm::normalize(glm::vec3(0.4f, 0.2f, -1));
+        float lightIntensity = 0.5f;
+        float ambientLight = 0.5f;
+        glm::vec3 internalColor = glm::vec3(0.83f, 0.64f, 0.2f);
+
+        // apply lighting calulation to internal color
+        // We use a simple lambertian diffuse 
+        internalColor *= __saturatef(glm::dot(lightDir, w_normal) * lightIntensity + ambientLight);
+
+
+
+        glm::vec3 outputColor = internalColor * constructionMask + *io.out_shader_color * (1-constructionMask);
+
+
+
+        *io.out_shader_color = w_normal;
     }
 
 

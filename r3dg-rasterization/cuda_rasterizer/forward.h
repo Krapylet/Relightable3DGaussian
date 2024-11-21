@@ -194,6 +194,7 @@ namespace FORWARD
 		float const * const __restrict__ out_opacity,
 		float const * const __restrict__ out_depth,
 		float const * const __restrict__ stencil_tex,
+		float const * const out_surface_xyz,
 		int const S,
 		float const *const __restrict__ out_feature,
 		Texture::TextureManager * const d_textureManager,
