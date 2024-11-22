@@ -450,12 +450,11 @@ if __name__ == '__main__':
     d_textureManager_ptr= textureImporter.initialize_all_textures()
 
     # Tell each splat which shader to use
-    gaussians.append_shader_addresses_gpu_accelerated()   # Faster initialization, but shaders are identified by ints
-    #gaussians.append_shader_addresses()                   # Slower initialization, but shaders are identified by strings
+    gaussians.append_shader_addresses_gpu_accelerated()
 
     #Select which post processing passes.
     postProcessManager = PostProcess.PostProcessManager()
-    postProcessManager.AddPostProcessingPass("crackReconstriction")
+    #postProcessManager.AddPostProcessingPass("crackReconstriction")
     
 
     render_fn = render_fn_dict[args.type]

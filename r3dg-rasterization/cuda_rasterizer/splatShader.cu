@@ -232,6 +232,25 @@ namespace SplatShader
         *out.out_color = *in.color_SH;
     }
 
+    __device__ static void RoughnessOnlyCUDA(SplatShaderConstantInputs in, SplatShaderModifiableInputs io, SplatShaderOutputs out){
+        if(in.position.x < 0){
+            *io.roughness = 0.25f;
+        }
+        else{
+            *io.roughness = 0.75f;
+        }
+        
+        *io.metallic = 0;
+		*io.incident_visibility = 0;
+		*io.color_brdf = glm::vec3(0, 0.5, 1);
+		*io.normal = glm::vec3(0);
+		*io.color_base = glm::vec3(0);
+		*io.incident_light = glm::vec3(0);
+		*io.local_incident_light = glm::vec3(0);
+		*io.global_incident_light = glm::vec3(0);
+        *out.out_color = glm::vec3(0);
+    }
+
     ///// Assign all the shaders to their short handles.
     // we need to keep them in constant device memory for them to stay valid when passed to host.
     __device__ const SplatShader defaultShader = &DefaultSplatShaderCUDA;
@@ -241,6 +260,7 @@ namespace SplatShader
     __device__ const SplatShader crackShader = &CrackShaderCUDA;
     __device__ const SplatShader crackNoReconShader = &CrackWithoutReconstructionShaderCUDA;
     __device__ const SplatShader stencilShader = &WriteToStencilCUDA;
+    __device__ const SplatShader roughnessOnly = &RoughnessOnlyCUDA;
 
 
     std::map<std::string, int64_t> GetSplatShaderAddressMap(){
@@ -266,7 +286,7 @@ namespace SplatShader
 
         SplatShader h_dissolveShader;
         cudaMemcpyFromSymbol(&h_dissolveShader, dissolveShader, shaderMemorySize);
-        shaderMap["dissolveShader"] = (int64_t)h_dissolveShader;
+        shaderMap["DissolveShader"] = (int64_t)h_dissolveShader;
 
         SplatShader h_crackShader;
         cudaMemcpyFromSymbol(&h_crackShader, crackShader, shaderMemorySize);
@@ -278,7 +298,11 @@ namespace SplatShader
 
         SplatShader h_crackNoReconShader;
         cudaMemcpyFromSymbol(&h_crackNoReconShader, crackNoReconShader, shaderMemorySize);
-        shaderMap["crackNoRecon"] = (int64_t)h_crackNoReconShader;
+        shaderMap["CrackNoRecon"] = (int64_t)h_crackNoReconShader;
+
+        SplatShader h_roughnessOnly;
+        cudaMemcpyFromSymbol(&h_roughnessOnly, roughnessOnly, shaderMemorySize);
+        shaderMap["RoughnessOnly"] = (int64_t)h_roughnessOnly;
 
         return shaderMap;
     }
@@ -345,6 +369,10 @@ namespace SplatShader
             //printf("Position: (%f, %f, %f); Depth:%f; Pixel Coord: (%f, %f)\n", params.position.x, params.position.y, params.position.z, params.prerendered_depth_buffer[0], params.screen_position.x, params.screen_position.y);
 
         // Execute shader instance.
+
+        if(idx == 0){
+            printf("Roughness of first splat: %f", *io.roughness);
+        }
         shader(in, io, out);
     }
 }

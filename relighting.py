@@ -14,6 +14,8 @@ from torchvision.utils import save_image
 from tqdm import tqdm
 from bvh import RayTracer
 from gaussian_renderer.neilf_composite import sample_incident_rays
+import asset_processing.textureImport as texImport
+import asset_processing.PostProcess as PostProcess
 
 
 def load_json_config(json_file):
@@ -165,6 +167,17 @@ if __name__ == '__main__':
     background = torch.tensor([bg, bg, bg], dtype=torch.float32, device="cuda")
     render_fn = render_fn_dict['neilf_composite']
 
+    # Import textures used in shaders
+    textureImporter = texImport.TextureImporter()
+    d_textureManager_ptr = textureImporter.initialize_all_textures()
+
+    # Tell each splat which shader to use
+    gaussians_composite.append_shader_addresses_gpu_accelerated()
+
+    #Select which post processing passes.
+    postProcessManager = PostProcess.PostProcessManager()
+    #postProcessManager.AddPostProcessingPass("crackReconstriction")
+
     render_kwargs = {
         "pc": gaussians_composite,
         "pipe": pipe,
@@ -174,7 +187,9 @@ if __name__ == '__main__':
             "env_light": light,
             "sample_num": args.sample_num,
         },
-        "bake": args.bake
+        "bake": args.bake,
+        "d_textureManager_ptr": d_textureManager_ptr,
+        "postProcessingPasses" : postProcessManager.activePostProcessingPasses,
     }
 
     H = traject_dict["camera"]["height"]

@@ -140,61 +140,6 @@ namespace PostProcess
         *io.out_shader_color = internalColor * (1.0f-(float)pixelShouldBeOutlined) + outlineColor * (float)pixelShouldBeOutlined;
     }
 
-    __device__ static void ToonShader(PostProcessShaderInputs in, PostProcessShaderModifiableInputs io){
-        bool pixelIsOutsideOfStencil = !PixelIsInsideStencil(in.pixel, &in);
-        
-        int outlineThickness = 5;
-        int sampleDirections = 5;
-
-        bool pixelIsNearStencil = false;
-
-        // sample one pixel pr. thickness in all directions.
-        for (float radius = 1; radius < outlineThickness + 1; radius++)
-        {
-            for (float direction = 0; direction <= 1; direction += 1.0f/(float)sampleDirections)
-            {
-                glm::ivec2 samplePixel = in.pixel + (glm::ivec2)(glm::vec2(cos(direction * 2 * M_PI), sin(direction * 2 * M_PI)) * radius);
-        
-                pixelIsNearStencil |= PixelIsInsideStencil(samplePixel, &in);
-            }
-        }
-        
-        bool pixelShouldBeOutlined = pixelIsOutsideOfStencil && pixelIsNearStencil;
-
-        glm::vec3 outlineColor = glm::vec3(1,0,0);
-
-        // instead of darking areas with shadow by darkening the color, we instead draw a texture on top of the darnkeded areas.
-        // The textures are in screen space, though...
-        // Again. 3d textures would probably be a good addition.
-        auto shadowTex = in.d_textureManager->GetTexture("shadow");
-        
-        float uvScale = 10;
-        float u = (float)in.pixel.x / (float)in.width * uvScale;
-        float v = (float)in.pixel.y / (float)in.height * uvScale;
-
-        float lightShadow = tex2D<float4>(shadowTex, u, v).x;
-        float mediumShadow = tex2D<float4>(shadowTex, u, v).y;
-        float heavyShadow = tex2D<float4>(shadowTex, u, v).z;
-
-
-        glm::vec3 quantizedLight = QuantizeColor(in.incident_light[in.pixel_idx], 4);
-        float shadowIntensity = 1 - max(quantizedLight.r, max(quantizedLight.g, quantizedLight.b))/2;
-
-        glm::vec3 shadowIntensityVec(shadowIntensity, shadowIntensity, shadowIntensity);
-        glm::vec3 shadowThresholds = glm::vec3(1, 0.75, 0.5);
-        glm::vec3 shouldUseShadowWeight = glm::step(shouldUseShadowWeight, shadowIntensityVec);
-        
-
-        bool pixelIsInStencil = PixelIsInsideStencil(in.pixel, &in);
-        float light = 1 - max(lightShadow * shouldUseShadowWeight.x, max(mediumShadow + shouldUseShadowWeight.y, heavyShadow + shouldUseShadowWeight.z)) * pixelIsInStencil;
-        
-        // Apply the shadow texture on top of the unlit colors
-        glm::vec3 internalColor = in.base_color[in.pixel_idx] * quantizedLight;
-        //glm::vec3 internalColor = shouldUseShadowWeight;
-
-        *io.out_shader_color = internalColor * (1.0f-(float)pixelShouldBeOutlined) + outlineColor * (float)pixelShouldBeOutlined;
-    }
-
     __device__ static void CrackReconstructionShader(PostProcessShaderInputs in, PostProcessShaderModifiableInputs io){
         
         // compute mask for new surfaces
@@ -227,13 +172,45 @@ namespace PostProcess
         *io.out_shader_color = outputColor;
     }
 
+    __device__ static void TexturedShadows(PostProcessShaderInputs in, PostProcessShaderModifiableInputs io){
+        // instead of darking areas with shadow by darkening the color, we instead draw a texture on top of the darnkeded areas.
+        // We would prefer to draw them in world space, i think, but since there's no UV mapping, we have to draw them in screen space instead...
+        // Again. 3d textures would probably be a good addition.
+        auto shadowTex = in.d_textureManager->GetTexture("shadow");
+        
+        float uvScale = 10; // Higher values cause the texture to repeat more often
+        float u = (float)in.pixel.x / (float)in.width * uvScale;
+        float v = (float)in.pixel.y / (float)in.height * uvScale;
+
+        float lightShadow = tex2D<float4>(shadowTex, u, v).x;
+        float mediumShadow = tex2D<float4>(shadowTex, u, v).y;
+        float heavyShadow = tex2D<float4>(shadowTex, u, v).z;
+
+
+        glm::vec3 quantizedLight = QuantizeColor(in.incident_light[in.pixel_idx], 4);
+        float shadowIntensity = 1 - max(quantizedLight.r, max(quantizedLight.g, quantizedLight.b))/2;
+
+        glm::vec3 shadowIntensityVec(shadowIntensity, shadowIntensity, shadowIntensity);
+        glm::vec3 shadowThresholds = glm::vec3(1, 0.75, 0.5);
+        glm::vec3 shouldUseShadowWeight = glm::step(shouldUseShadowWeight, shadowIntensityVec);
+        
+
+        bool pixelIsInStencil = PixelIsInsideStencil(in.pixel, &in);
+        float light = 1 - max(lightShadow * shouldUseShadowWeight.x, max(mediumShadow + shouldUseShadowWeight.y, heavyShadow + shouldUseShadowWeight.z)) * pixelIsInStencil;
+        
+        // Apply the shadow texture on top of the unlit colors
+        glm::vec3 internalColor = in.base_color[in.pixel_idx] * quantizedLight;
+        //glm::vec3 internalColor = shouldUseShadowWeight;
+
+        *io.out_shader_color = internalColor;
+    }
 
 
     __device__ const PostProcessShader defaultShader = &DefaultPostProcess;
     __device__ const PostProcessShader invertShader = &InvertColorsShader;
     __device__ const PostProcessShader outlineShader = &OutlineShader;
-    __device__ const PostProcessShader toonShader = &ToonShader;
     __device__ const PostProcessShader crackReconstriction = &CrackReconstructionShader;
+    __device__ const PostProcessShader texturedShadows = &TexturedShadows;
 
 	std::map<std::string, int64_t> GetPostProcessShaderAddressMap(){
         // we cast pointers to numbers since most pointers aren't supported by pybind
@@ -256,9 +233,9 @@ namespace PostProcess
         cudaMemcpyFromSymbol(&h_outlineShader, outlineShader, shaderMemorySize);
         shaderMap["Outline"] = (int64_t)h_outlineShader;
         
-        PostProcessShader h_toonShader;
-        cudaMemcpyFromSymbol(&h_toonShader, toonShader, shaderMemorySize);
-        shaderMap["Toon"] = (int64_t)h_toonShader;
+        PostProcessShader h_texturedShadows;
+        cudaMemcpyFromSymbol(&h_texturedShadows, texturedShadows, shaderMemorySize);
+        shaderMap["TexturedShadows"] = (int64_t)h_texturedShadows;
 
         PostProcessShader h_crackReconstriction;
         cudaMemcpyFromSymbol(&h_crackReconstriction, crackReconstriction, shaderMemorySize);

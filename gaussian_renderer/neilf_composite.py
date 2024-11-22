@@ -13,7 +13,8 @@ from .r3dg_rasterization import GaussianRasterizationSettings, GaussianRasterize
 
 def render_view(viewpoint_camera: Camera, pc: GaussianModel, pipe, bg_color: torch.Tensor,
                 scaling_modifier=1.0, override_color=None, is_training=False, 
-                dict_params=None, bake=False):
+                dict_params=None, bake=False,
+                time=0.0, dt=0.0, d_textureManager_ptr=None, postProcessingPasses = None):
     
     direct_light_env_light = dict_params.get("env_light")
     gamma_transform = dict_params.get("gamma")
@@ -31,9 +32,11 @@ def render_view(viewpoint_camera: Camera, pc: GaussianModel, pipe, bg_color: tor
     tanfovy = math.tan(viewpoint_camera.FoVy * 0.5)
     intrinsic = viewpoint_camera.intrinsics
 
+    height = int(viewpoint_camera.image_height)
+    width = int(viewpoint_camera.image_width)
     raster_settings = GaussianRasterizationSettings(
-        image_height=int(viewpoint_camera.image_height),
-        image_width=int(viewpoint_camera.image_width),
+        image_height=height,
+        image_width=width,
         tanfovx=tanfovx,
         tanfovy=tanfovy,
         cx=float(intrinsic[0, 2]),
@@ -49,7 +52,13 @@ def render_view(viewpoint_camera: Camera, pc: GaussianModel, pipe, bg_color: tor
         prefiltered=False,
         backward_geometry=True,
         computer_pseudo_normal=True,
-        debug=pipe.debug
+        debug=pipe.debug,
+        h_shShaderManager_ptr = pc.h_shShaderManager_ptr,
+        h_splatShaderManager_ptr = pc.h_splatShaderManager_ptr,
+        time = time,
+        dt = dt,
+        d_textureManager_ptr = d_textureManager_ptr,
+        postProcessingPasses = postProcessingPasses,
     )
 
     rasterizer = GaussianRasterizer(raster_settings=raster_settings)
@@ -122,7 +131,7 @@ def render_view(viewpoint_camera: Camera, pc: GaussianModel, pipe, bg_color: tor
                           extra_results["global_incident_lights"],
                           extra_results["incident_visibility"]], dim=-1)
     
-    (num_rendered, num_contrib, rendered_image, rendered_opacity, rendered_depth,
+    (num_rendered, num_contrib, rendered_image, rendered_opacity, rendered_depth, rendered_stencil,
      rendered_feature, rendered_shader, rendered_pseudo_normal, rendered_surface_xyz, radii) = rasterizer(
         means3D=means3D,
         means2D=means2D,
@@ -135,9 +144,19 @@ def render_view(viewpoint_camera: Camera, pc: GaussianModel, pipe, bg_color: tor
         features=features,
     )
     feature_dict = {}
-    rendered_pbr, rendered_normal, rendered_base_color, rendered_roughness, rendered_metallic, \
-        rendered_light, rendered_local_light, rendered_global_light, rendered_visibility \
-        = rendered_feature.split([3, 3, 3, 1, 1, 3, 3, 3, 1], dim=0)
+
+    #First we have to split all the feature textures up
+    features = list(rendered_feature.reshape(-1).view(21,height,width).split([1, 1, 1, 3, 3, 3, 3, 3, 3], dim=0))
+    
+    #And then we can reshape them
+    for i in range(len(features)):
+        features[i] = features[i].view(height, width, features[i].shape[0]).permute(2, 0, 1)
+    rendered_opacity = rendered_opacity.permute(2, 0, 1)
+    rendered_image = rendered_image.permute(2, 0, 1)
+
+    rendered_roughness, rendered_metallic, rendered_visibility, \
+    rendered_pbr, rendered_normal, rendered_base_color, rendered_light, rendered_local_light, rendered_global_light,  \
+            = features
 
     feature_dict.update({"base_color": rendered_base_color,
                          "roughness": rendered_roughness,
@@ -148,8 +167,11 @@ def render_view(viewpoint_camera: Camera, pc: GaussianModel, pipe, bg_color: tor
                          "visibility": rendered_visibility,
                          })
 
+
     pbr = rendered_pbr
-    rendered_pbr = pbr + (1 - rendered_opacity) * bg_color[:, None, None]
+    print(f"opacity shape: {rendered_opacity.shape}")
+    print(f"pbr shape: {pbr.shape}")
+    rendered_pbr = pbr + (1 - rendered_opacity) * bg_color[: , None, None]
     
     # HDR out radiance to LDR
     val_gamma = 0
@@ -165,6 +187,7 @@ def render_view(viewpoint_camera: Camera, pc: GaussianModel, pipe, bg_color: tor
                "surface_xyz": rendered_surface_xyz,
                "opacity": rendered_opacity,
                "depth": rendered_depth,
+               "stencil": rendered_stencil,
                "viewspace_points": screenspace_points,
                "visibility_filter": radii > 0,
                "radii": radii,
@@ -181,22 +204,31 @@ def render_view(viewpoint_camera: Camera, pc: GaussianModel, pipe, bg_color: tor
             env = torch.clamp_min(eval_sh(direct_light_env_light.sh_degree, shs_view_direct, directions.permute(1, 2, 0)) + 0.5, 0).permute(2, 0, 1)
         else:
             env = direct_light_env_light.direct_light(directions.permute(1, 2, 0)).permute(2, 0, 1)
+        print(f"env shape: {env.shape}")
+        print(f"opacity shape: {rendered_opacity.shape}")
+        print(f"env * opacity shape: {((1 - rendered_opacity) * env).shape}")
+        print(f"pbr shape: {pbr.shape}")
+        
         results["render"] = rendered_image + (1 - rendered_opacity) * env
-        results["pbr_env"] = pbr + (1 - rendered_opacity) * env
+        results["pbr_env"] = pbr #+ (1 - rendered_opacity) * env         #      Adding the env to the pbr causes a crash for some reason.
+        
 
     return results
 
 
 def render_neilf_composite(viewpoint_camera: Camera, pc: GaussianModel, pipe, bg_color: torch.Tensor,
                  scaling_modifier=1.0, override_color=None, opt: OptimizationParams = False,
-                 is_training=False, dict_params=None, bake=False):
+                 is_training=False, dict_params=None, bake=False,
+                 time=0.0, dt=0.0, d_textureManager_ptr=None, postProcessingPasses = None):
+    
     """
     Render the scene.
     Background tensor (bg_color) must be on GPU!
     """
     results = render_view(viewpoint_camera, pc, pipe, bg_color,
                           scaling_modifier, override_color,
-                          is_training, dict_params, bake)
+                          is_training, dict_params, bake,
+                          time, dt, d_textureManager_ptr, postProcessingPasses)
 
     return results
 

@@ -41,6 +41,9 @@ ShaderManager::ShaderManager(std::map<std::string, int64_t> shaders){
         h_shaderAddresses[i] = address;
         cudaMemcpy(&d_shaderAddresses[i], &address, sizeof(int64_t), cudaMemcpyHostToDevice);
 
+        // initialize shader counts to 0
+        int initValue = 0;
+        cudaMemcpy(&d_shaderInstanceCount[i], &initValue, sizeof(int), cudaMemcpyHostToDevice);
         i++;
     }
 

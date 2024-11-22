@@ -529,13 +529,6 @@ renderCUDA(
         local_incident_light    float3  
         global_incident_light   float3
 		*/
-
-		// This gets displayed correctly in Python frontend
-		//out_feature[pix_id * S] = F[0];
-
-		// This gets read correctly from post processing 
-		//out_feature[pix_id] = F[0];
-
 		
 		int f_ch = 0; // Keep track of which texture we're currently workin on.
 		int f_offset = 0; // Keep track of the offset to the beginning of the current texture.
