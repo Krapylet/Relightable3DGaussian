@@ -29,8 +29,7 @@ __global__ void SelectShadersCUDA(
     auto pos = splatCoordinates[idx];
 
     shShaderIndexes[idx] = shShaderManager->GetIndexOfShader("ShDefault");
-    //splatShadersIndexes[idx] = splatShaderManager->GetIndexOfShader("SplatDefault");
-    splatShadersIndexes[idx] = splatShaderManager->GetIndexOfShader("RoughnessOnly");
+    splatShadersIndexes[idx] = splatShaderManager->GetIndexOfShader("QuantizeFlats");
 }
 
 

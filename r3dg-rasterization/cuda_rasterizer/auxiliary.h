@@ -8,7 +8,7 @@
  *
  * For inquiries contact  george.drettakis@inria.fr
  */
-
+#pragma once
 #ifndef CUDA_RASTERIZER_AUXILIARY_H_INCLUDED
 #define CUDA_RASTERIZER_AUXILIARY_H_INCLUDED
 

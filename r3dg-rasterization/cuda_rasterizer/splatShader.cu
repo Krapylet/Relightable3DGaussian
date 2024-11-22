@@ -64,6 +64,18 @@ namespace SplatShader
 		// for now we're not actually doing anyting in the constuctior other than initializing the constants.
     }
 
+    // Performs a very simple quantization of the model colors
+    __device__ static glm::vec3 QuantizeColor(glm::vec3 color, int steps)
+    {
+        // for each component of the color, clamp it to the closest multiple of the step threshold (1/steps).
+        float quantizedR = roundf(color.r * steps)/steps;
+        float quantizedG = roundf(color.g * steps)/steps;
+        float quantizedB = roundf(color.b * steps)/steps;
+
+        glm::vec3 quatnizedColor(quantizedR, quantizedG, quantizedB);
+        return quatnizedColor;
+    }
+
     __device__ static void DefaultSplatShaderCUDA(SplatShaderConstantInputs in, SplatShaderModifiableInputs io, SplatShaderOutputs out)
     {
         // Set output color
@@ -251,6 +263,12 @@ namespace SplatShader
         *out.out_color = glm::vec3(0);
     }
 
+    __device__ static void QuantizeFlatColors(SplatShaderConstantInputs in, SplatShaderModifiableInputs io, SplatShaderOutputs out){
+
+        glm::vec3 quantizedLight = QuantizeColor(*io.incident_light, 3);
+		*out.out_color = *io.color_base;//* quantizedLight;
+    }
+
     ///// Assign all the shaders to their short handles.
     // we need to keep them in constant device memory for them to stay valid when passed to host.
     __device__ const SplatShader defaultShader = &DefaultSplatShaderCUDA;
@@ -261,6 +279,7 @@ namespace SplatShader
     __device__ const SplatShader crackNoReconShader = &CrackWithoutReconstructionShaderCUDA;
     __device__ const SplatShader stencilShader = &WriteToStencilCUDA;
     __device__ const SplatShader roughnessOnly = &RoughnessOnlyCUDA;
+    __device__ const SplatShader quantizeFlats = &QuantizeFlatColors;
 
 
     std::map<std::string, int64_t> GetSplatShaderAddressMap(){
@@ -303,6 +322,10 @@ namespace SplatShader
         SplatShader h_roughnessOnly;
         cudaMemcpyFromSymbol(&h_roughnessOnly, roughnessOnly, shaderMemorySize);
         shaderMap["RoughnessOnly"] = (int64_t)h_roughnessOnly;
+
+        SplatShader h_quantizeFlats;
+        cudaMemcpyFromSymbol(&h_quantizeFlats, quantizeFlats, shaderMemorySize);
+        shaderMap["QuantizeFlats"] = (int64_t)h_quantizeFlats;
 
         return shaderMap;
     }
@@ -370,9 +393,6 @@ namespace SplatShader
 
         // Execute shader instance.
 
-        if(idx == 0){
-            printf("Roughness of first splat: %f", *io.roughness);
-        }
         shader(in, io, out);
     }
 }

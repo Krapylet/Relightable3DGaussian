@@ -454,7 +454,7 @@ if __name__ == '__main__':
 
     #Select which post processing passes.
     postProcessManager = PostProcess.PostProcessManager()
-    #postProcessManager.AddPostProcessingPass("crackReconstriction")
+    postProcessManager.AddPostProcessingPass("ToonShader")
     
 
     render_fn = render_fn_dict[args.type]

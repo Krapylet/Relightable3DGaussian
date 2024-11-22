@@ -27,19 +27,27 @@ namespace PostProcess
 		focal_x(p.focal_x), focal_y(p.focal_y),
 		tan_fovx(p.tan_fovx), tan_fovy(p.tan_fovy),
 
-        background(p.background),              
-        SH_color(p.out_color),                
+        background(p.background),   
+           
+        // Custom textures:
+        d_textureManager(p.d_textureManager)    // Object used to fetch textures uploaded by user.
+    {
+        // Don't do anything during intialization other than setting basic values.
+    }
+
+    __device__ PostProcessShaderModifiableInputs::PostProcessShaderModifiableInputs(PackedPostProcessShaderParams p, int x, int y, int pixCount):
+        SH_color(p.out_color),   
 
         // Feature textures: index is multiplied by number of values in all textures before them.
         roughness               (p.features + pixCount * (0)),      
         metallic                (p.features + pixCount * (1)),
         incident_visibility     (p.features + pixCount * (1+1)),
-        brdf_color              ((glm::vec3 const * const)(p.features + pixCount * (1+1+1))),
-        normal                  ((glm::vec3 const * const)(p.features + pixCount * (1+1+1+3))),    
-        base_color              ((glm::vec3 const * const)(p.features + pixCount * (1+1+1+3+3))),              
-        incident_light          ((glm::vec3 const * const)(p.features + pixCount * (1+1+1+3+3+3))),         
-        local_incident_light    ((glm::vec3 const * const)(p.features + pixCount * (1+1+1+3+3+3+3))),  
-        global_incident_light   ((glm::vec3 const * const)(p.features + pixCount * (1+1+1+3+3+3+3+3))),
+        brdf_color              ((glm::vec3 * const)(p.features + pixCount * (1+1+1))),
+        normal                  ((glm::vec3 * const)(p.features + pixCount * (1+1+1+3))),    
+        base_color              ((glm::vec3 * const)(p.features + pixCount * (1+1+1+3+3))),              
+        incident_light          ((glm::vec3 * const)(p.features + pixCount * (1+1+1+3+3+3))),         
+        local_incident_light    ((glm::vec3 * const)(p.features + pixCount * (1+1+1+3+3+3+3))),  
+        global_incident_light   ((glm::vec3 * const)(p.features + pixCount * (1+1+1+3+3+3+3+3))),
 
 
         //// Scene textures:
@@ -49,19 +57,30 @@ namespace PostProcess
         out_surface_xyz(p.out_surface_xyz),
         out_pseudonormal(p.out_pseudonormal), 
 
-        // Custom textures:
-        d_textureManager(p.d_textureManager)    // Object used to fetch textures uploaded by user.
-    {
-        // Don't do anything during intialization other than setting basic values.
-    }
-
-    __device__ PostProcessShaderModifiableInputs::PostProcessShaderModifiableInputs(PackedPostProcessShaderParams p, int x, int y, int pixCount):
-        // input / output
         //TODO: Seperate post process output from SH/splat shader output, so we don't accidentally write over a result another thread needs.
         out_shader_color(&p.out_shader_color[x + y *p.width])
     {
         // Don't do anything during intialization other than setting basic values.
     }
+
+    // Matrix that can be used for gaussian blurs
+    __device__ float BlendingMatrix[] = 
+    {0.009375f, 0.01875f, 0.028125f, 0.01875f, 0.009375f,
+    0.01875f, 0.0375f, 0.045f, 0.0375f, 0.01875f,
+    0.028125f, 0.045f, 0.3f, 0.045f, 0.028125f,
+    0.01875f, 0.0375f, 0.045f, 0.0375f, 0.01875f,
+    0.009375f, 0.01875f, 0.028125f, 0.01875f, 0.009375f};
+
+    // Matrixes for sobel filter
+    __device__ float SobelHorizontal[3][3] = 
+    {{-1, 0, 1}, 
+    {-2, 0, 2}, 
+    {-1, 0, 1}};
+
+    __device__ float SobelVertical[3][3] = 
+    {{-1, -2, -1}, 
+    {0, 0, 0}, 
+    {1, 2, 1}};
 
     // helper function for converting 2D pixel cooridnates to 1D pixel IDs
     __device__ int GetPixelIdFromCoordinates(int x, int y, int screenWidth){
@@ -73,28 +92,10 @@ namespace PostProcess
         return glm::ivec2(id % screenWidth, id / screenWidth);
     }
 
-    __device__ static void DefaultPostProcess(PostProcessShaderInputs in, PostProcessShaderModifiableInputs io){
-        // We don't actuallyt do any post processing by default.
-    }
-
-    __device__ static void InvertColorsShader(PostProcessShaderInputs in, PostProcessShaderModifiableInputs io){
-        *io.out_shader_color = glm::vec3(1,1,1) - *io.out_shader_color;
-    }
-
-    __device__ bool PixelIsInsideStencil(glm::ivec2 pixel, PostProcessShaderInputs* in){
-        // First check if the pixel is inside the screen.
-        int samplePixel_idx = pixel.x + pixel.y * in->width;
-
-        bool pixelIsOutsideScreen = samplePixel_idx < 0 || samplePixel_idx > in->height * in->width;
-        if(pixelIsOutsideScreen){
-            return false;
-        }
-
-        // then check the value of the stencil
-        float stencilThreshold = 0.9; // Stencil values equal to or over this value will be considered "inside of stencil"
-        bool pixelIsInsideStencil = in->stencil_tex[samplePixel_idx] >= stencilThreshold;
-
-        return pixelIsInsideStencil;
+    __device__ glm::ivec2 ClampPixelToScreen(int x, int y, int height, int width){
+        int clamped_x = max(0, min(x, width));
+        int clamped_y = max(0, min(y, height));
+        return glm::vec2(clamped_x, clamped_y);
     }
 
     // Performs a very simple quantization of the model colors
@@ -109,10 +110,36 @@ namespace PostProcess
         return quatnizedColor;
     }
 
+    __device__ static void DefaultPostProcess(PostProcessShaderInputs in, PostProcessShaderModifiableInputs io){
+        // We don't actuallyt do any post processing by default.
+    }
+
+    __device__ static void InvertColorsShader(PostProcessShaderInputs in, PostProcessShaderModifiableInputs io){
+        *io.out_shader_color = glm::vec3(1,1,1) - *io.out_shader_color;
+    }
+
+    __device__ bool PixelIsInsideStencil(glm::ivec2 pixel, PostProcessShaderInputs* in, PostProcessShaderModifiableInputs* io){
+        // First check if the pixel is inside the screen.
+        int samplePixel_idx = pixel.x + pixel.y * in->width;
+
+        bool pixelIsOutsideScreen = samplePixel_idx < 0 || samplePixel_idx > in->height * in->width;
+        if(pixelIsOutsideScreen){
+            return false;
+        }
+
+        // then check the value of the stencil
+        float stencilThreshold = 0.9; // Stencil values equal to or over this value will be considered "inside of stencil"
+        bool pixelIsInsideStencil = io->stencil_tex[samplePixel_idx] >= stencilThreshold;
+
+        return pixelIsInsideStencil;
+    }
+
+
+
     // Simple method for generating an outline around the object using stencil.
     // Could be upgrade to also use depth map etc.
     __device__ static void OutlineShader(PostProcessShaderInputs in, PostProcessShaderModifiableInputs io){
-        bool pixelIsOutsideOfStencil = !PixelIsInsideStencil(in.pixel, &in);
+        bool pixelIsOutsideOfStencil = !PixelIsInsideStencil(in.pixel, &in, &io);
         
         int outlineThickness = 5;
         int sampleDirections = 5;
@@ -126,7 +153,7 @@ namespace PostProcess
             {
                 glm::ivec2 samplePixel = in.pixel + (glm::ivec2)(glm::vec2(cos(direction * 2 * M_PI), sin(direction * 2 * M_PI)) * radius);
         
-                pixelIsNearStencil |= PixelIsInsideStencil(samplePixel, &in);
+                pixelIsNearStencil |= PixelIsInsideStencil(in.pixel, &in, &io);
             }
         }
         
@@ -134,24 +161,21 @@ namespace PostProcess
 
         glm::vec3 outlineColor = glm::vec3(1,0,0);
 
-        glm::vec3 litColor = in.base_color[in.pixel_idx] * in.incident_light[in.pixel_idx];
-        glm::vec3 internalColor = QuantizeColor(litColor, 4);
-
-        *io.out_shader_color = internalColor * (1.0f-(float)pixelShouldBeOutlined) + outlineColor * (float)pixelShouldBeOutlined;
+        *io.out_shader_color = io.base_color[in.pixel_idx] * (1.0f-(float)pixelShouldBeOutlined) + outlineColor * (float)pixelShouldBeOutlined;
     }
 
     __device__ static void CrackReconstructionShader(PostProcessShaderInputs in, PostProcessShaderModifiableInputs io){
         
         // compute mask for new surfaces
         int pid = in.pixel_idx;
-        float constructionMask = in.stencil_tex[pid] * in.metallic[pid];
+        float constructionMask = io.stencil_tex[pid] * io.metallic[pid];
        
         //early exit for pixels outside of mask.
         if(constructionMask <= 0.01f){
             return;
         }
 
-        glm::vec3 normal = in.out_pseudonormal[pid];
+        glm::vec3 normal = io.out_pseudonormal[pid];
 
         // Use the slope inside the crack to apply very simple shadow to the internal color.
         // Light is shined down from above at an angle
@@ -172,38 +196,83 @@ namespace PostProcess
         *io.out_shader_color = outputColor;
     }
 
+    __device__ static void BlurLighting(PostProcessShaderInputs in, PostProcessShaderModifiableInputs io){
+        /*
+        *io.roughness = 0;
+        for (size_t i = 0; i < 25; i++)
+        {
+            glm::ivec2 pixelSampleID = 
+        }
+        */
+        
+    }
+
     __device__ static void TexturedShadows(PostProcessShaderInputs in, PostProcessShaderModifiableInputs io){
         // instead of darking areas with shadow by darkening the color, we instead draw a texture on top of the darnkeded areas.
-        // We would prefer to draw them in world space, i think, but since there's no UV mapping, we have to draw them in screen space instead...
-        // Again. 3d textures would probably be a good addition.
         auto shadowTex = in.d_textureManager->GetTexture("shadow");
         
-        float uvScale = 10; // Higher values cause the texture to repeat more often
+        float uvScale = 20; // Higher values cause the texture to repeat more often
         float u = (float)in.pixel.x / (float)in.width * uvScale;
         float v = (float)in.pixel.y / (float)in.height * uvScale;
 
-        float lightShadow = tex2D<float4>(shadowTex, u, v).x;
-        float mediumShadow = tex2D<float4>(shadowTex, u, v).y;
-        float heavyShadow = tex2D<float4>(shadowTex, u, v).z;
+        float lightShadow = 1 - tex2D<float4>(shadowTex, u, v).x;
+        float mediumShadow = 1 - tex2D<float4>(shadowTex, u, v).y;
+        float heavyShadow = 1 - tex2D<float4>(shadowTex, u, v).z;
 
+        // Quantize light intensity
+        glm::vec3 coloredLight = io.incident_light[in.pixel_idx];
+        float intensity = __max(coloredLight.x, __max(coloredLight.y, coloredLight.z));
+        // all the models are very bright, so we cheat a little and make them darker
+        //intensity = __powf(intensity, 2);
+        intensity = roundf(intensity * 3);
 
-        glm::vec3 quantizedLight = QuantizeColor(in.incident_light[in.pixel_idx], 4);
-        float shadowIntensity = 1 - max(quantizedLight.r, max(quantizedLight.g, quantizedLight.b))/2;
+        // Add progressively less light to the different types of shadow.
+        heavyShadow = __saturatef(heavyShadow + intensity);
+        intensity = __max(0, intensity - 0.5f);
+        mediumShadow = __saturatef(mediumShadow + intensity);
+        intensity = __max(0, intensity - 0.5f);
+        lightShadow = __saturatef(lightShadow + intensity);        
 
-        glm::vec3 shadowIntensityVec(shadowIntensity, shadowIntensity, shadowIntensity);
-        glm::vec3 shadowThresholds = glm::vec3(1, 0.75, 0.5);
-        glm::vec3 shouldUseShadowWeight = glm::step(shouldUseShadowWeight, shadowIntensityVec);
-        
-
-        bool pixelIsInStencil = PixelIsInsideStencil(in.pixel, &in);
-        float light = 1 - max(lightShadow * shouldUseShadowWeight.x, max(mediumShadow + shouldUseShadowWeight.y, heavyShadow + shouldUseShadowWeight.z)) * pixelIsInStencil;
-        
         // Apply the shadow texture on top of the unlit colors
-        glm::vec3 internalColor = in.base_color[in.pixel_idx] * quantizedLight;
-        //glm::vec3 internalColor = shouldUseShadowWeight;
+        glm::vec3 internalColor = *io.out_shader_color * lightShadow * mediumShadow * heavyShadow;
 
         *io.out_shader_color = internalColor;
     }
+
+    __device__ static void ColorQuantization(PostProcessShaderInputs in, PostProcessShaderModifiableInputs io){
+        glm::vec3 litColor = io.base_color[in.pixel_idx] * io.incident_light[in.pixel_idx];
+        glm::vec3 internalColor = QuantizeColor(litColor, 4);
+
+        *io.out_shader_color = internalColor;
+    }
+
+    // Apply sobel filter to depth texture in order to generate internal outlines.
+    __device__ static void SobelFilter(PostProcessShaderInputs in, PostProcessShaderModifiableInputs io){
+        
+        float horiChange = 0;
+        float vertChange = 0;
+
+        for (int x = -1; x < 2; x++)
+        {
+            for (int y = -1; y < 2; y++)
+            {
+                int sample_pid = in.pixel_idx + x + y * in.width;
+                float depthSample = io.depth_tex[sample_pid];
+                horiChange += SobelHorizontal[x+1][y+1] * depthSample;
+                vertChange += SobelVertical[x+1][y+1] * depthSample;
+            }
+        }
+
+        int depthChange = sqrt(powf(horiChange, 2) + powf(vertChange, 2));
+        *io.out_shader_color = *io.out_shader_color * __saturatef(1 - abs(depthChange));
+    }
+
+    __device__ static void ToonShader(PostProcessShaderInputs in, PostProcessShaderModifiableInputs io){
+        ColorQuantization(in, io);
+        TexturedShadows(in, io);
+        SobelFilter(in, io);
+    }
+
 
 
     __device__ const PostProcessShader defaultShader = &DefaultPostProcess;
@@ -211,6 +280,8 @@ namespace PostProcess
     __device__ const PostProcessShader outlineShader = &OutlineShader;
     __device__ const PostProcessShader crackReconstriction = &CrackReconstructionShader;
     __device__ const PostProcessShader texturedShadows = &TexturedShadows;
+    __device__ const PostProcessShader sobelFilter = &SobelFilter;
+    __device__ const PostProcessShader toonShader = &ToonShader;
 
 	std::map<std::string, int64_t> GetPostProcessShaderAddressMap(){
         // we cast pointers to numbers since most pointers aren't supported by pybind
@@ -239,7 +310,15 @@ namespace PostProcess
 
         PostProcessShader h_crackReconstriction;
         cudaMemcpyFromSymbol(&h_crackReconstriction, crackReconstriction, shaderMemorySize);
-        shaderMap["crackReconstriction"] = (int64_t)h_crackReconstriction;
+        shaderMap["CrackReconstriction"] = (int64_t)h_crackReconstriction;
+
+        PostProcessShader h_sobelFilter;
+        cudaMemcpyFromSymbol(&h_sobelFilter, sobelFilter, shaderMemorySize);
+        shaderMap["SobelFilter"] = (int64_t)h_sobelFilter;
+
+        PostProcessShader h_toonShader;
+        cudaMemcpyFromSymbol(&h_toonShader, toonShader, shaderMemorySize);
+        shaderMap["ToonShader"] = (int64_t)h_toonShader;
 
 
         printf("Post proces address collector called\n");
