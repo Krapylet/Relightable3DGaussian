@@ -454,8 +454,10 @@ if __name__ == '__main__':
 
     #Select which post processing passes.
     postProcessManager = PostProcess.PostProcessManager()
+    postProcessManager.AddPostProcessingPass("QuantizeLighting")  
+    postProcessManager.AddPostProcessingPass("BlurLighting")  
     postProcessManager.AddPostProcessingPass("ToonShader")
-    
+  
 
     render_fn = render_fn_dict[args.type]
     bg_color = [1, 1, 1] if dataset.white_background else [0, 0, 0]

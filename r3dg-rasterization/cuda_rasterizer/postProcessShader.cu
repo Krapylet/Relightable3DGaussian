@@ -63,13 +63,48 @@ namespace PostProcess
         // Don't do anything during intialization other than setting basic values.
     }
 
-    // Matrix that can be used for gaussian blurs
-    __device__ float BlendingMatrix[] = 
-    {0.009375f, 0.01875f, 0.028125f, 0.01875f, 0.009375f,
-    0.01875f, 0.0375f, 0.045f, 0.0375f, 0.01875f,
-    0.028125f, 0.045f, 0.3f, 0.045f, 0.028125f,
-    0.01875f, 0.0375f, 0.045f, 0.0375f, 0.01875f,
-    0.009375f, 0.01875f, 0.028125f, 0.01875f, 0.009375f};
+    // Matrix that can be used for gaussian blurs. Isn't actually a real gaussian matrix, as i just apprixmated it manually.
+    __device__ float BlendingMatrix[5][5] = 
+    {{0.009375f, 0.01875f, 0.028125f, 0.01875f, 0.009375f},
+    {0.01875f, 0.0375f, 0.045f, 0.0375f, 0.01875f},
+    {0.028125f, 0.045f, 0.3f, 0.045f, 0.028125f},
+    {0.01875f, 0.0375f, 0.045f, 0.0375f, 0.01875f},
+    {0.009375f, 0.01875f, 0.028125f, 0.01875f, 0.009375f}};
+
+    // Apply sobel filter to depth texture in order to generate internal outlines.
+    __device__ static float GaussianBlur(float* sourceTexture, int pixelID, int texHeight, int texWidth){
+        
+        float blurredPixel = 0;
+        for (int x = -2; x < 3; x++)
+        {
+            for (int y = -2; y < 3; y++)
+            {
+                int sample_pid = pixelID + x + y * texWidth;
+                sample_pid = max(0, min(texHeight * texWidth-1, sample_pid)); // Clamp sample to inside texture. Doesn't wraps around texture instead of clamping to corners.
+                float texSample = sourceTexture[sample_pid];
+                blurredPixel += BlendingMatrix[x+2][y+2] * texSample;
+            }
+        }
+
+        return blurredPixel;
+    }
+
+    __device__ static glm::vec3 GaussianBlur(glm::vec3* sourceTexture, int pixelID, int texHeight, int texWidth){
+        
+        glm::vec3 blurredPixel(0);
+        for (int x = -2; x < 3; x++)
+        {
+            for (int y = -2; y < 3; y++)
+            {
+                int sample_pid = pixelID + x + y * texWidth;
+                sample_pid = max(0, min(texHeight * texWidth-1, sample_pid)); // Clamp sample to inside texture. Doesn't wraps around texture instead of clamping to corners.
+                glm::vec3 texSample = sourceTexture[sample_pid];
+                blurredPixel += BlendingMatrix[x+2][y+2] * texSample;
+            }
+        }
+
+        return blurredPixel;
+    }
 
     // Matrixes for sobel filter
     __device__ float SobelHorizontal[3][3] = 
@@ -99,15 +134,22 @@ namespace PostProcess
     }
 
     // Performs a very simple quantization of the model colors
-    __device__ static glm::vec3 QuantizeColor(glm::vec3 color, int steps)
+    __device__ static glm::vec3 Quantize(glm::vec3 input, int steps)
     {
         // for each component of the color, clamp it to the closest multiple of the step threshold (1/steps).
-        float quantizedR = roundf(color.r * steps)/steps;
-        float quantizedG = roundf(color.g * steps)/steps;
-        float quantizedB = roundf(color.b * steps)/steps;
+        float quantizedR = roundf(input.r * steps)/steps;
+        float quantizedG = roundf(input.g * steps)/steps;
+        float quantizedB = roundf(input.b * steps)/steps;
 
         glm::vec3 quatnizedColor(quantizedR, quantizedG, quantizedB);
         return quatnizedColor;
+    }
+
+    // Performs a very simple quantization of the model colors
+    __device__ static float Quantize(float input, int steps)
+    {
+        // clamp it to the closest multiple of the step threshold (1/steps).
+        return roundf(input * steps)/steps;
     }
 
     __device__ static void DefaultPostProcess(PostProcessShaderInputs in, PostProcessShaderModifiableInputs io){
@@ -196,41 +238,29 @@ namespace PostProcess
         *io.out_shader_color = outputColor;
     }
 
-    __device__ static void BlurLighting(PostProcessShaderInputs in, PostProcessShaderModifiableInputs io){
-        /*
-        *io.roughness = 0;
-        for (size_t i = 0; i < 25; i++)
-        {
-            glm::ivec2 pixelSampleID = 
-        }
-        */
-        
-    }
-
     __device__ static void TexturedShadows(PostProcessShaderInputs in, PostProcessShaderModifiableInputs io){
         // instead of darking areas with shadow by darkening the color, we instead draw a texture on top of the darnkeded areas.
         auto shadowTex = in.d_textureManager->GetTexture("shadow");
         
-        float uvScale = 20; // Higher values cause the texture to repeat more often
+        float uvScale = 10; // Higher values cause the texture to repeat more often
         float u = (float)in.pixel.x / (float)in.width * uvScale;
         float v = (float)in.pixel.y / (float)in.height * uvScale;
 
         float lightShadow = 1 - tex2D<float4>(shadowTex, u, v).x;
-        float mediumShadow = 1 - tex2D<float4>(shadowTex, u, v).y;
-        float heavyShadow = 1 - tex2D<float4>(shadowTex, u, v).z;
+        float mediumShadow = 1 - tex2D<float4>(shadowTex, u, v).z;
+        float heavyShadow = 1 - tex2D<float4>(shadowTex, u, v).y;
 
         // Quantize light intensity
         glm::vec3 coloredLight = io.incident_light[in.pixel_idx];
         float intensity = __max(coloredLight.x, __max(coloredLight.y, coloredLight.z));
-        // all the models are very bright, so we cheat a little and make them darker
-        //intensity = __powf(intensity, 2);
-        intensity = roundf(intensity * 3);
+        intensity = roundf(intensity * 4);
 
         // Add progressively less light to the different types of shadow.
+        // We multiply intensity by 1 extra in order to reduce the step at which the shadows become visible.
         heavyShadow = __saturatef(heavyShadow + intensity);
-        intensity = __max(0, intensity - 0.5f);
+        intensity = __max(0, intensity - 1.0f);
         mediumShadow = __saturatef(mediumShadow + intensity);
-        intensity = __max(0, intensity - 0.5f);
+        intensity = __max(0, intensity - 1.0f);
         lightShadow = __saturatef(lightShadow + intensity);        
 
         // Apply the shadow texture on top of the unlit colors
@@ -239,16 +269,44 @@ namespace PostProcess
         *io.out_shader_color = internalColor;
     }
 
-    __device__ static void ColorQuantization(PostProcessShaderInputs in, PostProcessShaderModifiableInputs io){
-        glm::vec3 litColor = io.base_color[in.pixel_idx] * io.incident_light[in.pixel_idx];
-        glm::vec3 internalColor = QuantizeColor(litColor, 4);
+    __device__ static void ColorCorrection(PostProcessShaderInputs in, PostProcessShaderModifiableInputs io){
+        glm::vec3 color = io.base_color[in.pixel_idx];
 
-        *io.out_shader_color = internalColor;
+        // Quantize the hue of the color to simply it
+        color = HsvToRgb(Quantize(RgbToHsv(color), 24));
+
+        // Reduce the shadows by 1 step in order to match the textured shadows.
+        float intensity = io.incident_light[in.pixel_idx].r;
+        float reducedIntensity = __saturatef(intensity + 0.25f);
+
+        *io.out_shader_color = color * reducedIntensity;
+    }
+
+    __device__ static void QuantizeLighting(PostProcessShaderInputs in, PostProcessShaderModifiableInputs io){
+        glm::vec3 intensity = io.incident_light[in.pixel_idx];
+        float whiteIntensity = max(intensity.r, max(intensity.g, intensity.b)); // Convert the light to whit efor a simpler picture.  
+        float quantizedWhite = Quantize(whiteIntensity, 4);
+
+        io.incident_light[in.pixel_idx] = glm::vec3(quantizedWhite);
+    }
+
+    __device__ static void BlurLighting(PostProcessShaderInputs in, PostProcessShaderModifiableInputs io){
+        
+        // Don't blur areas that the model cover. Techinically, a better check would be writing to the stencil in an earlier shader and then comparing against that.
+        glm::vec3 pix = io.incident_light[in.pixel_idx];
+        bool PixelIsBackground = pix.r == 0 && pix.g == 0 && pix.b == 0;
+        if(PixelIsBackground){
+            return;
+        } 
+
+        io.incident_light[in.pixel_idx] = GaussianBlur((glm::vec3*)io.incident_light, in.pixel_idx, in.height, in.width);
     }
 
     // Apply sobel filter to depth texture in order to generate internal outlines.
     __device__ static void SobelFilter(PostProcessShaderInputs in, PostProcessShaderModifiableInputs io){
         
+        float outlineStrength = 2;
+
         float horiChange = 0;
         float vertChange = 0;
 
@@ -258,8 +316,8 @@ namespace PostProcess
             {
                 int sample_pid = in.pixel_idx + x + y * in.width;
                 float depthSample = io.depth_tex[sample_pid];
-                horiChange += SobelHorizontal[x+1][y+1] * depthSample;
-                vertChange += SobelVertical[x+1][y+1] * depthSample;
+                horiChange += SobelHorizontal[x+1][y+1] * depthSample * outlineStrength;
+                vertChange += SobelVertical[x+1][y+1] * depthSample * outlineStrength;
             }
         }
 
@@ -268,7 +326,7 @@ namespace PostProcess
     }
 
     __device__ static void ToonShader(PostProcessShaderInputs in, PostProcessShaderModifiableInputs io){
-        ColorQuantization(in, io);
+        ColorCorrection(in, io);
         TexturedShadows(in, io);
         SobelFilter(in, io);
     }
@@ -282,6 +340,8 @@ namespace PostProcess
     __device__ const PostProcessShader texturedShadows = &TexturedShadows;
     __device__ const PostProcessShader sobelFilter = &SobelFilter;
     __device__ const PostProcessShader toonShader = &ToonShader;
+    __device__ const PostProcessShader blurLighting = &BlurLighting;
+    __device__ const PostProcessShader quantizeLighting = &QuantizeLighting;
 
 	std::map<std::string, int64_t> GetPostProcessShaderAddressMap(){
         // we cast pointers to numbers since most pointers aren't supported by pybind
@@ -319,6 +379,14 @@ namespace PostProcess
         PostProcessShader h_toonShader;
         cudaMemcpyFromSymbol(&h_toonShader, toonShader, shaderMemorySize);
         shaderMap["ToonShader"] = (int64_t)h_toonShader;
+
+        PostProcessShader h_blurLighting;
+        cudaMemcpyFromSymbol(&h_blurLighting, blurLighting, shaderMemorySize);
+        shaderMap["BlurLighting"] = (int64_t)h_blurLighting;
+
+        PostProcessShader h_quantizeLighting;
+        cudaMemcpyFromSymbol(&h_quantizeLighting, quantizeLighting, shaderMemorySize);
+        shaderMap["QuantizeLighting"] = (int64_t)h_quantizeLighting;
 
 
         printf("Post proces address collector called\n");

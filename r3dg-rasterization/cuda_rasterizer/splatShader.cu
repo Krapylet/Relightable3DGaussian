@@ -269,6 +269,18 @@ namespace SplatShader
 		*out.out_color = *io.color_base;//* quantizedLight;
     }
 
+    __device__ static void QuantizeLight(SplatShaderConstantInputs in, SplatShaderModifiableInputs io, SplatShaderOutputs out){
+
+        glm::vec3 qIntensity = QuantizeColor(*io.incident_light, 3);
+        float whiteIntensity = max(qIntensity.r, max(qIntensity.g, qIntensity.b)); // Convert the light to whit efor a simpler picture.
+
+        //*io.incident_light = glm::vec3(whiteIntensity);
+        // Write to roguhness instead during testing
+        *io.roughness = whiteIntensity;
+
+		*out.out_color = *io.color_base;//* quantizedLight;
+    }
+
     ///// Assign all the shaders to their short handles.
     // we need to keep them in constant device memory for them to stay valid when passed to host.
     __device__ const SplatShader defaultShader = &DefaultSplatShaderCUDA;
@@ -280,6 +292,7 @@ namespace SplatShader
     __device__ const SplatShader stencilShader = &WriteToStencilCUDA;
     __device__ const SplatShader roughnessOnly = &RoughnessOnlyCUDA;
     __device__ const SplatShader quantizeFlats = &QuantizeFlatColors;
+    __device__ const SplatShader quantizeLight = &QuantizeLight;
 
 
     std::map<std::string, int64_t> GetSplatShaderAddressMap(){
@@ -326,6 +339,10 @@ namespace SplatShader
         SplatShader h_quantizeFlats;
         cudaMemcpyFromSymbol(&h_quantizeFlats, quantizeFlats, shaderMemorySize);
         shaderMap["QuantizeFlats"] = (int64_t)h_quantizeFlats;
+
+        SplatShader h_quantizeLight;
+        cudaMemcpyFromSymbol(&h_quantizeLight, quantizeLight, shaderMemorySize);
+        shaderMap["QuantizeLight"] = (int64_t)h_quantizeLight;
 
         return shaderMap;
     }
