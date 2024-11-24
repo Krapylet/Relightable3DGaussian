@@ -63,95 +63,6 @@ namespace PostProcess
         // Don't do anything during intialization other than setting basic values.
     }
 
-    // Matrix that can be used for gaussian blurs. Isn't actually a real gaussian matrix, as i just apprixmated it manually.
-    __device__ float BlendingMatrix[5][5] = 
-    {{0.009375f, 0.01875f, 0.028125f, 0.01875f, 0.009375f},
-    {0.01875f, 0.0375f, 0.045f, 0.0375f, 0.01875f},
-    {0.028125f, 0.045f, 0.3f, 0.045f, 0.028125f},
-    {0.01875f, 0.0375f, 0.045f, 0.0375f, 0.01875f},
-    {0.009375f, 0.01875f, 0.028125f, 0.01875f, 0.009375f}};
-
-    // Apply sobel filter to depth texture in order to generate internal outlines.
-    __device__ static float GaussianBlur(float* sourceTexture, int pixelID, int texHeight, int texWidth){
-        
-        float blurredPixel = 0;
-        for (int x = -2; x < 3; x++)
-        {
-            for (int y = -2; y < 3; y++)
-            {
-                int sample_pid = pixelID + x + y * texWidth;
-                sample_pid = max(0, min(texHeight * texWidth-1, sample_pid)); // Clamp sample to inside texture. Doesn't wraps around texture instead of clamping to corners.
-                float texSample = sourceTexture[sample_pid];
-                blurredPixel += BlendingMatrix[x+2][y+2] * texSample;
-            }
-        }
-
-        return blurredPixel;
-    }
-
-    __device__ static glm::vec3 GaussianBlur(glm::vec3* sourceTexture, int pixelID, int texHeight, int texWidth){
-        
-        glm::vec3 blurredPixel(0);
-        for (int x = -2; x < 3; x++)
-        {
-            for (int y = -2; y < 3; y++)
-            {
-                int sample_pid = pixelID + x + y * texWidth;
-                sample_pid = max(0, min(texHeight * texWidth-1, sample_pid)); // Clamp sample to inside texture. Doesn't wraps around texture instead of clamping to corners.
-                glm::vec3 texSample = sourceTexture[sample_pid];
-                blurredPixel += BlendingMatrix[x+2][y+2] * texSample;
-            }
-        }
-
-        return blurredPixel;
-    }
-
-    // Matrixes for sobel filter
-    __device__ float SobelHorizontal[3][3] = 
-    {{-1, 0, 1}, 
-    {-2, 0, 2}, 
-    {-1, 0, 1}};
-
-    __device__ float SobelVertical[3][3] = 
-    {{-1, -2, -1}, 
-    {0, 0, 0}, 
-    {1, 2, 1}};
-
-    // helper function for converting 2D pixel cooridnates to 1D pixel IDs
-    __device__ int GetPixelIdFromCoordinates(int x, int y, int screenWidth){
-        return x + y * screenWidth;
-    }
-
-    // helper function for converting 1D pixel IDs to to 2D pixel coordinates
-    __device__ glm::ivec2 GetPixelCoordinatesFromId(int id, int screenWidth){
-        return glm::ivec2(id % screenWidth, id / screenWidth);
-    }
-
-    __device__ glm::ivec2 ClampPixelToScreen(int x, int y, int height, int width){
-        int clamped_x = max(0, min(x, width));
-        int clamped_y = max(0, min(y, height));
-        return glm::vec2(clamped_x, clamped_y);
-    }
-
-    // Performs a very simple quantization of the model colors
-    __device__ static glm::vec3 Quantize(glm::vec3 input, int steps)
-    {
-        // for each component of the color, clamp it to the closest multiple of the step threshold (1/steps).
-        float quantizedR = roundf(input.r * steps)/steps;
-        float quantizedG = roundf(input.g * steps)/steps;
-        float quantizedB = roundf(input.b * steps)/steps;
-
-        glm::vec3 quatnizedColor(quantizedR, quantizedG, quantizedB);
-        return quatnizedColor;
-    }
-
-    // Performs a very simple quantization of the model colors
-    __device__ static float Quantize(float input, int steps)
-    {
-        // clamp it to the closest multiple of the step threshold (1/steps).
-        return roundf(input * steps)/steps;
-    }
-
     __device__ static void DefaultPostProcess(PostProcessShaderInputs in, PostProcessShaderModifiableInputs io){
         // We don't actuallyt do any post processing by default.
     }
@@ -273,7 +184,9 @@ namespace PostProcess
         glm::vec3 color = io.base_color[in.pixel_idx];
 
         // Quantize the hue of the color to simply it
-        color = HsvToRgb(Quantize(RgbToHsv(color), 24));
+        glm::vec3 hsv = RgbToHsv(color);
+        hsv.r = Quantize(hsv.r, 24);
+        color = HsvToRgb(hsv);
 
         // Reduce the shadows by 1 step in order to match the textured shadows.
         float intensity = io.incident_light[in.pixel_idx].r;
@@ -302,8 +215,20 @@ namespace PostProcess
         io.incident_light[in.pixel_idx] = GaussianBlur((glm::vec3*)io.incident_light, in.pixel_idx, in.height, in.width);
     }
 
+
     // Apply sobel filter to depth texture in order to generate internal outlines.
     __device__ static void SobelFilter(PostProcessShaderInputs in, PostProcessShaderModifiableInputs io){
+
+        // Matrixes for sobel filter
+        float SobelHorizontal[3][3] = 
+        {{-1, 0, 1}, 
+        {-2, 0, 2}, 
+        {-1, 0, 1}};
+
+        float SobelVertical[3][3] = 
+        {{-1, -2, -1}, 
+        {0, 0, 0}, 
+        {1, 2, 1}};
         
         float outlineStrength = 2;
 
