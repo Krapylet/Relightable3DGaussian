@@ -31,12 +31,6 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
   m.def("PreprocessModel", &PreprocessModel);
   m.def("EncodeTextureMode", &Texture::EncodeTextureMode);
   m.def("EncodeWrapMode", &Texture::EncodeWrapMode);
-  m.def("InitializeTextureMaps",&Texture::InitializeTextureMaps);
-  m.def("UnloadTextureMaps", &Texture::UnloadTextureMaps);
-  m.def("AllocateVariable",&Texture::AllocateVariable);
-  m.def("PrintVariable", &Texture::PrintVariable);
-  m.def("DeleteVariable", &Texture::DeleteVariable);
   m.def("AllocateTexture", &Texture::AllocateTexture);
   m.def("UploadTexturesToDevice", &Texture::UploadTexturesToDevice);
-  m.def("PrintFromTextureManager", &Texture::PrintFromTextureManager);
 }

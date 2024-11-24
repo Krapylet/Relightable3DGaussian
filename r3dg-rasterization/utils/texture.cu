@@ -95,6 +95,7 @@ namespace Texture
         TextureMode mode = static_cast<TextureMode>(textureData["encoding_mode"].const_data_ptr<int>()[0]);
         float* pixelData = textureData["pixelData"].contiguous().cuda().mutable_data_ptr<float>();
         int pixelDataCount = textureData["pixelData"].numel();
+        bool normalizedCoords = textureData["normalizedCoords"].const_data_ptr<int>()[0];
         const cudaTextureAddressMode* addressModes = (const cudaTextureAddressMode*)textureData["wrap_modes"].const_data_ptr<int>();
 
         /*
@@ -170,7 +171,7 @@ namespace Texture
         // Specify remaining texture object parameters
         texDesc.addressMode[0] = addressModes[0];
         texDesc.addressMode[1] = addressModes[1];
-        texDesc.normalizedCoords = 1;                           //TODO: allow the coordinate mode ot be set based on a texture import setting
+        texDesc.normalizedCoords = normalizedCoords;
 
         // Allocate CUDA array in device memory
         cudaArray_t cuArray;
@@ -197,33 +198,6 @@ namespace Texture
         }
     }
 
-    // NOTICE: Returns a std::map<std::string, std::map<std::string, cudaTextureObject_t*>>* cast to an int64_t in order to get around the pybind pointer wierdness.
-    // Takes the texture tensor Maps and uses it to create wrapper objects around the texture data, so it can be accessed efficiently in the shaders.
-    // shaderTextureTensorMaps stores data in nested maps on the format: <ShaderName, <TextureName, <TexturePropertyName, TexturePropertyData*>>>
-	// shaderTextureMaps stores data in nested maps on the format: <ShaderName, <TextureName, TextureObject*>>
-    int64_t InitializeTextureMaps(
-        const std::map<std::string, std::map<std::string, std::map<std::string, torch::Tensor>>>& shaderTextureTensorMaps)
-    {
-        auto shaderTextureMaps = new std::map<std::string, std::map<std::string, cudaTextureObject_t*>>;
-
-        for(auto shaderTextureTensorBundle : shaderTextureTensorMaps){
-            std::string shaderName = shaderTextureTensorBundle.first;
-            auto textureTensorBundle = shaderTextureTensorBundle.second;
-
-            for(auto textureTensor : textureTensorBundle){
-                std::string textureName = textureTensor.first;
-                auto textureData = textureTensor.second;
-
-                cudaTextureObject_t* texObj = (cudaTextureObject_t*) malloc(sizeof(cudaTextureObject_t)); // TODO: Does this actually need to be malloced? 
-                Texture::CreateTexture(texObj, textureData);
-                (*shaderTextureMaps)[shaderName][textureName] = texObj;
-            }
-        }
-
-        //std::cout << "ShaderTextureBundle poiter" << shaderTextureMaps << ". Casting to " << (int64_t)shaderTextureMaps << std::endl;
-        return (int64_t)shaderTextureMaps;
-    }
-
     // Frees the underlying cudaArray that the textureObject is wrapped around, as well as the texture object pointer that contains it.
     void UnloadTexture(cudaTextureObject_t* textureObject){
         cudaResourceDesc resDesc;
@@ -238,89 +212,17 @@ namespace Texture
         checkCudaErrors(cudaFreeArray(resDesc.res.array.array));
     }
 
-    // NOTICE: takes a std::map<std::string, std::map<std::string, cudaTextureObject_t*>>* that has been cast to an int64_t in order to get around the pybind pointer wierdness.
-    // Unloads all the memory allocated for all the texture Maps, including the input pointer.
-    void UnloadTextureMaps (int64_t shaderTextureMaps_mapPtr){
-        auto shaderTextureMaps = (std::map<std::string, std::map<std::string, cudaTextureObject_t*>>*)shaderTextureMaps_mapPtr;
-
-        // For each shader, unload all textures from memory
-        for(auto shaderTextureBundle : (*shaderTextureMaps)){
-            auto textureBundle = shaderTextureBundle.second;
-            
-            for(auto texture : textureBundle){
-                cudaTextureObject_t* texObj = texture.second;
-                Texture::UnloadTexture(texObj);
-            }
-        }
-
-        delete(shaderTextureMaps);
-    }
-
     // initialize device texture vector and device texture name vector (used for indirect addressing of textures)
     // NOTICE: actually returns a d_TextureManager* cast to an int64.
     int64_t UploadTexturesToDevice(std::vector<std::string> names, std::vector<int64_t> textureObjects){
         auto h_texManager = new TextureManager();
         h_texManager->SetTextures(names, textureObjects);
-        // TODO: Set error textures.
 
         TextureManager* d_texManager;
         cudaMalloc(&d_texManager, sizeof(TextureManager));
         cudaMemcpy(d_texManager, h_texManager, sizeof(TextureManager), cudaMemcpyHostToDevice);
 
         return (int64_t)d_texManager;
-    }
-
-    // --------------- Debug methods ---------------
-
-    // Test whether we can do the texture initialization before the call.
-    // Returns an int* cast to an int64_t in order to get around pybind wierdness.
-    int64_t AllocateVariable(){
-        int* allocedPointer = (int*) malloc(sizeof(int)); 
-        (*allocedPointer) = 10;
-        std::cout << "C++ pointer saved at " << allocedPointer << std::endl;
-        return (int64_t)allocedPointer;
-    }
-
-    void PrintVariable (int64_t allocedPointer_intPtr){
-        std::cout << "Reading following value from alloced pointer: " << (*((int*)allocedPointer_intPtr)) << std::endl;
-    }
-
-    void DeleteVariable(int64_t allocatedPointer_intPtr){
-        std::cout << "Deleting allocated pointer" << std::endl;
-        delete (int*)allocatedPointer_intPtr;
-        std::cout << "Deleting done" << std::endl;
-    }
-
-    // Debug Method used for quickly testing whether 
-    __global__ void PrintFirstPixel(cudaTextureObject_t texObj){
-        float4 cudaTexel = tex2D<float4>(texObj, 0, 0);
-        printf("Cuda reading RGBA value of first texel: %f,%f,%f,%f\n", cudaTexel.x, cudaTexel.y, cudaTexel.z, cudaTexel.w);
-    }
-
-    __global__ void PrintPixel(cudaTextureObject_t texObj, float u, float v){
-        float4 cudaTexel = tex2D<float4>(texObj, u, v);
-        printf("Cuda reading RGBA value of texel at (%f,%f): %f,%f,%f,%f\n", u, v, cudaTexel.x, cudaTexel.y, cudaTexel.z, cudaTexel.w);
-    }
-
-    __global__ void PrintFromTextureManagerCUDA(TextureManager *texManager, char* targetName){
-        cudaTextureObject_t texObj = texManager->GetTexture(targetName);
-        float4 cudaTexel = tex2D<float4>(texObj, 0, 0);
-        printf("Cuda reading RGBA value of first texel in tex %lu-'%s': %f,%f,%f,%f\n", texObj, targetName, cudaTexel.x, cudaTexel.y, cudaTexel.z, cudaTexel.w);
-    }
-
-    void PrintFromTextureManager(int64_t texManager_ptr, std::string targetName){
-        auto d_texManager = (TextureManager*)texManager_ptr;
-
-        // transfer name to device
-        char* d_targetName;
-        cudaMalloc(&d_targetName, (targetName.length()+1)*sizeof(char)); // Add 1 char to have room for termination character added by c_str()
-        cudaMemcpy(d_targetName, targetName.c_str(), targetName.length()+1, cudaMemcpyKind::cudaMemcpyHostToDevice);
-
-        PrintFromTextureManagerCUDA<<<1,1>>>(d_texManager, d_targetName);
-
-        // Delete the name that was transfered to device.
-        cudaFree(d_targetName);
-        cudaDeviceSynchronize();
     }
 }
 

@@ -10,7 +10,7 @@ class TextureImporter:
         self.loadedTextureObjects : list[int] = []
 
     # Loads a texture into CUDA memory and returns a tensor pointing to the image.
-    def import_texture(self, textureName:str, filepath:str) -> int:
+    def import_texture(self, textureName:str, filepath:str, wrapModeHorizontal = "Wrap", wrapModeVertical = "Wrap", normalizedCoords = True) -> int:
         # Open image
         filename = os.path.basename(filepath)
         image = Image.open(filepath)
@@ -23,14 +23,16 @@ class TextureImporter:
         # We don't store the metadata on device, since the c++ host needs it to construct the textureObjects.
         width, height = image.size
         encodingMode = _C.EncodeTextureMode(image.mode) #We have to encode the string as an int. Otherwise we cant read it from the tensor in c++.
-        wrapMode = _C.EncodeWrapMode("Wrap")
+        wrapModeH = _C.EncodeWrapMode(wrapModeHorizontal)
+        wrapModeV = _C.EncodeWrapMode(wrapModeVertical)
         image = {
             "pixelData" : imageTensor.cuda(), #Stored on device
             #Other metedata is stored on CPU
             "height" : torch.tensor([height], dtype=torch.int32),
             "width" : torch.tensor([width], dtype=torch.int32),
             "encoding_mode" : torch.tensor([encodingMode], dtype=torch.int32), # Which format the image data is stored in: CMYK, RGBA, RGB, HSV etc.
-            "wrap_modes" : torch.tensor([wrapMode, wrapMode], dtype=torch.int32)
+            "wrap_modes" : torch.tensor([wrapModeH, wrapModeV], dtype=torch.int32),
+            "normalizedCoords" : torch.tensor([int(normalizedCoords)], dtype=torch.int32),
         }
 
         # Create texObj from image tensor:

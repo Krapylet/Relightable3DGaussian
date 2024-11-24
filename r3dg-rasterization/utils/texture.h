@@ -73,17 +73,4 @@ namespace Texture
     int EncodeTextureMode(std::string mode);
 
     int EncodeWrapMode(std::string mode);
-
-    int64_t InitializeTextureMaps(const std::map<std::string, std::map<std::string, std::map<std::string, torch::Tensor>>>& shaderTextureTensorMaps);
-
-    void UnloadTextureMaps (int64_t shaderTextureMaps_mapPtr);
-
-    /// Debug methods. Don't use
-    __global__ extern void PrintFirstPixel(cudaTextureObject_t texObj);
-
-    void PrintFromTextureManager(int64_t texManager_ptr, std::string targetName);
-
-    int64_t AllocateVariable();
-    void PrintVariable (int64_t allocedPointer_intPtr);
-    void DeleteVariable(int64_t allocedPointer_intPtr);
 };
