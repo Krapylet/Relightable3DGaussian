@@ -141,9 +141,9 @@ namespace ShShader
     ///// Assign all the shaders to their short handles.
     // we need to keep them in constant device memory for them to stay valid when passed to host.
     //TODO: Instead of storing shaders in individual variables, store them in a __device__ const map<ShShaderName, ShShader> 
-    __device__ const ShShader defaultShader = &DefaultShShaderCUDA;
-    __device__ const ShShader expPosShader = &ExponentialPositionShaderCUDA;
-    __device__ const ShShader heartbeatShader = &HeartbeatShaderCUDA;
+    __device__ ShShader defaultShader = &DefaultShShaderCUDA;
+    __device__ ShShader expPosShader = &ExponentialPositionShaderCUDA;
+    __device__ ShShader heartbeatShader = &HeartbeatShaderCUDA;
 
     std::map<std::string, int64_t> GetShShaderAddressMap(){
         // we cast pointers to numbers since most pointers aren't supported by pybind
@@ -216,37 +216,4 @@ namespace ShShader
         // No need to dereference the shader function pointer.
         shader(in, io, out);
     }
-
-
-
-    /// --------------------------- Debug methods ------------------------
-
-    /*
-    __global__ void TestFunctionPointerMapCUDA(){
-        printf("CUDA - Declaring function pointer map");
-        std::map<ShShader, int> functionPointerMap;
-        printf("CUDA - Assigning values");
-        functionPointerMap[defaultShader] = 1;
-        functionPointerMap[expPosShader] = 2;
-        printf("CUDA - Retriving values");
-        int result = functionPointerMap[defaultShader] + functionPointerMap[expPosShader];
-        printf("CUDA - Retreved values sucessfully");
-    }
-    
-    void TestFunctionPointerMap(){
-        printf("Declaring function pointer map");
-        std::map<ShShader, int> functionPointerMap;
-        printf("Assigning values");
-        functionPointerMap[defaultShader] = 1;
-        functionPointerMap[expPosShader] = 2;
-        printf("Retriving values");
-        int result = functionPointerMap[defaultShader] + functionPointerMap[expPosShader];
-        printf("Retreved values sucessfully");
-
-        printf("Repeating experiment on device");
-        TestFunctionPointerMapCUDA<<<1,1>>>();
-        cudaDeviceSynchronize();
-        printf("Experiment on device done");
-    }
-    */
 }

@@ -270,17 +270,16 @@ namespace SplatShader
     }
 
     ///// Assign all the shaders to their short handles.
-    // we need to keep them in constant device memory for them to stay valid when passed to host.
-    __device__ const SplatShader defaultShader = &DefaultSplatShaderCUDA;
-    __device__ const SplatShader naiveOutlineShader = &NaiveOutlineShaderCUDA;
-    __device__ const SplatShader wireframeShader = &WireframeShaderCUDA;
-    __device__ const SplatShader dissolveShader = &DissolveShader;
-    __device__ const SplatShader crackShader = &CrackShaderCUDA;
-    __device__ const SplatShader crackNoReconShader = &CrackWithoutReconstructionShaderCUDA;
-    __device__ const SplatShader stencilShader = &WriteToStencilCUDA;
-    __device__ const SplatShader roughnessOnly = &RoughnessOnlyCUDA;
-    __device__ const SplatShader quantizeFlats = &QuantizeFlatColors;
-    __device__ const SplatShader quantizeLight = &QuantizeLight;
+    __device__ SplatShader defaultShader = &DefaultSplatShaderCUDA;
+    __device__ SplatShader naiveOutlineShader = &NaiveOutlineShaderCUDA;
+    __device__ SplatShader wireframeShader = &WireframeShaderCUDA;
+    __device__ SplatShader dissolveShader = &DissolveShader;
+    __device__ SplatShader crackShader = &CrackShaderCUDA;
+    __device__ SplatShader crackNoReconShader = &CrackWithoutReconstructionShaderCUDA;
+    __device__ SplatShader stencilShader = &WriteToStencilCUDA;
+    __device__ SplatShader roughnessOnly = &RoughnessOnlyCUDA;
+    __device__ SplatShader quantizeFlats = &QuantizeFlatColors;
+    __device__ SplatShader quantizeLight = &QuantizeLight;
 
 
     std::map<std::string, int64_t> GetSplatShaderAddressMap(){

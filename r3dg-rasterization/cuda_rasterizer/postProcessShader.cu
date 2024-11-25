@@ -256,17 +256,15 @@ namespace PostProcess
         SobelFilter(in, io);
     }
 
-
-
-    __device__ const PostProcessShader defaultShader = &DefaultPostProcess;
-    __device__ const PostProcessShader invertShader = &InvertColorsShader;
-    __device__ const PostProcessShader outlineShader = &OutlineShader;
-    __device__ const PostProcessShader crackReconstriction = &CrackReconstructionShader;
-    __device__ const PostProcessShader texturedShadows = &TexturedShadows;
-    __device__ const PostProcessShader sobelFilter = &SobelFilter;
-    __device__ const PostProcessShader toonShader = &ToonShader;
-    __device__ const PostProcessShader blurLighting = &BlurLighting;
-    __device__ const PostProcessShader quantizeLighting = &QuantizeLighting;
+    __device__ PostProcessShader defaultShader = &DefaultPostProcess;
+    __device__ PostProcessShader invertShader = &InvertColorsShader;
+    __device__ PostProcessShader outlineShader = &OutlineShader;
+    __device__ PostProcessShader crackReconstriction = &CrackReconstructionShader;
+    __device__ PostProcessShader texturedShadows = &TexturedShadows;
+    __device__ PostProcessShader sobelFilter = &SobelFilter;
+    __device__ PostProcessShader toonShader = &ToonShader;
+    __device__ PostProcessShader blurLighting = &BlurLighting;
+    __device__ PostProcessShader quantizeLighting = &QuantizeLighting;
 
 	std::map<std::string, int64_t> GetPostProcessShaderAddressMap(){
         // we cast pointers to numbers since most pointers aren't supported by pybind

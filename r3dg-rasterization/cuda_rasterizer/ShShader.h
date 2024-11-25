@@ -154,10 +154,4 @@ namespace ShShader
 	
 	// Executes a shader on the GPU with the given parameters.
 	__global__ extern void ExecuteSHShaderCUDA(ShShader shader, int* d_splatIndexes, PackedShShaderParams packedParams);
-
-
-	/// -------------------- Debug --------------------------
-	void TestFunctionPointerMap();
-
-	
 };
