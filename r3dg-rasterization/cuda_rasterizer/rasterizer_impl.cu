@@ -331,6 +331,7 @@ int CudaRasterizer::Rasterizer::forward(
 		geomState.depths,
 		geomState.cov3D,
 		geomState.rgb,
+		(glm::vec3*) geomState.shader_rgb,
 		geomState.conic_opacity,
 		tile_grid,
 		geomState.tiles_touched,

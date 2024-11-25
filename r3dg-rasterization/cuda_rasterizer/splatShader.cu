@@ -67,7 +67,7 @@ namespace SplatShader
     __device__ void DefaultSplatShaderCUDA(SplatShaderConstantInputs in, SplatShaderModifiableInputs io, SplatShaderOutputs out)
     {
         // Set output color
-        *out.out_color = (*in.color_SH);
+       // *out.out_color = (*in.color_SH);
     }
 
     // A naive shader for hgihlighting edges on model.

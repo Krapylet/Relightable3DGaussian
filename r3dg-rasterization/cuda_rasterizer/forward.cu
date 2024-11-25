@@ -180,6 +180,7 @@ __global__ void preprocessCUDA(int P, int D, int M,
 	float* depths,
 	float* cov3Ds,
 	float* rgb,
+	glm::vec3* splatShaderColors,
 	float4* conic_opacity,
 	const dim3 grid,
 	uint32_t* tiles_touched,
@@ -260,6 +261,9 @@ __global__ void preprocessCUDA(int P, int D, int M,
 	// Inverse 2D covariance and opacity neatly pack into one float4
 	conic_opacity[idx] = { conic.x, conic.y, conic.z, opacities[idx] };
 	tiles_touched[idx] = (rect_max.y - rect_min.y) * (rect_max.x - rect_min.x);
+
+	// initialize splat shader color to black
+	splatShaderColors[idx] = glm::vec3(0);
 }
 
 // Renders textures that needs to be calculated between each step in the rendering pipeline.
@@ -715,6 +719,7 @@ void FORWARD::PreProcess(int P, int D, int M,
 	float* depths,
 	float* cov3Ds,
 	float* rgb,
+	glm::vec3* splatShaderColors,
 	float4* conic_opacity,
 	const dim3 grid,
 	uint32_t* tiles_touched,
@@ -742,6 +747,7 @@ void FORWARD::PreProcess(int P, int D, int M,
 		depths,
 		cov3Ds,
 		rgb,
+		splatShaderColors,
 		conic_opacity,
 		grid,
 		tiles_touched,

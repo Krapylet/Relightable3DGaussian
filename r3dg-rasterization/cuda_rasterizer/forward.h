@@ -81,6 +81,7 @@ namespace FORWARD
 		float* depths,
 		float* cov3Ds,
 		float* colors,
+		glm::vec3* splatShaderColors,
 		float4* conic_opacity,
 		const dim3 grid,
 		uint32_t* tiles_touched,
