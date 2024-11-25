@@ -59,12 +59,12 @@ namespace ShShader
 		// for now we're not actually doing anyting in the constuctior other than initializing the constants.
     }
 
-    __device__ static void DefaultShShaderCUDA(ShShaderConstantInputs in, ShShaderModifiableInputs io, ShShaderOutputs out)
+    __device__ void DefaultShShaderCUDA(ShShaderConstantInputs in, ShShaderModifiableInputs io, ShShaderOutputs out)
     {
         // Default shader doesn't need to set any values.
     }
 
-    __device__ static void ExponentialPositionShaderCUDA(ShShaderConstantInputs in, ShShaderModifiableInputs io, ShShaderOutputs out)
+    __device__ void ExponentialPositionShaderCUDA(ShShaderConstantInputs in, ShShaderModifiableInputs io, ShShaderOutputs out)
     {
         // multiply sh position and scale by y coordinate
         float posX = abs((*io.position).x);
@@ -79,7 +79,7 @@ namespace ShShader
     // A shader that makes an object pulse with a heartbeat
     // The heart has two concurrent beats that we model here.
     // Written as SH shader because this is where we can update positions and scales.
-    __device__ static void HeartbeatShaderCUDA(ShShaderConstantInputs in, ShShaderModifiableInputs io, ShShaderOutputs out)
+    __device__ void HeartbeatShaderCUDA(ShShaderConstantInputs in, ShShaderModifiableInputs io, ShShaderOutputs out)
     {
         // Sample the texture contiaing the pattern for growth with the atreal pulse.
         cudaTextureObject_t atrialTex = in.d_textureManager->GetTexture("Turbulence");

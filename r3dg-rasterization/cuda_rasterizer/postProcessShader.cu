@@ -63,11 +63,11 @@ namespace PostProcess
         // Don't do anything during intialization other than setting basic values.
     }
 
-    __device__ static void DefaultPostProcess(PostProcessShaderInputs in, PostProcessShaderModifiableInputs io){
+    __device__ void DefaultPostProcess(PostProcessShaderInputs in, PostProcessShaderModifiableInputs io){
         // We don't actuallyt do any post processing by default.
     }
 
-    __device__ static void InvertColorsShader(PostProcessShaderInputs in, PostProcessShaderModifiableInputs io){
+    __device__ void InvertColorsShader(PostProcessShaderInputs in, PostProcessShaderModifiableInputs io){
         *io.out_shader_color = glm::vec3(1,1,1) - *io.out_shader_color;
     }
 
@@ -91,7 +91,7 @@ namespace PostProcess
 
     // Simple method for generating an outline around the object using stencil.
     // Could be upgrade to also use depth map etc.
-    __device__ static void OutlineShader(PostProcessShaderInputs in, PostProcessShaderModifiableInputs io){
+    __device__ void OutlineShader(PostProcessShaderInputs in, PostProcessShaderModifiableInputs io){
         bool pixelIsOutsideOfStencil = !PixelIsInsideStencil(in.pixel, &in, &io);
         
         int outlineThickness = 5;
@@ -117,7 +117,7 @@ namespace PostProcess
         *io.out_shader_color = io.base_color[in.pixel_idx] * (1.0f-(float)pixelShouldBeOutlined) + outlineColor * (float)pixelShouldBeOutlined;
     }
 
-    __device__ static void CrackReconstructionShader(PostProcessShaderInputs in, PostProcessShaderModifiableInputs io){
+    __device__ void CrackReconstructionShader(PostProcessShaderInputs in, PostProcessShaderModifiableInputs io){
         
         // compute mask for new surfaces
         int pid = in.pixel_idx;
@@ -149,7 +149,7 @@ namespace PostProcess
         *io.out_shader_color = outputColor;
     }
 
-    __device__ static void TexturedShadows(PostProcessShaderInputs in, PostProcessShaderModifiableInputs io){
+    __device__ void TexturedShadows(PostProcessShaderInputs in, PostProcessShaderModifiableInputs io){
         // instead of darking areas with shadow by darkening the color, we instead draw a texture on top of the darnkeded areas.
         auto shadowTex = in.d_textureManager->GetTexture("shadow");
         
@@ -180,7 +180,7 @@ namespace PostProcess
         *io.out_shader_color = internalColor;
     }
 
-    __device__ static void ColorCorrection(PostProcessShaderInputs in, PostProcessShaderModifiableInputs io){
+    __device__ void ColorCorrection(PostProcessShaderInputs in, PostProcessShaderModifiableInputs io){
         glm::vec3 color = io.base_color[in.pixel_idx];
 
         // Quantize the hue of the color to simply it
@@ -195,7 +195,7 @@ namespace PostProcess
         *io.out_shader_color = color * reducedIntensity;
     }
 
-    __device__ static void QuantizeLighting(PostProcessShaderInputs in, PostProcessShaderModifiableInputs io){
+    __device__ void QuantizeLighting(PostProcessShaderInputs in, PostProcessShaderModifiableInputs io){
         glm::vec3 intensity = io.incident_light[in.pixel_idx];
         float whiteIntensity = max(intensity.r, max(intensity.g, intensity.b)); // Convert the light to whit efor a simpler picture.  
         float quantizedWhite = Quantize(whiteIntensity, 4);
@@ -203,7 +203,7 @@ namespace PostProcess
         io.incident_light[in.pixel_idx] = glm::vec3(quantizedWhite);
     }
 
-    __device__ static void BlurLighting(PostProcessShaderInputs in, PostProcessShaderModifiableInputs io){
+    __device__ void BlurLighting(PostProcessShaderInputs in, PostProcessShaderModifiableInputs io){
         
         // Don't blur areas that the model cover. Techinically, a better check would be writing to the stencil in an earlier shader and then comparing against that.
         glm::vec3 pix = io.incident_light[in.pixel_idx];
@@ -217,7 +217,7 @@ namespace PostProcess
 
 
     // Apply sobel filter to depth texture in order to generate internal outlines.
-    __device__ static void SobelFilter(PostProcessShaderInputs in, PostProcessShaderModifiableInputs io){
+    __device__ void SobelFilter(PostProcessShaderInputs in, PostProcessShaderModifiableInputs io){
 
         // Matrixes for sobel filter
         float SobelHorizontal[3][3] = 
@@ -250,7 +250,7 @@ namespace PostProcess
         *io.out_shader_color = *io.out_shader_color * __saturatef(1 - abs(depthChange));
     }
 
-    __device__ static void ToonShader(PostProcessShaderInputs in, PostProcessShaderModifiableInputs io){
+    __device__ void ToonShader(PostProcessShaderInputs in, PostProcessShaderModifiableInputs io){
         ColorCorrection(in, io);
         TexturedShadows(in, io);
         SobelFilter(in, io);

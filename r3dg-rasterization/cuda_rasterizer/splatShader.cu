@@ -64,26 +64,14 @@ namespace SplatShader
 		// for now we're not actually doing anyting in the constuctior other than initializing the constants.
     }
 
-    // Performs a very simple quantization of the model colors
-    __device__ static glm::vec3 QuantizeColor(glm::vec3 color, int steps)
-    {
-        // for each component of the color, clamp it to the closest multiple of the step threshold (1/steps).
-        float quantizedR = roundf(color.r * steps)/steps;
-        float quantizedG = roundf(color.g * steps)/steps;
-        float quantizedB = roundf(color.b * steps)/steps;
-
-        glm::vec3 quatnizedColor(quantizedR, quantizedG, quantizedB);
-        return quatnizedColor;
-    }
-
-    __device__ static void DefaultSplatShaderCUDA(SplatShaderConstantInputs in, SplatShaderModifiableInputs io, SplatShaderOutputs out)
+    __device__ void DefaultSplatShaderCUDA(SplatShaderConstantInputs in, SplatShaderModifiableInputs io, SplatShaderOutputs out)
     {
         // Set output color
         *out.out_color = (*in.color_SH);
     }
 
     // A naive shader for hgihlighting edges on model.
-    __device__ static void NaiveOutlineShaderCUDA(SplatShaderConstantInputs in, SplatShaderModifiableInputs io, SplatShaderOutputs out)
+    __device__ void NaiveOutlineShaderCUDA(SplatShaderConstantInputs in, SplatShaderModifiableInputs io, SplatShaderOutputs out)
     {
         // Get angle between splat and camera:
         glm::vec3 directionToCamera = in.camera_position - in.position;
@@ -97,7 +85,7 @@ namespace SplatShader
         *out.out_color = (*in.color_SH) * opacity;
     }
 
-    __device__ static void WireframeShaderCUDA(SplatShaderConstantInputs in, SplatShaderModifiableInputs io, SplatShaderOutputs out)
+    __device__ void WireframeShaderCUDA(SplatShaderConstantInputs in, SplatShaderModifiableInputs io, SplatShaderOutputs out)
     {
         // Get angle between splat and camera:
         glm::vec3 directionToCamera = in.camera_position - in.position;
@@ -114,7 +102,7 @@ namespace SplatShader
 
     // Makes the object fade in and out.
     // Written in splat shader because this is where we have best access to colors.
-    __device__ static void DissolveShader(SplatShaderConstantInputs in, SplatShaderModifiableInputs io, SplatShaderOutputs out){
+    __device__ void DissolveShader(SplatShaderConstantInputs in, SplatShaderModifiableInputs io, SplatShaderOutputs out){
         cudaTextureObject_t maskTex = in.d_textureManager->GetTexture("Cracks");
 
         // Grab the opacity from a mask texture
@@ -151,7 +139,7 @@ namespace SplatShader
         *out.out_color = glm::mix(targetfadeColor, *in.color_SH, colorFading);
     }
 
-    __device__ static void CrackShaderCUDA(SplatShaderConstantInputs in, SplatShaderModifiableInputs io, SplatShaderOutputs out)
+    __device__ void CrackShaderCUDA(SplatShaderConstantInputs in, SplatShaderModifiableInputs io, SplatShaderOutputs out)
     {
         cudaTextureObject_t crackTex = in.d_textureManager->GetTexture("Depth cracks");
         // Rescale UVs
@@ -194,7 +182,7 @@ namespace SplatShader
         *out.out_color = finalColor;
     }
 
-    __device__ static void CrackWithoutReconstructionShaderCUDA(SplatShaderConstantInputs in, SplatShaderModifiableInputs io, SplatShaderOutputs out)
+    __device__ void CrackWithoutReconstructionShaderCUDA(SplatShaderConstantInputs in, SplatShaderModifiableInputs io, SplatShaderOutputs out)
     {
         cudaTextureObject_t crackTex = in.d_textureManager->GetTexture("Bulge");
         //cudaTextureObject_t crackTex = in.d_textureManager->GetTexture("Depth cracks");
@@ -238,13 +226,13 @@ namespace SplatShader
         *io.metallic = shouldUseInternalColor;
     }
 
-    __device__ static void WriteToStencilCUDA(SplatShaderConstantInputs in, SplatShaderModifiableInputs io, SplatShaderOutputs out){
+    __device__ void WriteToStencilCUDA(SplatShaderConstantInputs in, SplatShaderModifiableInputs io, SplatShaderOutputs out){
         *io.stencil_val = 1;
         *io.stencil_opacity = *io.opacity;
         *out.out_color = *in.color_SH;
     }
 
-    __device__ static void RoughnessOnlyCUDA(SplatShaderConstantInputs in, SplatShaderModifiableInputs io, SplatShaderOutputs out){
+    __device__ void RoughnessOnlyCUDA(SplatShaderConstantInputs in, SplatShaderModifiableInputs io, SplatShaderOutputs out){
         if(in.position.x < 0){
             *io.roughness = 0.25f;
         }
@@ -263,15 +251,15 @@ namespace SplatShader
         *out.out_color = glm::vec3(0);
     }
 
-    __device__ static void QuantizeFlatColors(SplatShaderConstantInputs in, SplatShaderModifiableInputs io, SplatShaderOutputs out){
+    __device__ void QuantizeFlatColors(SplatShaderConstantInputs in, SplatShaderModifiableInputs io, SplatShaderOutputs out){
 
-        glm::vec3 quantizedLight = QuantizeColor(*io.incident_light, 3);
+        glm::vec3 quantizedLight = Quantize(*io.incident_light, 3);
 		*out.out_color = *io.color_base;//* quantizedLight;
     }
 
-    __device__ static void QuantizeLight(SplatShaderConstantInputs in, SplatShaderModifiableInputs io, SplatShaderOutputs out){
+    __device__ void QuantizeLight(SplatShaderConstantInputs in, SplatShaderModifiableInputs io, SplatShaderOutputs out){
 
-        glm::vec3 qIntensity = QuantizeColor(*io.incident_light, 3);
+        glm::vec3 qIntensity = Quantize(*io.incident_light, 3);
         float whiteIntensity = max(qIntensity.r, max(qIntensity.g, qIntensity.b)); // Convert the light to whit efor a simpler picture.
 
         //*io.incident_light = glm::vec3(whiteIntensity);
