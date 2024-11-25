@@ -56,13 +56,10 @@ class TextureImporter:
         self.import_texture("Bulge", r"C:\Users\asvj\Documents\GitHub\Relightable3DGaussian\textures\bulge.png")
         self.import_texture("shadow", r"C:\Users\asvj\Documents\GitHub\Relightable3DGaussian\textures\shadow.png")
 
+        #Set error texture
+        errorTex = self.import_texture("Error", r"C:\Users\asvj\Documents\GitHub\Relightable3DGaussian\textures\Error.png")
+
         #Once all textures have been loaded, create an indirect address lookup table for them on the device:
-        d_textureManager_ptr = _C.UploadTexturesToDevice(self.loadedTextureNames, self.loadedTextureObjects)
-
-        ## Perfrom a sanity test:
-        #print("####### Trying to print a pixel from Cracks texture with an indirect lookup:\n")
-        #_C.PrintFromTextureManager(d_textureManager_ptr, "Cracks")
-        #print("Done printing.\n")
-
+        d_textureManager_ptr = _C.UploadTexturesToDevice(self.loadedTextureNames, self.loadedTextureObjects, errorTex)
 
         return d_textureManager_ptr

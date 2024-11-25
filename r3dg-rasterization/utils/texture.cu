@@ -214,13 +214,14 @@ namespace Texture
 
     // initialize device texture vector and device texture name vector (used for indirect addressing of textures)
     // NOTICE: actually returns a d_TextureManager* cast to an int64.
-    int64_t UploadTexturesToDevice(std::vector<std::string> names, std::vector<int64_t> textureObjects){
+    int64_t UploadTexturesToDevice(std::vector<std::string> names, std::vector<int64_t> textureObjects, int64_t errorTexture){
         auto h_texManager = new TextureManager();
         h_texManager->SetTextures(names, textureObjects);
+        h_texManager->SetErrorTexture((cudaTextureObject_t*) errorTexture);
 
         TextureManager* d_texManager;
-        cudaMalloc(&d_texManager, sizeof(TextureManager));
-        cudaMemcpy(d_texManager, h_texManager, sizeof(TextureManager), cudaMemcpyHostToDevice);
+        checkCudaErrors(cudaMalloc(&d_texManager, sizeof(TextureManager)));
+        checkCudaErrors(cudaMemcpy(d_texManager, h_texManager, sizeof(TextureManager), cudaMemcpyHostToDevice));
 
         return (int64_t)d_texManager;
     }
@@ -277,10 +278,10 @@ namespace Texture
         }
     }
 
-    // Allocates and uploads an errot texture to the device.
-    __host__ void Texture::TextureManager::SetErrorTexture(cudaTextureObject_t errorTexture){
-        cudaMalloc(&d_textureObjects, sizeof(cudaTextureObject_t));
-        cudaMemcpy(&d_errorTexture, &errorTexture, sizeof(cudaTextureObject_t), cudaMemcpyHostToDevice);
+    // Allocates and uploads an error texture to the device.
+    __host__ void Texture::TextureManager::SetErrorTexture(cudaTextureObject_t* errorTexture){
+        checkCudaErrors(cudaMalloc(&d_errorTexture, sizeof(cudaTextureObject_t)));
+        checkCudaErrors(cudaMemcpy(&d_errorTexture, errorTexture, sizeof(cudaTextureObject_t), cudaMemcpyKind::cudaMemcpyDefault));
     }
 
     //Deallocates the error texture on the device.

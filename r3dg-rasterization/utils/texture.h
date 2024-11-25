@@ -44,7 +44,7 @@ namespace Texture
         __host__ void UnloadTextures();
 
         // Allocates and uploads an errot texture to the device.
-        __host__ void SetErrorTexture(cudaTextureObject_t errorTexture);
+        __host__ void SetErrorTexture(cudaTextureObject_t* errorTexture);
 
         //Deallocates the error texture on the device.
         __host__ void UnloadErrorTexture();
@@ -62,7 +62,7 @@ namespace Texture
     int64_t AllocateTexture(std::map<std::string, torch::Tensor> textureData);
 
     // Loads the texture name and texture object vectors onto the GPU.
-    int64_t UploadTexturesToDevice(std::vector<std::string> names, std::vector<int64_t> textureObjects);
+    int64_t UploadTexturesToDevice(std::vector<std::string> names, std::vector<int64_t> textureObjects, int64_t errorTex);
 
     // Creates a textureObject wrapper around the provided texture data and writes it to the texObjPtr
     void CreateTexture(cudaTextureObject_t* texObjPtr, std::map<std::string, torch::Tensor> textureData);
