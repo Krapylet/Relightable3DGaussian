@@ -50,11 +50,11 @@ namespace Texture
         __host__ void UnloadErrorTexture();
 
         // Returns the error texture.
-        __device__ cudaTextureObject_t GetErrorTexture();
+        __device__ cudaTextureObject_t GetErrorTexture() const;
                 
         // Loops through each loaded texture name and checks if it matches the given name before returning the associated texture. Is pretty slow, so cache the result.
         // Returns the error texture if no texture is found.
-        __device__ cudaTextureObject_t GetTexture(char* targetTextureName);
+        __device__ cudaTextureObject_t GetTexture(char* targetTextureName) const;
 
     };
 

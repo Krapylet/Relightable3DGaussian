@@ -98,7 +98,7 @@ namespace PostProcess
 		glm::vec3 const * const background;         // Background color for the scene.
 
         // Custom textures:
-        Texture::TextureManager *const d_textureManager;    // Object used to fetch textures uploaded by user.
+        Texture::TextureManager const *const d_textureManager;    // Object used to fetch textures uploaded by user.
 	};
 
 	// Used as input and output interface to the shaders.

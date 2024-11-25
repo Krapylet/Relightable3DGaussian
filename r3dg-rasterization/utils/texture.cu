@@ -290,11 +290,11 @@ namespace Texture
     }
 
     // Returns the error texture.
-    __device__ cudaTextureObject_t Texture::TextureManager::GetErrorTexture(){return *d_errorTexture;}
+    __device__ cudaTextureObject_t Texture::TextureManager::GetErrorTexture() const {return *d_errorTexture;}
             
     // Loops through each loaded texture name and checks if it matches the given name before returning the associated texture. Is pretty slow, so cache the result.
     // Returns the error texture if no texture is found.
-    __device__ cudaTextureObject_t Texture::TextureManager::GetTexture(char* targetTextureName){
+    __device__ cudaTextureObject_t Texture::TextureManager::GetTexture(char* targetTextureName) const {
         for (size_t i = 0; i < *d_texCount; i++)
         {
             // Check if the name in the lookup table is the same as the target name

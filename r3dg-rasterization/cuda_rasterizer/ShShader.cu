@@ -168,36 +168,6 @@ namespace ShShader
         return shaderMap;
     }
 
-    // ONETIME USE FUNCTION USED TO DEBUG. ALLOCATES THE RETURN ARRAY. REMEMBER TO FREE AFTER USE.
-    // Returns an array in device memory containing addresses to device shader functions.
-    int64_t* GetShShaderAddressArray(){
-        // Array is assembled on CPU before being sent to device. Addresses themselves are in device space.
-        int shaderCount = 3;
-        int64_t* h_shaderArray = new int64_t[shaderCount];
-        size_t shaderMemorySize = sizeof(ShShader);
-
-        ShShader h_defaultShader;
-        cudaMemcpyFromSymbol(&h_defaultShader, defaultShader, shaderMemorySize);
-        h_shaderArray[0] = (int64_t)h_defaultShader;
-
-        ShShader h_exponentialPositionShader;
-        cudaMemcpyFromSymbol(&h_exponentialPositionShader, expPosShader, shaderMemorySize);
-        h_shaderArray[1] = (int64_t)h_exponentialPositionShader;
-
-        ShShader h_heartbeatShader;
-        cudaMemcpyFromSymbol(&h_heartbeatShader, heartbeatShader, shaderMemorySize);
-        h_shaderArray[2] = (int64_t)h_heartbeatShader;
-
-        // copy the array to device
-        int64_t* d_shaderArray;
-        cudaMalloc(&d_shaderArray, sizeof(int64_t)*shaderCount);
-        cudaMemcpy(d_shaderArray, h_shaderArray, shaderMemorySize * shaderCount, cudaMemcpyDefault);
-        
-
-        // Delete temporary host array.
-        delete[] h_shaderArray;
-        return d_shaderArray;
-    }
 
     __global__ void ExecuteSHShaderCUDA(ShShader shader, int* d_splatIndexes, PackedShShaderParams packedParams){
         auto shaderInstance = cg::this_grid().thread_rank();

@@ -127,7 +127,7 @@ namespace SplatShader
 		glm::vec3 const *const __restrict__ color_SH;	// Color from SH evaluation
 
 		// Class that is used to retrieve textures. Make sure to cache textures once retrieved.
-		Texture::TextureManager *const d_textureManager;
+		Texture::TextureManager const *const d_textureManager;
 	};
 
 	// Modifiable intputs

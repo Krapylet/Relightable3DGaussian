@@ -86,7 +86,7 @@ namespace ShShader
 
 		// Global splat parameters
 		float const scale_modifier;		// How much each splat needs to be scaled to match the scene size
-		int deg; int max_coeffs;		// Information about number of SHs
+		int const deg; int const max_coeffs;		// Information about number of SHs
 			
 		// projection information
 		float const *const viewmatrix;
@@ -98,7 +98,7 @@ namespace ShShader
 		float const tan_fovx; float const tan_fovy;
         
 		// textures
-		Texture::TextureManager *const d_textureManager;
+		Texture::TextureManager const *const d_textureManager;
 	};
 
 	struct ShShaderModifiableInputs {
@@ -146,11 +146,8 @@ namespace ShShader
     typedef void (*ShShader)(ShShaderConstantInputs in, ShShaderModifiableInputs io, ShShaderOutputs out);
 
 	// Returns a map of shader names and shader device function pointers that can be passed back to the python frontend though pybind.
-	// we cast pointers to int since pure pointers aren't supported by pybind (ideally uint64_t, but pythorch only supports usigned 8-bit ints)
+	// we cast pointers to int since pure pointers aren't supported by pybind
 	std::map<std::string, int64_t> GetShShaderAddressMap();
-
-	// Returns shader addresses in an array so they can be used in CUDA.
-	int64_t* GetShShaderAddressArray();
 	
 	// Executes a shader on the GPU with the given parameters.
 	__global__ extern void ExecuteSHShaderCUDA(ShShader shader, int* d_splatIndexes, PackedShShaderParams packedParams);
