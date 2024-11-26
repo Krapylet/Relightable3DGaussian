@@ -453,15 +453,10 @@ if __name__ == '__main__':
     gaussians.append_shader_addresses_gpu_accelerated()
 
     #Select which post processing passes.
-    postProcessManager = PostProcess.PostProcessManager()
-    postProcessManager.AddPostProcessingPass("Invert")
-    postProcessManager.AddPostProcessingPass("Invert")
-    postProcessManager.AddPostProcessingPass("Invert")
-    postProcessManager.AddPostProcessingPass("Invert")
-    #postProcessManager.AddPostProcessingPass("Invert")   
-    #postProcessManager.AddPostProcessingPass("QuantizeLighting")  
-    #postProcessManager.AddPostProcessingPass("BlurLighting")  
-    #postProcessManager.AddPostProcessingPass("ToonShader")
+    postProcessManager = PostProcess.PostProcessManager() 
+    postProcessManager.AddPostProcessingPass("QuantizeLighting")  
+    postProcessManager.AddPostProcessingPass("BlurLighting")  
+    postProcessManager.AddPostProcessingPass("ToonShader")
   
 
     render_fn = render_fn_dict[args.type]

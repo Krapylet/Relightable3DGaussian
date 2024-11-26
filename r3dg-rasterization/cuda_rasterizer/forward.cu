@@ -1017,9 +1017,13 @@ void FORWARD::RunPostProcessShaders(
 		d_textureManager
 	};
 
-	// set up buffers for swapchain
-	// we reuse the allocated params memory for one of the buffers.
+	// In order to allow users to read from the entirety of the textuers without race conditions, we have to use a seperate buffer for their output.
+	// As a consequence, that does mean we have to copy a LOT of data back and forth for every post processing pass. 
+	
+	// TODO: ideally we shouldn't allocate the buffers here. Instead, we should just allocate this
+	// memory during preprocessing and pass it to the render loop so both buffers can be resused.
 	int pixelCount = height * width;
+	// because the output buffer points to the main screen buffer, all output is automatically written to the final output location.
 	auto outputBuffer = PostProcess::PostProcessShaderBuffer::CreateShallowBuffer(params, pixelCount);
 	auto inputBuffer = PostProcess::PostProcessShaderBuffer::CreateDeepBuffer(outputBuffer, pixelCount);
 
@@ -1030,29 +1034,16 @@ void FORWARD::RunPostProcessShaders(
 		
 		// Don't swap the buffers after the last pass.
 		if(i == passCount - 1){
-			return;
+			break;
 		}
 
-		// swap the buffers
-		auto temp = inputBuffer;
-		inputBuffer = outputBuffer;
-		outputBuffer = temp;
-	}
-
-	// If the final output is saved in the deep copy buffer, we have to write it back to the original frame buffers.
-	if(outputBuffer.isDeepCopy){
+		// Copy output back to the input
+		// We have to copy all the data from the output buffer back to the input buffer, otherwise data would get lost every 2nd pass 
 		PostProcess::DeepCopy<<<(pixelCount + 255) / 256, 256>>>(inputBuffer, outputBuffer, pixelCount);
 	}
 
-	// Free the extra memory that was allocated for the double buffer
-	// TODO: ideally we shouldn't deallocate this. Instead, we should just allocate this
-	// memory during preprocessing and pass it to the render loop so both buffers can be resused.
-	if(inputBuffer.isDeepCopy){
-		cudaFree(inputBuffer.features);
-	}
-	if(outputBuffer.isDeepCopy){
-		cudaFree(outputBuffer.features);
-	}
+	// Free the extra memory that was allocated for the double buffer this frame
+	cudaFree(inputBuffer.features);
 }
 
 

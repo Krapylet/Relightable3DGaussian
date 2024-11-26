@@ -20,12 +20,12 @@ namespace PostProcess
         buffer.roughness =              p.features + pixCount * (0);   
         buffer.metallic =               p.features + pixCount * (1);
         buffer.incident_visibility =    p.features + pixCount * (1+1);
-        buffer.brdf_color =             (glm::vec3 *)p.features + pixCount * (1+1+1);
-        buffer.normal =                 (glm::vec3 *)p.features + pixCount * (1+1+1+3);
-        buffer.base_color =             (glm::vec3 *)p.features + pixCount * (1+1+1+3+3);      
-        buffer.incident_light =         (glm::vec3 *)p.features + pixCount * (1+1+1+3+3+3);   
-        buffer.local_incident_light =   (glm::vec3 *)p.features + pixCount * (1+1+1+3+3+3+3);  
-        buffer.global_incident_light =  (glm::vec3 *)p.features + pixCount * (1+1+1+3+3+3+3+3);
+        buffer.brdf_color =             (glm::vec3 *)(p.features + pixCount * (1+1+1));
+        buffer.normal =                 (glm::vec3 *)(p.features + pixCount * (1+1+1+3));
+        buffer.base_color =             (glm::vec3 *)(p.features + pixCount * (1+1+1+3+3));      
+        buffer.incident_light =         (glm::vec3 *)(p.features + pixCount * (1+1+1+3+3+3));   
+        buffer.local_incident_light =   (glm::vec3 *)(p.features + pixCount * (1+1+1+3+3+3+3));  
+        buffer.global_incident_light =  (glm::vec3 *)(p.features + pixCount * (1+1+1+3+3+3+3+3));
 
         //// Scene textures:
         buffer.opacity = p.opacity;
@@ -183,7 +183,7 @@ namespace PostProcess
     }
 
     __device__ void InvertColorsShader(PostProcessShaderInputs in, PostProcessShaderOutputs out){
-        *out.shader_color = glm::vec3(1,1,1) - *out.shader_color;
+        *out.shader_color = glm::vec3(1,1,1) - in.shader_color[in.pixel_idx];
     }
 
     __device__ bool PixelIsInsideStencil(glm::ivec2 pixel, PostProcessShaderInputs* in){
@@ -259,7 +259,7 @@ namespace PostProcess
         internalColor *= __saturatef(__saturatef(glm::dot(lightDir, normal) * lightIntensity) + ambientLight);
 
         // mix the base color into the internal color near the mask edge.
-        glm::vec3 outputColor = internalColor * constructionMask + *in.shader_color * (1-constructionMask);
+        glm::vec3 outputColor = internalColor * constructionMask + in.shader_color[in.pixel_idx] * (1-constructionMask);
 
         *out.shader_color = outputColor;
     }
@@ -290,7 +290,7 @@ namespace PostProcess
         lightShadow = __saturatef(lightShadow + intensity);        
 
         // Apply the shadow texture on top of the unlit colors
-        glm::vec3 internalColor = *in.shader_color * lightShadow * mediumShadow * heavyShadow;
+        glm::vec3 internalColor = *out.shader_color * lightShadow * mediumShadow * heavyShadow;
 
         *out.shader_color = internalColor;
     }
