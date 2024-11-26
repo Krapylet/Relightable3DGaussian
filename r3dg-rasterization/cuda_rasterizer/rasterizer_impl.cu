@@ -481,6 +481,12 @@ int CudaRasterizer::Rasterizer::forward(
             ), debug)
     }
 
+	// we can return early if there's no post processing.
+	bool noPostProcessingIsUsed = postProcessPasses.size() == 0;
+	if(noPostProcessingIsUsed){
+		return num_rendered;
+	}
+
 	CHECK_CUDA(FORWARD::RenderIntermediateTextures(
 		tile_grid, block,
 		imgState.ranges,

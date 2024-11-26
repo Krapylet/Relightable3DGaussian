@@ -1011,17 +1011,44 @@ void FORWARD::RunPostProcessShaders(
 		stencil_tex,
 		(glm::vec3*) out_surface_xyz,
 		(glm::vec3*) out_pseudonormal,
-		S, out_features,
-		d_textureManager,
+		(glm::vec3*) out_shader_color,
 
-		(glm::vec3*) out_shader_color
+		S, out_features,
+		d_textureManager
 	};
 
-	int pixels = height * width;
+	// set up buffers for swapchain
+	// we reuse the allocated params memory for one of the buffers.
+	int pixelCount = height * width;
+	auto outputBuffer = PostProcess::PostProcessShaderBuffer::CreateShallowBuffer(params, pixelCount);
+	auto inputBuffer = PostProcess::PostProcessShaderBuffer::CreateDeepBuffer(outputBuffer, pixelCount);
 
-	for (PostProcess::PostProcessShader shader : postProcessPasses)
+	int passCount = postProcessPasses.size();
+	for (size_t i = 0; i < passCount; i++)
 	{
-			PostProcess::ExecuteShader<<<(pixels + 255) / 256, 256>>>(shader, params);		
+		PostProcess::ExecuteShader<<<(pixelCount + 255) / 256, 256>>>(postProcessPasses[i], params, inputBuffer, outputBuffer);
+		// swap the buffers
+		auto temp = inputBuffer;
+		inputBuffer = outputBuffer;
+		outputBuffer = temp;
+	}
+
+	// If the number of swaps performed is odd, then the final output is already written to the correct buffers.
+	// But if the number of swaps perform is even, then we have to write the data back to the original buffers provided in params, and
+	// those pointers will currently be stored in input
+	bool hasToWriteOutputToParams = passCount % 2 == 0;
+	if(hasToWriteOutputToParams){
+		PostProcess::DeepCopy<<<(pixelCount + 255) / 256, 256>>>(inputBuffer, outputBuffer, pixelCount);
+
+	}
+
+	// Free the extra memory that was allocated for the double buffer
+	// TODO: ideally we shouldn't deallocate this. Instead, we should just allocate this memory during preprocessing.
+	if(inputBuffer.isDeepCopy){
+		cudaFree(inputBuffer.features);
+	}
+	if(outputBuffer.isDeepCopy){
+		cudaFree(outputBuffer.features);
 	}
 }
 

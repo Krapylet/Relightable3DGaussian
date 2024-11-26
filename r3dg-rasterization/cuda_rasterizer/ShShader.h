@@ -110,7 +110,7 @@ namespace ShShader
 		glm::vec3 *const scale;
 		glm::vec4 *const rotation;
 		float *const opacity;
-		// Contains a lof of spherical harmonics, that are basically progressively finer cubemaps. (yet still extremely coarse)
+		// Contains a lof of spherical harmonics, with each degree basically defining progressively finer cubemaps. (yet still extremely coarse)
 		// SHs are combined together based on constant predefined proportions and view direction.
 		// -----------------------------------------------------------------
 		// | SH degree | index          | multiplied by view dir component   |

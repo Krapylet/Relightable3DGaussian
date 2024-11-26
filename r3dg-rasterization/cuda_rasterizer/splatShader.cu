@@ -334,49 +334,6 @@ namespace SplatShader
         return shaderMap;
     }
 
-    // ALLOCATES THE RETURN ARRAY. REMEMBER TO FREE AFTER USE.
-    // Returns an array in device memory containing addresses to device shader functions.
-    int64_t* GetSplatShaderAddressArray(){
-        // Array is assembled on CPU before being sent to device. Addresses themselves are in device space.
-        int shaderCount = 6;
-        int64_t* h_shaderArray = new int64_t[shaderCount];
-        size_t shaderMemorySize = sizeof(SplatShader);
- 
-        SplatShader h_defaultShader;
-        cudaMemcpyFromSymbol(&h_defaultShader, defaultShader, shaderMemorySize);
-        h_shaderArray[0] = (int64_t)h_defaultShader;
-
-        SplatShader h_outlineShader;
-        cudaMemcpyFromSymbol(&h_outlineShader, naiveOutlineShader, shaderMemorySize);
-        h_shaderArray[1] = (int64_t)h_outlineShader;
-
-        SplatShader h_wireframeShader;
-        cudaMemcpyFromSymbol(&h_wireframeShader, wireframeShader, shaderMemorySize);
-        h_shaderArray[2] = (int64_t)h_wireframeShader;
-
-        SplatShader h_dissolveShader;
-        cudaMemcpyFromSymbol(&h_dissolveShader, dissolveShader, shaderMemorySize);
-        h_shaderArray[3] = (int64_t)h_dissolveShader;
-        
-        SplatShader h_crackShader;
-        cudaMemcpyFromSymbol(&h_crackShader, crackShader, shaderMemorySize);
-        h_shaderArray[4] = (int64_t)h_crackShader;
-
-        SplatShader h_stencilShader;
-        cudaMemcpyFromSymbol(&h_stencilShader, stencilShader, shaderMemorySize);
-        h_shaderArray[5] = (int64_t)h_stencilShader;
-
-        // copy the host array to device
-        int64_t* d_shaderArray;
-        cudaMalloc(&d_shaderArray, sizeof(int64_t)*shaderCount);
-        cudaMemcpy(d_shaderArray, h_shaderArray, shaderMemorySize * shaderCount, cudaMemcpyDefault);
-
-        // Delete temporary host array.
-        delete[] h_shaderArray;
-        return d_shaderArray;
-    }
-
-
     __global__ void ExecuteSplatShaderCUDA(SplatShader shader, int* d_splatIndexes, PackedSplatShaderParams packedParams){
         auto shaderInstance = cg::this_grid().thread_rank();
         if (shaderInstance >= packedParams.P)
