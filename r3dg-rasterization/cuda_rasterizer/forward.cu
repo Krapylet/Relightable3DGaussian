@@ -1027,23 +1027,26 @@ void FORWARD::RunPostProcessShaders(
 	for (size_t i = 0; i < passCount; i++)
 	{
 		PostProcess::ExecuteShader<<<(pixelCount + 255) / 256, 256>>>(postProcessPasses[i], params, inputBuffer, outputBuffer);
+		
+		// Don't swap the buffers after the last pass.
+		if(i == passCount - 1){
+			return;
+		}
+
 		// swap the buffers
 		auto temp = inputBuffer;
 		inputBuffer = outputBuffer;
 		outputBuffer = temp;
 	}
 
-	// If the number of swaps performed is odd, then the final output is already written to the correct buffers.
-	// But if the number of swaps perform is even, then we have to write the data back to the original buffers provided in params, and
-	// those pointers will currently be stored in input
-	bool hasToWriteOutputToParams = passCount % 2 == 0;
-	if(hasToWriteOutputToParams){
+	// If the final output is saved in the deep copy buffer, we have to write it back to the original frame buffers.
+	if(outputBuffer.isDeepCopy){
 		PostProcess::DeepCopy<<<(pixelCount + 255) / 256, 256>>>(inputBuffer, outputBuffer, pixelCount);
-
 	}
 
 	// Free the extra memory that was allocated for the double buffer
-	// TODO: ideally we shouldn't deallocate this. Instead, we should just allocate this memory during preprocessing.
+	// TODO: ideally we shouldn't deallocate this. Instead, we should just allocate this
+	// memory during preprocessing and pass it to the render loop so both buffers can be resused.
 	if(inputBuffer.isDeepCopy){
 		cudaFree(inputBuffer.features);
 	}
