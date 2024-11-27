@@ -138,12 +138,23 @@ namespace ShShader
         //io.sh[0] = io.sh[0] * (1 - max(0.0f, 0.5f-totalGrowth));
     }
 
+    __device__ void CullHalf(ShShaderConstantInputs in, ShShaderModifiableInputs io, ShShaderOutputs out)
+    {
+        // make one half of the model transparent.
+        if(io.position->x < 0){
+            *io.opacity = 0;
+
+            // also make it tiny. This should make sure it doesn't contribute to any pixels during splat rendering, thereby reducing workload.
+            *io.scale = glm::vec3(0);
+        }
+    }
+
     ///// Assign all the shaders to their short handles.
     // we need to keep them in constant device memory for them to stay valid when passed to host.
-    //TODO: Instead of storing shaders in individual variables, store them in a __device__ const map<ShShaderName, ShShader> 
     __device__ ShShader defaultShader = &DefaultShShaderCUDA;
     __device__ ShShader expPosShader = &ExponentialPositionShaderCUDA;
     __device__ ShShader heartbeatShader = &HeartbeatShaderCUDA;
+    __device__ ShShader cullHalf = &CullHalf;
 
     std::map<std::string, int64_t> GetShShaderAddressMap(){
         // we cast pointers to numbers since most pointers aren't supported by pybind
@@ -164,6 +175,10 @@ namespace ShShader
         ShShader h_heartbeatShader;
         cudaMemcpyFromSymbol(&h_heartbeatShader, heartbeatShader, shaderMemorySize);
         shaderMap["Heartbeat"] = (int64_t)h_heartbeatShader;
+
+        ShShader h_cullHalf;
+        cudaMemcpyFromSymbol(&h_cullHalf, cullHalf, shaderMemorySize);
+        shaderMap["CullHalf"] = (int64_t)h_cullHalf;
 
         return shaderMap;
     }
