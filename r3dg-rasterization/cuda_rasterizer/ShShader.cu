@@ -178,7 +178,9 @@ namespace ShShader
 
         // sart loading falling down into place from above during loading.
         // TODO: or from random direction! (use thread ID as seed for random direction.)
-        glm::vec3 startPos = *io.position + glm::vec3(0, 0, glm::length(*io.scale) * 10);
+        float fadeDistance = glm::length(*io.scale) * 10;
+        glm::vec3 fadDirection = glm::vec3(0,0,1);
+        glm::vec3 startPos = *io.position + fadDirection * fadeDistance;
         glm::vec3 currentPosition = glm::mix(startPos, *io.position, loadingPercent);
         *io.position = currentPosition;
 
