@@ -149,12 +149,52 @@ namespace ShShader
         }
     }
 
+    // The dissolve effect reimagined to better fit Gaussian splatting
+    __device__ void GaussDissolve(ShShaderConstantInputs in, ShShaderModifiableInputs io, ShShaderOutputs out)
+    {
+        cudaTextureObject_t maskTex = in.d_textureManager->GetTexture("Cracks");
+
+        // Grab the opacity from a mask texture
+        float maskSample_xy = tex2D<float4>(maskTex, io.position->x, io.position->y).x;
+        float maskSample_xz = tex2D<float4>(maskTex, io.position->x, io.position->z).x;
+        float maskSample_yz = tex2D<float4>(maskTex, io.position->y, io.position->z).x;
+        
+        // combine masking from the 3 planes to create a 3d mask.
+        float maskSample = maskSample_xy * maskSample_xz * maskSample_yz;
+
+        // make the mask less gray
+        maskSample = __saturatef((maskSample-0.125)*1.5);
+
+        // repeat the effect over time
+        float loadingSpeed = 0.25;
+        float loopDuration = 3;
+        float totalLoadProgression = fmod(in.time/1000 * loadingSpeed, loopDuration);
+        
+        // Start loading the model from the bottom. Offset loading with the mask
+        float loadingPercent = __saturatef(totalLoadProgression - io.position->z + maskSample - 1);
+
+        // As the splat loads, fade it in
+        *io.opacity *= loadingPercent * loadingPercent * loadingPercent;
+
+        // sart loading falling down into place from above during loading.
+        // TODO: or from random direction! (use thread ID as seed for random direction.)
+        glm::vec3 startPos = *io.position + glm::vec3(0, 0, glm::length(*io.scale) * 10);
+        glm::vec3 currentPosition = glm::mix(startPos, *io.position, loadingPercent);
+        *io.position = currentPosition;
+
+        // Slightly tint the color towards bright blue as it loads.
+        glm::vec3 targetfadeColor = glm::vec3(0.6,0.9,1);
+        io.sh[0] = glm::mix(targetfadeColor, io.sh[0], loadingPercent);
+    }
+
+
     ///// Assign all the shaders to their short handles.
     // we need to keep them in constant device memory for them to stay valid when passed to host.
     __device__ ShShader defaultShader = &DefaultShShaderCUDA;
     __device__ ShShader expPosShader = &ExponentialPositionShaderCUDA;
     __device__ ShShader heartbeatShader = &HeartbeatShaderCUDA;
     __device__ ShShader cullHalf = &CullHalf;
+    __device__ ShShader gaussDissolve = &GaussDissolve;
 
     std::map<std::string, int64_t> GetShShaderAddressMap(){
         // we cast pointers to numbers since most pointers aren't supported by pybind
@@ -179,6 +219,10 @@ namespace ShShader
         ShShader h_cullHalf;
         cudaMemcpyFromSymbol(&h_cullHalf, cullHalf, shaderMemorySize);
         shaderMap["CullHalf"] = (int64_t)h_cullHalf;
+
+        ShShader h_gaussDissolve;
+        cudaMemcpyFromSymbol(&h_gaussDissolve, gaussDissolve, shaderMemorySize);
+        shaderMap["GaussDissolve"] = (int64_t)h_gaussDissolve;
 
         return shaderMap;
     }

@@ -301,11 +301,11 @@ namespace SplatShader
 
         SplatShader h_wireframeShader;
         cudaMemcpyFromSymbol(&h_wireframeShader, wireframeShader, shaderMemorySize);
-        shaderMap["WireframeShader"] = (int64_t)h_wireframeShader;
+        shaderMap["Wireframe"] = (int64_t)h_wireframeShader;
 
         SplatShader h_dissolveShader;
         cudaMemcpyFromSymbol(&h_dissolveShader, dissolveShader, shaderMemorySize);
-        shaderMap["DissolveShader"] = (int64_t)h_dissolveShader;
+        shaderMap["Dissolve"] = (int64_t)h_dissolveShader;
 
         SplatShader h_crackShader;
         cudaMemcpyFromSymbol(&h_crackShader, crackShader, shaderMemorySize);

@@ -79,26 +79,31 @@ namespace ShShader
 		__device__ ShShaderConstantInputs(PackedShShaderParams params, int idx);
 
 		// Screen information
-		int const W; int const H;
+		int const W; 				// Width of the screen in pixels
+		int const H;				// height of the screen in pixels
 
         //time
-		float const time; float const dt;
+		float const time; 			// Time since program start in ms
+		float const dt;				// Time since last frame in ms
 
 		// Global splat parameters
 		float const scale_modifier;		// How much each splat needs to be scaled to match the scene size
-		int const deg; int const max_coeffs;		// Information about number of SHs
+		int const deg;				// Numer of active SH bands
+		int const max_coeffs;		// Total number of SH coefficients
 			
 		// projection information
-		float const *const viewmatrix;
-		float const *const viewmatrix_inv;
+		float const *const viewmatrix;				// The scene's viewmatrix
+		float const *const viewmatrix_inv;			// The scene's inverse viewmatrix
 		float const *const projmatrix;
 		float const *const projmatrix_inv;
-        glm::vec3 const camera_position;
-		float const focal_x; float const focal_y;
-		float const tan_fovx; float const tan_fovy;
+        glm::vec3 const camera_position;			// Position of the camera
+		float const focal_x;						// Camera horizontal focal length
+		float const focal_y;						// Camera vertical focal length
+		float const tan_fovx;						// Camera horizontal field of vision
+		float const tan_fovy;						// Camera vertical field of vision
         
 		// textures
-		Texture::TextureManager const *const d_textureManager;
+		Texture::TextureManager const *const d_textureManager;			// object used to retrieve specific textures by name
 	};
 
 	struct ShShaderModifiableInputs {
@@ -106,10 +111,10 @@ namespace ShShader
 		__device__ ShShaderModifiableInputs(PackedShShaderParams params, int idx);
 
 		//input/output   -   contains values when the method is called that can be changed.
-		glm::vec3 *const position;
-		glm::vec3 *const scale;
-		glm::vec4 *const rotation;
-		float *const opacity;
+		glm::vec3 *const position;				// World position of 3D Gaussian
+		glm::vec3 *const scale;					// Scale of the 3D gaussian
+		glm::vec4 *const rotation;				// Rotation of the 3D Gaussian
+		float *const opacity;					// Opacity of the 3D gaussian
 		// Contains a lof of spherical harmonics, with each degree basically defining progressively finer cubemaps. (yet still extremely coarse)
 		// SHs are combined together based on constant predefined proportions and view direction.
 		// -----------------------------------------------------------------
@@ -128,17 +133,17 @@ namespace ShShader
 		glm::vec3 *const color_base;			// Decomposed splat color without lighting
 		float *const roughness;
 		float *const metallic;
-		glm::vec3 *const incident_light;
-		glm::vec3 *const local_incident_light;
-		glm::vec3 *const global_incident_light;
-		float *const incident_visibility;
+		glm::vec3 *const incident_light;		// total amout of light hitting this 3D Gaussian
+		glm::vec3 *const local_incident_light;	// bounce light that hits this 3D gaussian
+		glm::vec3 *const global_incident_light; // Global light that hits this 3D gaussian
+		float *const incident_visibility;		// Fraction of how much global light hits this 3D Gaussian
 	};
 
 	struct ShShaderOutputs {
 		// Constructor
 		__device__ ShShaderOutputs(PackedShShaderParams params, int idx);
 
-		float *const stencil_val; //The stencil value of the individual splat
+		float *const stencil_val; //The stencil value of the individual 3d Gaussian
 		float *const stencil_opacity; // a seperate opacity for when rendering the stencil mask
 	};
 

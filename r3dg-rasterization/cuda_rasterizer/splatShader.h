@@ -93,7 +93,8 @@ namespace SplatShader
         int const W; int const H;							// Sceen width and height
 
 		// Time information:
-		float const time; float const dt;
+		float const time; 				// Time since program start in ms
+		float const dt;					// Time since last frame in ms
 
         // position information:
 		glm::vec3 const position;  				// mean 3d position of gaussian in world space. Can't be changed since 2D screen position has already been calculated.
@@ -101,29 +102,33 @@ namespace SplatShader
 		int const mean_pixel_idx; 				// Index of the mean pixel position of the splat.
 
 		// Screen texture information. Indexed with mean_pixel_idx
-		float const * const depth_tex;
-		float const * const stencil_tex;
+		float const * const depth_tex;			// Scene depth texture. Indexed with mean_pixel_idx
+		float const * const stencil_tex;		// Stencil_tex depth texture. Indexed with mean_pixel_idx
 
 		// Projection information.
+		// RightX  RightY  RightZ  0
+		// UpX     UpY     UpZ     0
+		// LookX   LookY   LookZ   0
+		// PosX    PosY    PosZ    1
 		float const *const __restrict__ viewmatrix;
-				// RightX  RightY  RightZ  0
-                // UpX     UpY     UpZ     0
-                // LookX   LookY   LookZ   0
-                // PosX    PosY    PosZ    1
+
+		// RightX  UpX     LookX      0
+		// RightY  UpY     LookY      0
+		// RightZ  UpZ     LookZ      0
+		// -(Pos*Right)  -(Pos*Up)  -(Pos*Look)  1
 		float const *const __restrict__ viewmatrix_inv;
-				// RightX  UpX     LookX      0
-                // RightY  UpY     LookY      0
-                // RightZ  UpZ     LookZ      0
-                // -(Pos*Right)  -(Pos*Up)  -(Pos*Look)  1
+
 		float const *const __restrict__ projmatrix;
 		float const *const __restrict__ projmatrix_inv;
-		float const focal_x; float const focal_y;
-		float const tan_fovx; float const tan_fovy;
+		float const focal_x;				// Camera horizontal focal length
+		float const focal_y;				// Camera vertical focal length	
+		float const tan_fovx;				// Camera horizontal field of vision	
+		float const tan_fovy;				// Camera vertical field of vision		
 		glm::vec3 const camera_position;	// Position of camera in world space
 
 		// pr. frame splat information
-		float const splat_depth;					// Mean splat depth in view space.
-		glm::vec3 const conic;				// Covariance matrix used to determine splats shapes in the final rendering step.
+		float const splat_depth;						// Mean splat depth in view space.
+		glm::vec3 const conic;							// Covariance matrix used to determine splats shapes in the final rendering step.
 		glm::vec3 const *const __restrict__ color_SH;	// Color from SH evaluation
 
 		// Class that is used to retrieve textures. Make sure to cache textures once retrieved.
@@ -143,10 +148,10 @@ namespace SplatShader
 		glm::vec3 *const color_base;			// Decomposed splat color without lighting
 		float *const  roughness;
 		float *const  metallic;
-		glm::vec3 *const  incident_light;
-		glm::vec3 *const  local_incident_light;
-		glm::vec3 *const  global_incident_light;
-		float *const  incident_visibility;
+		glm::vec3 *const  incident_light;			// total amout of light hitting this 3D Gaussian
+		glm::vec3 *const  local_incident_light;		// bounce light that hits this 3D gaussian
+		glm::vec3 *const  global_incident_light;	// Global light that hits this 3D gaussian
+		float *const  incident_visibility;			// Fraction of how much global light hits this 3D Gaussian
 
 		// pr. splat information
 		float *const __restrict__ opacity;				//The opacity of the splat. Opacity works a bit funky because how splats are blended. It is better to multiply this paramter by something rather than setting it to specific values.
@@ -159,8 +164,7 @@ namespace SplatShader
 		// Constructor
 		__device__ SplatShaderOutputs(PackedSplatShaderParams params, int idx);
 
-		// Note: HAS to be assigned in the shader.
-		glm::vec3 *const __restrict__ out_color;					// RGB color output the splat. Will get combined based on alpha in the next step.
+		glm::vec3 *const __restrict__ out_color;					// RGB color output the splat. Will get combined based on alpha and depth in the next step.
 	};
 
 	// Define a shared type of fuction pointer that can point to all implemented shaders.
