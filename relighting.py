@@ -91,16 +91,23 @@ def render_points(camera, gaussians):
     w2c = camera.world_view_transform.transpose(0, 1)
 
     xyz = gaussians.get_xyz
+    print(f"Xyz shape: {xyz.shape}\n")
     color = gaussians.get_base_color
+    print(f"color shape: {color.shape}\n")
     xyz_homo = torch.cat([xyz, torch.ones_like(xyz[:, :1])], dim=-1)
     xyz_cam = (xyz_homo @ w2c.T)[:, :3]
     z = xyz_cam[:, 2]
     uv_homo = xyz_cam @ intrinsic.T
     uv = uv_homo[:, :2] / uv_homo[:, 2:]
     uv = uv.long()
+    
+    valid_H = torch.logical_and(uv[:, 1] >= 0, uv[:, 1] < H)
+    print(valid_H)
+    valid_W = torch.logical_and(uv[:, 0] >= 0, uv[:, 0] < W)
+    print(valid_W)
 
-    valid_point = torch.logical_and(torch.logical_and(uv[:, 0] >= 0, uv[:, 0] < W),
-                                    torch.logical_and(uv[:, 1] >= 0, uv[:, 1] < H))
+    valid_point = torch.logical_and(valid_H, valid_W)
+
     uv = uv[valid_point]
     z = z[valid_point]
     color = color[valid_point]
@@ -217,10 +224,12 @@ if __name__ == '__main__':
         for capture_type in capture_list:
             if capture_type == "points":
                 render_pkg[capture_type] = render_points(custom_cam, gaussians_composite)
-            elif capture_type == "normal":
+            if capture_type == "normal":
                 render_pkg[capture_type] = render_pkg[capture_type] * 0.5 + 0.5
                 render_pkg[capture_type] = render_pkg[capture_type] + (1 - render_pkg['opacity']) * bg
             elif capture_type in ["base_color", "roughness", "metallic", "visibility"]:
+                print(f"{capture_type}: shape {render_pkg[capture_type].shape}, Opacity shape: {render_pkg['opacity'].shape}\n")
+                print(f"Opacoty * bg shape: {((1 - render_pkg['opacity']) * bg).shape}\n")
                 render_pkg[capture_type] = render_pkg[capture_type] + (1 - render_pkg['opacity']) * bg
             save_image(render_pkg[capture_type], f"{capture_dir}/{capture_type}/frame_{idx}.png")
 

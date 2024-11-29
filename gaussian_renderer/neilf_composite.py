@@ -153,7 +153,8 @@ def render_view(viewpoint_camera: Camera, pc: GaussianModel, pipe, bg_color: tor
         features[i] = features[i].view(height, width, features[i].shape[0]).permute(2, 0, 1)
     rendered_opacity = rendered_opacity.permute(2, 0, 1)
     rendered_image = rendered_image.permute(2, 0, 1)
-
+    rendered_shader = rendered_shader.permute(2, 0, 1)
+    
     rendered_roughness, rendered_metallic, rendered_visibility, \
     rendered_pbr, rendered_normal, rendered_base_color, rendered_light, rendered_local_light, rendered_global_light,  \
             = features
