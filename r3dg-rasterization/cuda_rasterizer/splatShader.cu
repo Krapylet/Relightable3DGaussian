@@ -95,9 +95,8 @@ namespace SplatShader
             ? 1 - 16 * pow(angle, 5)
             : pow(-2 * angle + 2, 5) / 2;
 
-        float rColor = fmodf(in.time / 5000, 1.0);
         // Set output color
-        *out.out_color = glm::vec3(rColor, 1 - opacity,  1 - opacity);
+        *out.out_color = glm::vec3(1 - opacity, 1 - opacity,  1 - opacity);
     }
 
     // Makes the object fade in and out.
@@ -242,7 +241,7 @@ namespace SplatShader
         
         *io.metallic = 0;
 		*io.incident_visibility = 0;
-		*io.color_brdf = glm::vec3(0, 0.5, 1);
+		//*io.color_brdf = glm::vec3(0, 0.5, 1);
 		*io.normal = glm::vec3(0);
 		*io.color_base = glm::vec3(0);
 		*io.incident_light = glm::vec3(0);

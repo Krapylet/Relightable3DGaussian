@@ -9,6 +9,7 @@ from scene.derect_light_sh import DirectLightEnv
 from utils.sh_utils import eval_sh, eval_sh_coef
 from utils.graphics_utils import fibonacci_sphere_sampling
 from .r3dg_rasterization import GaussianRasterizationSettings, GaussianRasterizer
+import time as Time
 
 
 def render_view(viewpoint_camera: Camera, pc: GaussianModel, pipe, bg_color: torch.Tensor,
@@ -151,10 +152,19 @@ def render_view(viewpoint_camera: Camera, pc: GaussianModel, pipe, bg_color: tor
     #And then we can reshape them
     for i in range(len(features)):
         features[i] = features[i].view(height, width, features[i].shape[0]).permute(2, 0, 1)
+
     rendered_opacity = rendered_opacity.permute(2, 0, 1)
     rendered_image = rendered_image.permute(2, 0, 1)
     rendered_shader = rendered_shader.permute(2, 0, 1)
     
+    # Doing too many computations with tensors causes: CUDA error: invalid configuration argument
+    #a = rendered_image + rendered_opacity
+    #visibility = rendered_image + rendered_opacity
+    #c = rendered_image + rendered_opacity
+    #d = rendered_image + rendered_opacity
+    #e = rendered_image + rendered_opacity
+
+
     rendered_roughness, rendered_metallic, rendered_visibility, \
     rendered_pbr, rendered_normal, rendered_base_color, rendered_light, rendered_local_light, rendered_global_light,  \
             = features
@@ -170,9 +180,7 @@ def render_view(viewpoint_camera: Camera, pc: GaussianModel, pipe, bg_color: tor
 
 
     pbr = rendered_pbr
-    print(f"opacity shape: {rendered_opacity.shape}")
-    print(f"pbr shape: {pbr.shape}")
-    rendered_pbr = pbr + (1 - rendered_opacity) * bg_color[: , None, None]
+    rendered_pbr = pbr# + (1 - rendered_opacity) * bg_color[: , None, None]
     
     # HDR out radiance to LDR
     val_gamma = 0
@@ -205,13 +213,9 @@ def render_view(viewpoint_camera: Camera, pc: GaussianModel, pipe, bg_color: tor
             env = torch.clamp_min(eval_sh(direct_light_env_light.sh_degree, shs_view_direct, directions.permute(1, 2, 0)) + 0.5, 0).permute(2, 0, 1)
         else:
             env = direct_light_env_light.direct_light(directions.permute(1, 2, 0)).permute(2, 0, 1)
-        print(f"env shape: {env.shape}")
-        print(f"opacity shape: {rendered_opacity.shape}")
-        print(f"env * opacity shape: {((1 - rendered_opacity) * env).shape}")
-        print(f"pbr shape: {pbr.shape}")
-        
-        results["render"] = rendered_image + (1 - rendered_opacity) * env
-        results["pbr_env"] = pbr #+ (1 - rendered_opacity) * env         #      Adding the env to the pbr causes a crash for some reason.
+
+        results["render"] = rendered_image# + (1 - rendered_opacity) * env
+        results["pbr_env"] = pbr# + (1 - rendered_opacity) * env         
         
 
     return results

@@ -31,8 +31,8 @@ __global__ void SelectShadersCUDA(
     // Currently, we just assign a single shader to the entire model, but we could easily diferentiate here, such as by position.
     // Other paramters usefull, such as roughness etc. could also be passed in here.
     // Ideally, though, which shaders to use should be specified in the save format of the model.
-    shShaderIndexes[idx] = shShaderManager->GetIndexOfShader("GaussDissolve");
-    splatShadersIndexes[idx] = splatShaderManager->GetIndexOfShader("SplatDefault");
+    shShaderIndexes[idx] = shShaderManager->GetIndexOfShader("ShDefault");
+    splatShadersIndexes[idx] = splatShaderManager->GetIndexOfShader("Stencil");
 }
 
 

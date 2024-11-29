@@ -91,9 +91,7 @@ def render_points(camera, gaussians):
     w2c = camera.world_view_transform.transpose(0, 1)
 
     xyz = gaussians.get_xyz
-    print(f"Xyz shape: {xyz.shape}\n")
     color = gaussians.get_base_color
-    print(f"color shape: {color.shape}\n")
     xyz_homo = torch.cat([xyz, torch.ones_like(xyz[:, :1])], dim=-1)
     xyz_cam = (xyz_homo @ w2c.T)[:, :3]
     z = xyz_cam[:, 2]
@@ -138,7 +136,7 @@ if __name__ == '__main__':
     parser.add_argument('--video', action='store_true', default=False, help="If True, output video as well.")
     parser.add_argument('--output', default="./capture_trace", help="Output dir.")
     parser.add_argument('--capture_list',
-                        default="base_color, metallic, normal, pbr ,pbr_env, points, render, roughness, visibility",
+                        default="base_color, metallic, normal, pbr ,pbr_env, shader, points, render, roughness, visibility",
                         help="what should be rendered for output.")
     args = parser.parse_args()
     dataset = model.extract(args)
@@ -228,8 +226,6 @@ if __name__ == '__main__':
                 render_pkg[capture_type] = render_pkg[capture_type] * 0.5 + 0.5
                 render_pkg[capture_type] = render_pkg[capture_type] + (1 - render_pkg['opacity']) * bg
             elif capture_type in ["base_color", "roughness", "metallic", "visibility"]:
-                print(f"{capture_type}: shape {render_pkg[capture_type].shape}, Opacity shape: {render_pkg['opacity'].shape}\n")
-                print(f"Opacoty * bg shape: {((1 - render_pkg['opacity']) * bg).shape}\n")
                 render_pkg[capture_type] = render_pkg[capture_type] + (1 - render_pkg['opacity']) * bg
             save_image(render_pkg[capture_type], f"{capture_dir}/{capture_type}/frame_{idx}.png")
 

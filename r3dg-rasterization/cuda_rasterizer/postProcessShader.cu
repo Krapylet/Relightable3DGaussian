@@ -265,6 +265,13 @@ namespace PostProcess
     }
 
     __device__ void TexturedShadows(PostProcessShaderInputs in, PostProcessShaderOutputs out){
+        // exit early if not inside model stencil
+        if(in.stencil_tex[in.pixel_idx] < 0.01f)
+        {
+            *out.shader_color = glm::vec3(1);
+            return;
+        }
+
         // instead of darking areas with shadow by darkening the color, we instead draw a texture on top of the darnkeded areas.
         auto shadowTex = in.d_textureManager->GetTexture("shadow");
         

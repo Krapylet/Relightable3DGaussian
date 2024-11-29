@@ -70,8 +70,6 @@ RasterizeGaussiansCUDA(
 	const std::vector<int64_t> postProcessingPasses_ptr, // is actually a vector of PostProcessShaders
 	const bool debug)
 {
-	printf("A\n")
-	CHECK_CUDA(,true);
 	// cast the texture manager back into its original class.
 	auto d_textureManager = (Texture::TextureManager *const)d_textureManager_ptr;
 	auto h_shShaderManager =  (ShaderManager *const)h_shShaderManager_ptr;
@@ -111,8 +109,6 @@ RasterizeGaussiansCUDA(
 	std::function<char*(size_t)> geomFunc = resizeFunctional(geomBuffer);
 	std::function<char*(size_t)> binningFunc = resizeFunctional(binningBuffer);
 	std::function<char*(size_t)> imgFunc = resizeFunctional(imgBuffer);
-	printf("B\n")
-	CHECK_CUDA(,true);
 	//std::cout << "At ShDefault Cracks texture: " << rawTextures.at("ShDefault").at("Cracks") ///  should be .at("rawData")  /// .cpu().contiguous().data_ptr<float>()[0] << ", At ShDefault Red texture:" << rawTextures.at("ShDefault").at("Red").cpu().contiguous().data_ptr<float>()[0] << std::endl;
 
 	// Since the addresses used for these arrays point to the same memory as used in the python frontend, any changes we make to them will stay permanent.
@@ -125,8 +121,6 @@ RasterizeGaussiansCUDA(
 	torch::Tensor temp_rotations = rotations.detach().clone();
 	torch::Tensor temp_sh = sh.detach().clone();
 
-	printf("C\n")
-	CHECK_CUDA(,true);
 	int rendered = 0;
 	if(P != 0)
 	{
@@ -178,8 +172,7 @@ RasterizeGaussiansCUDA(
 			radii.contiguous().data_ptr<int>(),
 			debug);
 	}
-	printf("D\n")
-	CHECK_CUDA(,true);
+
 	char* img_ptr = reinterpret_cast<char*>(imgBuffer.contiguous().data_ptr());
 	CudaRasterizer::ImageState imgState = CudaRasterizer::ImageState::fromChunk(img_ptr, H*W);
 
