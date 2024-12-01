@@ -56,7 +56,7 @@ namespace SplatShader
 		glm::vec3 const *const __restrict__ colors_SH;				
 		glm::vec4 *const __restrict__ conic_opacity;		
 
-		// Precomputed 'texture' information from the neilf pbr decomposition
+		// Precomputed 'texture' information from the R3DG BDRF decomposition
 		int const  S;						// Feature channel count.
 		float *const __restrict__ features;		// Interleaved array of precomputed 'textures' for each individual gaussian. Stored in the following order:
 											// float  roughness,
@@ -76,7 +76,6 @@ namespace SplatShader
 		float *const stencil_opacities;				//A seperate opacity that is used when rendering the stencil mask
 
 		// output
-		// In producion code, the colors field should function both as SH color input and as color output though reassignment, but we keep them seperate to make it easy to illustrate the difference.
 		glm::vec3 *const __restrict__ out_colors;			// shader color output.
 	};
 
@@ -98,7 +97,7 @@ namespace SplatShader
 
         // position information:
 		glm::vec3 const position;  				// mean 3d position of gaussian in world space. Can't be changed since 2D screen position has already been calculated.
-		glm::vec2 const screen_position;		// mean 2d position of gaussian in screen space. Could technically be made into a input/output, but would be very expensive because tiles touched would have to be updated. That could just be moved out of preprocessing, though, and calcualted after instead.
+		glm::vec2 const screen_position;		// mean 2d position of gaussian in screen space.
 		int const mean_pixel_idx; 				// Index of the mean pixel position of the splat.
 
 		// Screen texture information. Indexed with mean_pixel_idx
@@ -142,7 +141,7 @@ namespace SplatShader
 		// Constructor
 		__device__ SplatShaderModifiableInputs(PackedSplatShaderParams params, int idx);
 
-		// Precomputed 'texture' information from the neilf pbr decomposition
+		// Precomputed 'texture' information from the R3DG BDRF decomposition
 		glm::vec3 *const color_brdf;			// pbr splat color
 		glm::vec3 *const normal;				// Splat normal in object space
 		glm::vec3 *const color_base;			// Decomposed splat color without lighting
