@@ -47,7 +47,7 @@ This project is built directly on top of the great [R3DG reference implementatio
 # 3. Install CUDA Toolkit 11.8
 # https://developer.nvidia.com/cuda-11-8-0-download-archive
 
-# 4. Clone project https://github.com/Krapylet/Relightable3DGaussian
+# 4. Clone project https://github.com/Krapylet/Relightable3DGaussian and check out the ThesisSubmission branch
 
 # Note Step 5 and 21 can be skipped if you use the pre-trained models from the model appendix.
 # 5. Download the pruned nerf synthetic dataset and place the folder it in the project root
