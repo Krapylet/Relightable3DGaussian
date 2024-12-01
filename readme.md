@@ -7,11 +7,16 @@ Aske Valdemar Szlavik Johansen, asvj@itu.dk
 </p>
 
 
-### <p align="center"> [📰Thesis](https://1drv.ms/b/s!AnEI-QEq46P2h8Rr23pRvRhnYTH8Aw?e=fHqhX5) | [🖼️Appendix](https://1drv.ms/b/s!AnEI-QEq46P2h8Rq-xWg-HpLO6oTzg?e=ciubjD) | ~~🗿Models~~ (too big for me to host myself 😢)</p>
+### <p align="center"> [📰Thesis](https://1drv.ms/b/s!AnEI-QEq46P2h8Rr23pRvRhnYTH8Aw?e=fHqhX5) | [🖼️Appendix](https://1drv.ms/b/s!AnEI-QEq46P2h8Rq-xWg-HpLO6oTzg?e=ciubjD) | [🗿Models (NeRF synthetic dataset)](https://drive.google.com/drive/folders/1s5trd1327yTZ7agP7zHgyUAmWGVTvr0M?usp=drive_link)</p>
 
 
-This is an implementation of my master thesis *Shader-GS: Bringing Artistic Control to Gaussian Splatting.* <br>
-![Alt text](media/teaser.gif)
+<p align="center">  This is an implementation of my master thesis *Shader-GS: Bringing Artistic Control to Gaussian Splatting.* </p> <br>
+
+![Alt text](media/PulseChair.gif)
+![Alt text](media/GaussDissolveLego.gif)
+![Alt text](media/ToonHotdog.gif)
+![Alt text](media/WireframeDrums.gif)
+![Alt text](media/shaderGrid.gif)
 
 ### Changes from base project
 This project is built directly on top of the great [R3DG reference implementation](https://github.com/NJU-3DV/Relightable3DGaussian) by Gao et al. While I have touched more or less the entire repo at least a bit, the following files and folders make up the bulk the work i have personally done on this project:
@@ -45,7 +50,7 @@ This project is built directly on top of the great [R3DG reference implementatio
 # 4. Clone project https://github.com/Krapylet/Relightable3DGaussian
 
 # Note Step 5 and 21 can be skipped if you use the pre-trained models from the model appendix.
-# 5. download nerf dataset and place it in relightable3DGaussian/datasets/ (Takes a very long time, but you can continue the install while the data downloads)
+# 5. Download the pruned nerf synthetic dataset and place the folder it in the project root
 
 # 6. Add following paths to PATH environment variable:
 # C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.8\bin
@@ -95,20 +100,16 @@ pip install pyexr==0.4.0
 # 20. install relightable 3D Gaussian
 pip install ./r3dg-rasterization
 
-# Note Step 5 and 21 can be skipped if you use the pre-trained models from the model appendix.
-# 21. Wait for dataset download in step 5 to finish. Then train datasets to generate point clouds (Takes a very long time on RTX 2080.  Can be stopped after a single model has been trained AND evaluated)
-.\script\run_nerf.sh
-
-# 22. Initialize the c++ part of the razterization:
+# 21. Initialize the c++ part of the razterization:
 cd r3dg-rasterization
 cd build				
 cmake ../                   
 cd ..
 cmake --build build
 
-# 23. Compile c++ razterization:
+# 22. Compile c++ razterization:
 pip install ./r3dg-rasterization
 
-# 24. Finally, run the r3dg on a trained model:
+# 23. Finally, run the r3dg on a trained model:
 python gui.py -m output/NeRF_Syn/{MODELNAME}/neilf -t neilf --debug
 ```
