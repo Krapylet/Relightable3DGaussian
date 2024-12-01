@@ -28,11 +28,34 @@ __global__ void SelectShadersCUDA(
         return;
     auto pos = splatCoordinates[idx];
 
+    if(pos.y < -0.3f){
+        shShaderIndexes[idx] = shShaderManager->GetIndexOfShader("ShDefault");
+    }
+    else if(pos.y > 0.4f){
+        shShaderIndexes[idx] = shShaderManager->GetIndexOfShader("Heartbeat");
+    }
+    else{
+        shShaderIndexes[idx] = shShaderManager->GetIndexOfShader("GaussDissolve");
+    }
+
+    if(pos.x < -0.6f){
+        splatShadersIndexes[idx] = splatShaderManager->GetIndexOfShader("SplatDefault");
+    }
+    else if (pos.x > -0.6f && pos.x < 0){
+        splatShadersIndexes[idx] = splatShaderManager->GetIndexOfShader("Wireframe");
+    }
+    else if (pos.x > 0 && pos.x < 0.5){
+        splatShadersIndexes[idx] = splatShaderManager->GetIndexOfShader("NaiveOutline");
+    }
+    else{
+        splatShadersIndexes[idx] = splatShaderManager->GetIndexOfShader("Dissolve");
+    }
+
     // Currently, we just assign a single shader to the entire model, but we could easily diferentiate here, such as by position.
     // Other paramters usefull, such as roughness etc. could also be passed in here.
     // Ideally, though, which shaders to use should be specified in the save format of the model.
-    shShaderIndexes[idx] = shShaderManager->GetIndexOfShader("ShDefault");
-    splatShadersIndexes[idx] = splatShaderManager->GetIndexOfShader("Stencil");
+    //shShaderIndexes[idx] = shShaderManager->GetIndexOfShader("ShDefault");
+    //splatShadersIndexes[idx] = splatShaderManager->GetIndexOfShader("Wireframe");
 }
 
 
