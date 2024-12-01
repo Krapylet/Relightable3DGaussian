@@ -38,6 +38,8 @@ This project is built directly on top of the great [R3DG reference implementatio
 
 ### Install guide for windows 11
 ```shell
+# Note, requires a Nvidia GPU with compute capability 7.0+
+
 # 1. Install miniconda
 #	- Add conda to path during install.
 
