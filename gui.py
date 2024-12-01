@@ -445,6 +445,20 @@ if __name__ == '__main__':
             gaussians.load_ply(
                 os.path.join(args.model_path, "point_cloud", "iteration_" + str(loaded_iter), "point_cloud.ply"))
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     # Import textures used in shaders
     textureImporter = texImport.TextureImporter()
     d_textureManager_ptr= textureImporter.initialize_all_textures()
@@ -454,10 +468,26 @@ if __name__ == '__main__':
 
     #Select which post processing passes.
     postProcessManager = PostProcess.PostProcessManager() 
-    postProcessManager.AddPostProcessingPass("QuantizeLighting")  
-    postProcessManager.AddPostProcessingPass("BlurLighting")  
-    postProcessManager.AddPostProcessingPass("ToonShader")
-  
+    #postProcessManager.AddPostProcessingPass("QuantizeLighting")  
+    #postProcessManager.AddPostProcessingPass("BlurLighting")  
+    #postProcessManager.AddPostProcessingPass("ToonShader")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     render_fn = render_fn_dict[args.type]
     bg_color = [1, 1, 1]# if dataset.white_background else [0, 0, 0]
